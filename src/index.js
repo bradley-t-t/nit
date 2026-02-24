@@ -801,7 +801,7 @@ function updateChangelog(changelogEntry) {
   );
 }
 
-const TURL_TXT_PATH = path.join(PROJECT_ROOT, "turl.txt");
+const TURL_TXT_PATH = path.join(PROJECT_ROOT, "public", "turl.txt");
 const TURL_TXT_HEADER = `# TURL Project Rules & Lessons Learned
 # This file is automatically managed by turl-release.
 # Rules are learned from past commits and mistakes to prevent future issues.
@@ -1554,7 +1554,10 @@ async function main() {
         process.stdout.write(
           `  [OK] Added ${addedCount} new rule(s) to turl.txt\n`,
         );
-        execCommand("git add turl.txt", { silent: true, ignoreError: true });
+        execCommand("git add public/turl.txt", {
+          silent: true,
+          ignoreError: true,
+        });
         execCommand("git commit --amend --no-edit", {
           silent: true,
           ignoreError: true,

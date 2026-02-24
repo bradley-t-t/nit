@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.8] - 2026-02-24
+
+- Updated the file path for turl.txt to be located in the "public" directory instead of the project root.
+- Adjusted the git command to stage the updated path "public/turl.txt" during the commit amendment process.
+
 ## [2.7] - 2026-02-24
 
 - Introduced a new feature for managing project-specific rules with a turl.txt file, which logs rules and lessons learned from past commits to prevent future mistakes.
