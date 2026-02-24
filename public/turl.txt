@@ -3,7 +3,10 @@
 # Rules are learned from past commits and mistakes to prevent future issues.
 # Do NOT manually edit this file unless you know what you are doing.
 
-- - - - Store project-specific files like turl.txt in a designated subdirectory (e.g., "public") rather than the project root to maintain a clean project structure.
-- - - Ensure that file paths in code and git commands are updated consistently when relocating files to avoid errors during automated processes like commits.
-- - Incorporate comprehensive UI enhancements, such as color-coded outputs, symbols, and interactive components like progress bars and spinners, to improve user experience in command-line tools.
+- Store project-specific files like turl.txt in a designated subdirectory (e.g., "public") rather than the project root to maintain a clean project structure.
+- Ensure that file paths in code and git commands are updated consistently when relocating files to avoid errors during automated processes like commits.
+- Incorporate comprehensive UI enhancements, such as color-coded outputs, symbols, and interactive components like progress bars and spinners, to improve user experience in command-line tools.
 - Implement version checking and update prompts using reliable methods (e.g., npm queries) to ensure users are notified of available updates, enhancing tool maintenance and user engagement.
+- When updating the UI color scheme, ensure consistency across all UI elements (e.g., borders, status icons, headers) by using a unified set of color codes to maintain visual coherence.
+- Document all UI redesigns and formatting changes in the changelog with specific details about color updates and layout improvements for clear communication of visual enhancements.
+- Align the version number in the codebase (e.g., src/index.js) with the version in package.json and changelog to prevent discrepancies during release or deployment processes.

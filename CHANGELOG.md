@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0] - 2026-02-24
+
+- Revamped the UI design in the command-line interface with updated color schemes for better visual distinction, replacing old colors like cyan and green with brighter variants such as brightBlue and brightRed.
+- Redesigned the header display to feature a more modern and colorful ASCII art representation of the tool name, along with a clearer version and description layout.
+- Updated progress bar and step indicators to use brighter colors and improved formatting for enhanced readability and user feedback during operations.
+- Adjusted the box drawing style in the UI to use brightBlue for borders, improving the visual appeal of boxed text elements.
+- Modified status icons for steps and sub-steps to reflect the new color scheme, ensuring consistency across the interface with distinct colors for running, success, error, and warning states.
+- Simplified formatting in the public/turl.txt file by removing redundant dashes from the rules text for cleaner presentation.
+
 ## [2.9] - 2026-02-24
 
 - Added a comprehensive UI toolkit with color-coded output, symbols, and formatting utilities for a more visually appealing and interactive command-line experience.

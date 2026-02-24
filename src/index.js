@@ -8,24 +8,22 @@ import { run as runCleanup } from "./cleanup.js";
 const PROJECT_ROOT = process.cwd();
 const args = process.argv.slice(2);
 
-const PACKAGE_VERSION = "1.0.0";
+const PACKAGE_VERSION = "2.9.0";
 const PACKAGE_NAME = "turl-release";
 
 const COLORS = {
   reset: "\x1b[0m",
   bright: "\x1b[1m",
   dim: "\x1b[2m",
-  cyan: "\x1b[36m",
-  green: "\x1b[32m",
-  yellow: "\x1b[33m",
   red: "\x1b[31m",
-  magenta: "\x1b[35m",
   blue: "\x1b[34m",
   white: "\x1b[37m",
-  bgBlue: "\x1b[44m",
-  bgCyan: "\x1b[46m",
-  bgGreen: "\x1b[42m",
+  brightRed: "\x1b[91m",
+  brightBlue: "\x1b[94m",
+  brightWhite: "\x1b[97m",
   bgRed: "\x1b[41m",
+  bgBlue: "\x1b[44m",
+  bgWhite: "\x1b[47m",
 };
 
 const SYMBOLS = {
@@ -68,29 +66,27 @@ const ui = {
     const leftPad = Math.floor(padding / 2);
     const rightPad = padding - leftPad;
     return (
-      `${COLORS.cyan}╭${"─".repeat(width - 2)}╮${COLORS.reset}\n` +
-      `${COLORS.cyan}│${COLORS.reset}${" ".repeat(leftPad + 1)}${text}${" ".repeat(rightPad + 1)}${COLORS.cyan}│${COLORS.reset}\n` +
-      `${COLORS.cyan}╰${"─".repeat(width - 2)}╯${COLORS.reset}`
+      `${COLORS.brightBlue}╭${"─".repeat(width - 2)}╮${COLORS.reset}\n` +
+      `${COLORS.brightBlue}│${COLORS.reset}${" ".repeat(leftPad + 1)}${text}${" ".repeat(rightPad + 1)}${COLORS.brightBlue}│${COLORS.reset}\n` +
+      `${COLORS.brightBlue}╰${"─".repeat(width - 2)}╯${COLORS.reset}`
     );
   },
 
   header: () => {
     const lines = [
-      `${COLORS.cyan}${COLORS.bright}`,
-      `  ╔════════════════════════════════════════════════════════╗`,
-      `  ║                                                        ║`,
-      `  ║   ████████╗██╗   ██╗██████╗ ██╗                        ║`,
-      `  ║   ╚══██╔══╝██║   ██║██╔══██╗██║                        ║`,
-      `  ║      ██║   ██║   ██║██████╔╝██║                        ║`,
-      `  ║      ██║   ██║   ██║██╔══██╗██║                        ║`,
-      `  ║      ██║   ╚██████╔╝██║  ██║███████╗                   ║`,
-      `  ║      ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝                   ║`,
-      `  ║                                                        ║`,
-      `  ║   ${COLORS.reset}${COLORS.dim}Automated Release Management System${COLORS.cyan}${COLORS.bright}             ║`,
-      `  ║   ${COLORS.reset}${COLORS.dim}v${PACKAGE_VERSION}${COLORS.cyan}${COLORS.bright}                                             ║`,
-      `  ║                                                        ║`,
-      `  ╚════════════════════════════════════════════════════════╝`,
-      `${COLORS.reset}`,
+      ``,
+      `  ${COLORS.brightRed}${COLORS.bright}████████╗${COLORS.brightWhite}██╗   ██╗${COLORS.brightBlue}██████╗ ${COLORS.brightWhite}██╗     ${COLORS.reset}`,
+      `  ${COLORS.brightRed}${COLORS.bright}╚══██╔══╝${COLORS.brightWhite}██║   ██║${COLORS.brightBlue}██╔══██╗${COLORS.brightWhite}██║     ${COLORS.reset}`,
+      `  ${COLORS.brightRed}${COLORS.bright}   ██║   ${COLORS.brightWhite}██║   ██║${COLORS.brightBlue}██████╔╝${COLORS.brightWhite}██║     ${COLORS.reset}`,
+      `  ${COLORS.brightRed}${COLORS.bright}   ██║   ${COLORS.brightWhite}██║   ██║${COLORS.brightBlue}██╔══██╗${COLORS.brightWhite}██║     ${COLORS.reset}`,
+      `  ${COLORS.brightRed}${COLORS.bright}   ██║   ${COLORS.brightWhite}╚██████╔╝${COLORS.brightBlue}██║  ██║${COLORS.brightWhite}███████╗${COLORS.reset}`,
+      `  ${COLORS.brightRed}${COLORS.bright}   ╚═╝   ${COLORS.brightWhite} ╚═════╝ ${COLORS.brightBlue}╚═╝  ╚═╝${COLORS.brightWhite}╚══════╝${COLORS.reset}`,
+      ``,
+      `  ${COLORS.dim}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}`,
+      `  ${COLORS.brightWhite}${COLORS.bright}Automated Release Management System${COLORS.reset}`,
+      `  ${COLORS.dim}Version ${PACKAGE_VERSION}${COLORS.reset}`,
+      `  ${COLORS.dim}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}`,
+      ``,
     ];
     return lines.join("\n");
   },
@@ -100,22 +96,22 @@ const ui = {
     const filled = Math.round((current / total) * width);
     const empty = width - filled;
     const bar =
-      COLORS.green +
+      COLORS.brightBlue +
       SYMBOLS.block.repeat(filled) +
       COLORS.dim +
       SYMBOLS.blockLight.repeat(empty) +
       COLORS.reset;
     const percentStr = `${percentage}%`.padStart(4);
-    return `  ${COLORS.cyan}${label.padEnd(25)}${COLORS.reset} [${bar}] ${COLORS.bright}${percentStr}${COLORS.reset}`;
+    return `  ${COLORS.brightWhite}${label.padEnd(25)}${COLORS.reset} [${bar}] ${COLORS.bright}${percentStr}${COLORS.reset}`;
   },
 
   step: (num, total, text, status = "running") => {
     const statusIcons = {
-      running: `${COLORS.yellow}${SYMBOLS.arrowRight}${COLORS.reset}`,
-      success: `${COLORS.green}${SYMBOLS.check}${COLORS.reset}`,
-      error: `${COLORS.red}${SYMBOLS.cross}${COLORS.reset}`,
+      running: `${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset}`,
+      success: `${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset}`,
+      error: `${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset}`,
       skip: `${COLORS.dim}${SYMBOLS.dot}${COLORS.reset}`,
-      warn: `${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset}`,
+      warn: `${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset}`,
     };
     const icon = statusIcons[status] || statusIcons.running;
     return `\n  ${COLORS.dim}[${num}/${total}]${COLORS.reset} ${icon} ${text}`;
@@ -123,13 +119,14 @@ const ui = {
 
   subStep: (text, status = "info") => {
     const statusStyles = {
-      info: `${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset}`,
-      success: `${COLORS.green}${SYMBOLS.check}${COLORS.reset}`,
-      error: `${COLORS.red}${SYMBOLS.cross}${COLORS.reset}`,
-      warn: `${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset}`,
+      info: `${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset}`,
+      success: `${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset}`,
+      error: `${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset}`,
+      warn: `${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset}`,
+      skip: `${COLORS.dim}${SYMBOLS.dot}${COLORS.reset}`,
     };
     const icon = statusStyles[status] || statusStyles.info;
-    return `       ${icon} ${COLORS.dim}${text}${COLORS.reset}`;
+    return `\n       ${icon} ${COLORS.dim}${text}${COLORS.reset}`;
   },
 
   spinner: (text) => {
@@ -140,7 +137,7 @@ const ui = {
         ui.hideCursor();
         interval = setInterval(() => {
           process.stdout.write(
-            `\r  ${COLORS.cyan}${SYMBOLS.spinner[frame]}${COLORS.reset} ${text}`,
+            `\r  ${COLORS.brightBlue}${SYMBOLS.spinner[frame]}${COLORS.reset} ${text}`,
           );
           frame = (frame + 1) % SYMBOLS.spinner.length;
         }, 80);
@@ -149,8 +146,8 @@ const ui = {
         clearInterval(interval);
         ui.showCursor();
         const icon = success
-          ? `${COLORS.green}${SYMBOLS.check}${COLORS.reset}`
-          : `${COLORS.red}${SYMBOLS.cross}${COLORS.reset}`;
+          ? `${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset}`
+          : `${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset}`;
         process.stdout.write(`\r  ${icon} ${finalText}\n`);
       },
     };
@@ -159,15 +156,16 @@ const ui = {
   divider: (char = "─", width = 56) =>
     `  ${COLORS.dim}${char.repeat(width)}${COLORS.reset}`,
 
-  highlight: (text) => `${COLORS.bright}${COLORS.cyan}${text}${COLORS.reset}`,
+  highlight: (text) =>
+    `${COLORS.bright}${COLORS.brightBlue}${text}${COLORS.reset}`,
 
-  success: (text) => `${COLORS.green}${text}${COLORS.reset}`,
+  success: (text) => `${COLORS.brightWhite}${text}${COLORS.reset}`,
 
-  error: (text) => `${COLORS.red}${text}${COLORS.reset}`,
+  error: (text) => `${COLORS.brightRed}${text}${COLORS.reset}`,
 
-  warn: (text) => `${COLORS.yellow}${text}${COLORS.reset}`,
+  warn: (text) => `${COLORS.brightRed}${text}${COLORS.reset}`,
 
-  info: (text) => `${COLORS.blue}${text}${COLORS.reset}`,
+  info: (text) => `${COLORS.brightBlue}${text}${COLORS.reset}`,
 };
 
 async function checkForUpdates() {
@@ -224,14 +222,14 @@ async function promptForUpdate(updateInfo) {
   return new Promise((resolve) => {
     process.stdout.write(`\n`);
     process.stdout.write(
-      `  ${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset} ${COLORS.bright}Update Available!${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} ${COLORS.bright}Update Available!${COLORS.reset}\n`,
     );
     process.stdout.write(
       `  ${COLORS.dim}Current: v${updateInfo.currentVersion} ${SYMBOLS.arrow} Latest: v${updateInfo.latestVersion}${COLORS.reset}\n\n`,
     );
 
     rl.question(
-      `  ${COLORS.cyan}?${COLORS.reset} Update ${PACKAGE_NAME} now? (Y/n): `,
+      `  ${COLORS.brightBlue}?${COLORS.reset} Update ${PACKAGE_NAME} now? (Y/n): `,
       (answer) => {
         rl.close();
         const normalized = answer.trim().toLowerCase();
@@ -297,12 +295,12 @@ ${ui.header()}
   ${COLORS.bright}Usage:${COLORS.reset} turl-release [options]
 
   ${COLORS.bright}Options:${COLORS.reset}
-    ${COLORS.cyan}-b, --branch <name>${COLORS.reset}   Override the branch to push to (default: from turl.json or "main")
-    ${COLORS.cyan}-s, --skip-update${COLORS.reset}    Skip automatic update check for turl-release
-    ${COLORS.cyan}-i, --interactive${COLORS.reset}    Run in interactive mode with step-by-step prompts
-    ${COLORS.cyan}-v, --verbose${COLORS.reset}        Show detailed output during release
-    ${COLORS.cyan}-d, --dry-run${COLORS.reset}        Preview release without making changes
-    ${COLORS.cyan}-h, --help${COLORS.reset}           Show this help message
+    ${COLORS.brightBlue}-b, --branch <name>${COLORS.reset}   Override the branch to push to (default: from turl.json or "main")
+    ${COLORS.brightBlue}-s, --skip-update${COLORS.reset}    Skip automatic update check for turl-release
+    ${COLORS.brightBlue}-i, --interactive${COLORS.reset}    Run in interactive mode with step-by-step prompts
+    ${COLORS.brightBlue}-v, --verbose${COLORS.reset}        Show detailed output during release
+    ${COLORS.brightBlue}-d, --dry-run${COLORS.reset}        Preview release without making changes
+    ${COLORS.brightBlue}-h, --help${COLORS.reset}           Show this help message
 
   ${COLORS.bright}Configuration (turl.json):${COLORS.reset}
     {
@@ -313,10 +311,10 @@ ${ui.header()}
 
   ${COLORS.bright}Project Rules (turl.txt):${COLORS.reset}
     turl-release automatically manages a turl.txt file that:
-    ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} Logs project-specific rules and lessons learned from past commits
-    ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} Checks your changes against these rules before committing
-    ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} Warns you if changes violate any rules
-    ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} Learns new rules from each release to prevent future mistakes
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Logs project-specific rules and lessons learned from past commits
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Checks your changes against these rules before committing
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Warns you if changes violate any rules
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Learns new rules from each release to prevent future mistakes
 
 `);
 }
@@ -332,7 +330,7 @@ async function interactiveMenu() {
     new Promise((resolve) => rl.question(prompt, resolve));
 
   process.stdout.write(
-    `\n  ${COLORS.bright}${COLORS.cyan}Interactive Mode${COLORS.reset}\n`,
+    `\n  ${COLORS.bright}${COLORS.brightBlue}Interactive Mode${COLORS.reset}\n`,
   );
   process.stdout.write(`  ${ui.divider()}\n\n`);
 
@@ -344,22 +342,22 @@ async function interactiveMenu() {
   };
 
   const branchAnswer = await question(
-    `  ${COLORS.cyan}?${COLORS.reset} Branch to push to (leave empty for default): `,
+    `  ${COLORS.brightBlue}?${COLORS.reset} Branch to push to (leave empty for default): `,
   );
   if (branchAnswer.trim()) options.branch = branchAnswer.trim();
 
   const buildAnswer = await question(
-    `  ${COLORS.cyan}?${COLORS.reset} Run production build? (Y/n): `,
+    `  ${COLORS.brightBlue}?${COLORS.reset} Run production build? (Y/n): `,
   );
   options.skipBuild = buildAnswer.trim().toLowerCase() === "n";
 
   const formatAnswer = await question(
-    `  ${COLORS.cyan}?${COLORS.reset} Run code formatter? (Y/n): `,
+    `  ${COLORS.brightBlue}?${COLORS.reset} Run code formatter? (Y/n): `,
   );
   options.skipFormat = formatAnswer.trim().toLowerCase() === "n";
 
   const rulesAnswer = await question(
-    `  ${COLORS.cyan}?${COLORS.reset} Check project rules before commit? (Y/n): `,
+    `  ${COLORS.brightBlue}?${COLORS.reset} Check project rules before commit? (Y/n): `,
   );
   options.skipRulesCheck = rulesAnswer.trim().toLowerCase() === "n";
 
@@ -702,9 +700,48 @@ function incrementVersion(version) {
   return `${major}.${minor}`;
 }
 
+function updatePackageJsonVersion(newVersion) {
+  const packageJsonPath = path.join(PROJECT_ROOT, "package.json");
+
+  if (!fs.existsSync(packageJsonPath)) {
+    return { updated: false, reason: "package.json not found" };
+  }
+
+  try {
+    const content = safeReadFile(packageJsonPath, "package.json");
+    const packageJson = safeParseJson(content, packageJsonPath, "package.json");
+
+    const semverVersion =
+      newVersion.includes(".") && newVersion.split(".").length === 2
+        ? `${newVersion}.0`
+        : newVersion;
+
+    if (packageJson.version === semverVersion) {
+      return { updated: false, reason: "version already matches" };
+    }
+
+    packageJson.version = semverVersion;
+    safeWriteFile(
+      packageJsonPath,
+      JSON.stringify(packageJson, null, 2) + "\n",
+      "package.json",
+    );
+
+    return {
+      updated: true,
+      oldVersion: content.match(/"version":\s*"([^"]+)"/)?.[1],
+      newVersion: semverVersion,
+    };
+  } catch (err) {
+    return { updated: false, reason: err.message };
+  }
+}
+
 function writeTurlConfig(config) {
   const turlPath = path.join(PROJECT_ROOT, "public", "turl.json");
   safeWriteFile(turlPath, JSON.stringify(config, null, 2) + "\n", "turl.json");
+
+  return updatePackageJsonVersion(config.version);
 }
 
 function execCommand(command, options = {}) {
@@ -1132,7 +1169,10 @@ function readTurlRules() {
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed && !trimmed.startsWith("#")) {
-      rules.push(trimmed);
+      const cleanedRule = trimmed.replace(/^-\s*/, "").trim();
+      if (cleanedRule) {
+        rules.push(cleanedRule);
+      }
     }
   }
 
@@ -1300,40 +1340,47 @@ async function promptUserForViolations(violations) {
     output: process.stdout,
   });
 
+  const BOX_WIDTH = 60;
+  const CONTENT_WIDTH = BOX_WIDTH - 4;
+
   return new Promise((resolve) => {
+    process.stdout.write(`\n\n`);
     process.stdout.write(
-      `\n\n  ${COLORS.red}${COLORS.bright}╔════════════════════════════════════════════════════════╗${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}╔${"═".repeat(BOX_WIDTH - 2)}╗${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${SYMBOLS.warning} ${COLORS.bright}RULE VIOLATIONS DETECTED${COLORS.reset}                           ${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} ${COLORS.bright}RULE VIOLATIONS DETECTED${COLORS.reset}${" ".repeat(CONTENT_WIDTH - 27)}${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.red}${COLORS.bright}╠════════════════════════════════════════════════════════╣${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}╠${"═".repeat(BOX_WIDTH - 2)}╣${COLORS.reset}\n`,
     );
 
     for (const violation of violations) {
+      const maxLen = CONTENT_WIDTH - 4;
       const truncated =
-        violation.length > 52 ? violation.substring(0, 49) + "..." : violation;
+        violation.length > maxLen
+          ? violation.substring(0, maxLen - 3) + "..."
+          : violation;
       process.stdout.write(
-        `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${COLORS.yellow}${SYMBOLS.arrowRight}${COLORS.reset} ${truncated.padEnd(52)}${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+        `  ${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${truncated.padEnd(CONTENT_WIDTH - 4)}${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}\n`,
       );
     }
 
     process.stdout.write(
-      `  ${COLORS.red}${COLORS.bright}╠════════════════════════════════════════════════════════╣${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}╠${"═".repeat(BOX_WIDTH - 2)}╣${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${COLORS.dim}These changes may violate project rules.${COLORS.reset}             ${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}  ${COLORS.dim}These changes may violate project rules.${COLORS.reset}${" ".repeat(CONTENT_WIDTH - 42)}${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${COLORS.dim}Fix these issues before releasing.${COLORS.reset}                  ${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}  ${COLORS.dim}Fix these issues before releasing.${COLORS.reset}${" ".repeat(CONTENT_WIDTH - 36)}${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.red}${COLORS.bright}╚════════════════════════════════════════════════════════╝${COLORS.reset}\n\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}╚${"═".repeat(BOX_WIDTH - 2)}╝${COLORS.reset}\n\n`,
     );
 
     rl.question(
-      `  ${COLORS.cyan}?${COLORS.reset} Continue anyway? (y/N): `,
+      `  ${COLORS.brightBlue}?${COLORS.reset} Continue anyway? (y/N): `,
       (answer) => {
         rl.close();
         const normalized = answer.trim().toLowerCase();
@@ -1533,11 +1580,11 @@ function rollbackVersion() {
     try {
       writeTurlConfig(originalTurlConfig);
       process.stdout.write(
-        `  ${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset} Rolled back version in turl.json\n`,
+        `  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} Rolled back version in turl.json\n`,
       );
     } catch (err) {
       process.stdout.write(
-        `  ${COLORS.red}${SYMBOLS.cross}${COLORS.reset} Failed to rollback version: ${err.message}\n`,
+        `  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} Failed to rollback version: ${err.message}\n`,
       );
     }
   }
@@ -1692,7 +1739,7 @@ async function main() {
 
   if (cliOptions.dryRun) {
     process.stdout.write(
-      `\n\n  ${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset} ${COLORS.bright}DRY RUN MODE${COLORS.reset}\n`,
+      `\n\n  ${COLORS.brightBlue}${SYMBOLS.info}${COLORS.reset} ${COLORS.bright}DRY RUN MODE${COLORS.reset}\n`,
     );
     process.stdout.write(
       `  ${COLORS.dim}No changes will be made to your repository.${COLORS.reset}\n\n`,
@@ -1815,7 +1862,7 @@ async function main() {
         );
         if (!shouldContinue) {
           process.stdout.write(
-            `\n  ${COLORS.red}${SYMBOLS.cross}${COLORS.reset} Release aborted. Fix violations and try again.\n\n`,
+            `\n  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} Release aborted. Fix violations and try again.\n\n`,
           );
           process.exit(0);
         }
@@ -1839,7 +1886,7 @@ async function main() {
   }
 
   process.stdout.write(
-    ui.step(9, TOTAL_STEPS, "Updating turl.json...", "running"),
+    ui.step(9, TOTAL_STEPS, "Updating version files...", "running"),
   );
   try {
     const updatedConfig = {
@@ -1847,12 +1894,28 @@ async function main() {
       projectName,
       branch: turlConfig.branch,
     };
+    let packageSyncResult = { updated: false };
     if (!cliOptions.dryRun) {
-      writeTurlConfig(updatedConfig);
+      packageSyncResult = writeTurlConfig(updatedConfig);
     }
     process.stdout.write(
-      ui.subStep(`Updated to version ${ui.highlight(newVersion)}`, "success"),
+      ui.subStep(
+        `turl.json ${SYMBOLS.arrow} v${ui.highlight(newVersion)}`,
+        "success",
+      ),
     );
+    if (packageSyncResult.updated) {
+      process.stdout.write(
+        ui.subStep(
+          `package.json ${SYMBOLS.arrow} v${packageSyncResult.newVersion}`,
+          "success",
+        ),
+      );
+    } else if (cliOptions.dryRun) {
+      process.stdout.write(
+        ui.subStep(`package.json would be updated (dry run)`, "skip"),
+      );
+    }
   } catch (err) {
     process.stdout.write(ui.subStep(`${err.message}`, "error"));
     process.exit(1);
@@ -2041,54 +2104,60 @@ async function main() {
   }
 
   process.stdout.write("\n\n");
+
+  const BOX_WIDTH = 60;
+  const pad = (str, len) => str.padEnd(len);
+
   process.stdout.write(
-    `  ${COLORS.green}${COLORS.bright}╔════════════════════════════════════════════════════════╗${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}╔${"═".repeat(BOX_WIDTH - 2)}╗${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}                                                        ${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}   ${SYMBOLS.check} ${COLORS.bright}Release Complete!${COLORS.reset}                               ${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} ${COLORS.bright}Release Complete!${COLORS.reset}${" ".repeat(BOX_WIDTH - 24)}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}                                                        ${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Project:${COLORS.reset} ${COLORS.cyan}${projectName.padEnd(40)}${COLORS.reset}${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Project:${COLORS.reset} ${COLORS.brightBlue}${pad(projectName, BOX_WIDTH - 15)}${COLORS.reset}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Version:${COLORS.reset} ${COLORS.cyan}v${newVersion.padEnd(39)}${COLORS.reset}${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Version:${COLORS.reset} ${COLORS.brightBlue}${pad("v" + newVersion, BOX_WIDTH - 15)}${COLORS.reset}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Branch:${COLORS.reset}  ${COLORS.cyan}${branch.padEnd(40)}${COLORS.reset}${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Branch:${COLORS.reset}  ${COLORS.brightBlue}${pad(branch, BOX_WIDTH - 15)}${COLORS.reset}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}                                                        ${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.green}${COLORS.bright}╚════════════════════════════════════════════════════════╝${COLORS.reset}\n\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}╚${"═".repeat(BOX_WIDTH - 2)}╝${COLORS.reset}\n\n`,
   );
 }
 
 main().catch((err) => {
   ui.showCursor();
+  const BOX_WIDTH = 60;
+  process.stdout.write(`\n\n`);
   process.stdout.write(
-    `\n\n  ${COLORS.red}${COLORS.bright}╔════════════════════════════════════════════════════════╗${COLORS.reset}\n`,
+    `  ${COLORS.brightRed}${COLORS.bright}╔${"═".repeat(BOX_WIDTH - 2)}╗${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${SYMBOLS.cross} ${COLORS.bright}Release Failed${COLORS.reset}                                    ${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} ${COLORS.bright}Release Failed${COLORS.reset}${" ".repeat(BOX_WIDTH - 21)}${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.red}${COLORS.bright}╚════════════════════════════════════════════════════════╝${COLORS.reset}\n\n`,
+    `  ${COLORS.brightRed}${COLORS.bright}╚${"═".repeat(BOX_WIDTH - 2)}╝${COLORS.reset}\n\n`,
   );
 
   if (err instanceof TurlError) {
     process.stdout.write(
-      `  ${COLORS.red}${SYMBOLS.cross}${COLORS.reset} ${err.message}\n`,
+      `  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} ${err.message}\n`,
     );
     if (err.details?.suggestion) {
       process.stdout.write(
-        `  ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} ${err.details.suggestion}\n`,
+        `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${err.details.suggestion}\n`,
       );
     }
     if (err.code) {
@@ -2098,7 +2167,7 @@ main().catch((err) => {
     }
   } else {
     process.stdout.write(
-      `  ${COLORS.red}${SYMBOLS.cross}${COLORS.reset} ${err.message}\n`,
+      `  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} ${err.message}\n`,
     );
     if (err.stack && process.env.DEBUG) {
       process.stdout.write(
