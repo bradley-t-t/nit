@@ -46,6 +46,13 @@ Configuration (turl.json):
     "branch": "main"
   }
 
+Project Rules (turl.txt):
+  turl-release automatically manages a turl.txt file that:
+  - Logs project-specific rules and lessons learned from past commits
+  - Checks your changes against these rules before committing
+  - Warns you if changes violate any rules
+  - Learns new rules from each release to prevent future mistakes
+
 `);
 }
 
@@ -74,6 +81,7 @@ const ErrorCodes = {
   NODE_MODULES_MISSING: "NODE_MODULES_MISSING",
   ENV_FILE_MISSING: "ENV_FILE_MISSING",
   CLEANUP_FAILED: "CLEANUP_FAILED",
+  RULES_VIOLATION: "RULES_VIOLATION",
 };
 
 class TurlError extends Error {
@@ -793,6 +801,216 @@ function updateChangelog(changelogEntry) {
   );
 }
 
+const TURL_TXT_PATH = path.join(PROJECT_ROOT, "turl.txt");
+const TURL_TXT_HEADER = `# TURL Project Rules & Lessons Learned
+# This file is automatically managed by turl-release.
+# Rules are learned from past commits and mistakes to prevent future issues.
+# Do NOT manually edit this file unless you know what you are doing.
+
+`;
+
+function readTurlRules() {
+  if (!fs.existsSync(TURL_TXT_PATH)) {
+    return { rules: [], rawContent: "" };
+  }
+
+  const content = safeReadFile(TURL_TXT_PATH, "turl.txt");
+  const lines = content.split("\n");
+  const rules = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("#")) {
+      rules.push(trimmed);
+    }
+  }
+
+  return { rules, rawContent: content };
+}
+
+function writeTurlRules(rules) {
+  const rulesContent = rules.map((rule) => `- ${rule}`).join("\n");
+  safeWriteFile(
+    TURL_TXT_PATH,
+    TURL_TXT_HEADER + rulesContent + "\n",
+    "turl.txt",
+  );
+}
+
+function appendTurlRule(newRule) {
+  const { rules } = readTurlRules();
+  const normalizedNewRule = newRule.replace(/^[-*]\s*/, "").trim();
+
+  const isDuplicate = rules.some((existingRule) => {
+    const normalizedExisting = existingRule
+      .replace(/^[-*]\s*/, "")
+      .trim()
+      .toLowerCase();
+    return normalizedExisting === normalizedNewRule.toLowerCase();
+  });
+
+  if (!isDuplicate && normalizedNewRule) {
+    rules.push(normalizedNewRule);
+    writeTurlRules(rules);
+    return true;
+  }
+  return false;
+}
+
+async function checkRulesViolations(apiKey, diff, stat, changedFiles, rules) {
+  if (!rules.length || !diff.trim()) {
+    return { violations: [], passed: true };
+  }
+
+  const truncatedDiff =
+    diff.length > 6000 ? diff.substring(0, 6000) + "\n... (truncated)" : diff;
+
+  const rulesText = rules.map((r, i) => `${i + 1}. ${r}`).join("\n");
+
+  const prompt = `You are a strict code reviewer. Analyze the following code changes and check if they violate ANY of the project rules below.
+
+PROJECT RULES (these must NOT be violated):
+${rulesText}
+
+Changed files: ${changedFiles.join(", ")}
+
+Diff statistics:
+${stat}
+
+Code changes (diff):
+${truncatedDiff}
+
+INSTRUCTIONS:
+1. Carefully check EACH rule against the code changes
+2. If ANY rule is violated, list it as a violation
+3. Be specific about WHERE in the code the violation occurs (file name, what was done)
+4. If no violations found, respond with exactly: NO_VIOLATIONS
+
+Output format (if violations found):
+VIOLATION: [Rule number] - [Brief description of how it was violated and where]
+VIOLATION: [Rule number] - [Brief description]
+...
+
+Output format (if no violations):
+NO_VIOLATIONS`;
+
+  const response = await callGrokApi(apiKey, prompt);
+
+  if (!response || response.trim() === "NO_VIOLATIONS") {
+    return { violations: [], passed: true };
+  }
+
+  const violations = [];
+  const lines = response.split("\n");
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("VIOLATION:")) {
+      violations.push(trimmed.replace("VIOLATION:", "").trim());
+    }
+  }
+
+  return { violations, passed: violations.length === 0 };
+}
+
+async function generateNewRules(
+  apiKey,
+  diff,
+  stat,
+  changedFiles,
+  existingRules,
+) {
+  if (!diff.trim()) {
+    return [];
+  }
+
+  const truncatedDiff =
+    diff.length > 6000 ? diff.substring(0, 6000) + "\n... (truncated)" : diff;
+
+  const existingRulesText = existingRules.length
+    ? existingRules.map((r, i) => `${i + 1}. ${r}`).join("\n")
+    : "(No existing rules yet)";
+
+  const prompt = `Analyze the following code changes and identify if there are any lessons learned, patterns to follow, or mistakes to avoid in the future.
+
+EXISTING PROJECT RULES (do not duplicate these):
+${existingRulesText}
+
+Changed files: ${changedFiles.join(", ")}
+
+Diff statistics:
+${stat}
+
+Code changes (diff):
+${truncatedDiff}
+
+INSTRUCTIONS:
+1. Look for patterns that suggest a lesson was learned (bug fixes, refactors, safety improvements)
+2. Look for new patterns or conventions being established
+3. Identify potential pitfalls that future developers should avoid
+4. Only suggest rules that are NOT already covered by existing rules
+5. Keep rules concise, actionable, and specific to this project
+6. If no new rules are needed, respond with exactly: NO_NEW_RULES
+
+Output format (if new rules found):
+RULE: [Concise, actionable rule]
+RULE: [Another rule]
+...
+
+Output format (if no new rules):
+NO_NEW_RULES`;
+
+  const response = await callGrokApi(apiKey, prompt);
+
+  if (!response || response.trim() === "NO_NEW_RULES") {
+    return [];
+  }
+
+  const newRules = [];
+  const lines = response.split("\n");
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("RULE:")) {
+      const rule = trimmed.replace("RULE:", "").trim();
+      if (rule) {
+        newRules.push(rule);
+      }
+    }
+  }
+
+  return newRules;
+}
+
+async function promptUserForViolations(violations) {
+  const readline = await import("readline");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    process.stdout.write("\n  ----------------------------------------\n");
+    process.stdout.write("  [!] RULE VIOLATIONS DETECTED\n");
+    process.stdout.write("  ----------------------------------------\n");
+
+    for (const violation of violations) {
+      process.stdout.write(`  -> ${violation}\n`);
+    }
+
+    process.stdout.write(
+      "\n  These changes may violate project rules defined in turl.txt.\n",
+    );
+    process.stdout.write("  You should fix these issues before releasing.\n\n");
+
+    rl.question("  Continue anyway? (y/N): ", (answer) => {
+      rl.close();
+      const normalized = answer.trim().toLowerCase();
+      resolve(normalized === "y" || normalized === "yes");
+    });
+  });
+}
+
 function detectBuildCommand() {
   const packageJsonPath = path.join(PROJECT_ROOT, "package.json");
 
@@ -1018,7 +1236,7 @@ async function main() {
   process.stdout.write("       TURL-RELEASE v1.0.0\n");
   process.stdout.write("========================================\n\n");
 
-  process.stdout.write("[0/12] Pre-flight checks...\n");
+  process.stdout.write("[0/14] Pre-flight checks...\n");
 
   try {
     checkGitInstalled();
@@ -1051,7 +1269,7 @@ async function main() {
     process.stdout.write("  [OK] node_modules found\n");
   }
 
-  process.stdout.write("\n[1/12] Loading environment variables...\n");
+  process.stdout.write("\n[1/14] Loading environment variables...\n");
   loadEnv();
   const apiKey = getApiKey();
 
@@ -1063,7 +1281,7 @@ async function main() {
     process.exit(1);
   }
 
-  process.stdout.write("\n[2/12] Reading turl.json config...\n");
+  process.stdout.write("\n[2/14] Reading turl.json config...\n");
   let turlConfig;
   try {
     turlConfig = readTurlConfig();
@@ -1082,11 +1300,11 @@ async function main() {
   const projectName = turlConfig.projectName;
   const branch = cliOptions.branch || turlConfig.branch;
 
-  process.stdout.write("\n[3/12] Calculating new version...\n");
+  process.stdout.write("\n[3/14] Calculating new version...\n");
   const newVersion = incrementVersion(currentVersion);
   process.stdout.write(`  New version: ${newVersion}\n`);
 
-  process.stdout.write("\n[4/12] Running code cleanup...\n");
+  process.stdout.write("\n[4/14] Running code cleanup...\n");
   try {
     const cleanupStats = await runCleanup(PROJECT_ROOT);
     process.stdout.write(
@@ -1116,7 +1334,7 @@ async function main() {
     );
   }
 
-  process.stdout.write("\n[5/12] Running code formatter...\n");
+  process.stdout.write("\n[5/14] Running code formatter...\n");
   const formatResult = detectFormatCommand();
 
   if (formatResult.command) {
@@ -1156,7 +1374,7 @@ async function main() {
     }
   }
 
-  process.stdout.write("\n[6/12] Checking for changes...\n");
+  process.stdout.write("\n[6/14] Checking for changes...\n");
   const diff = getGitDiff();
   const changedFiles = getChangedFiles();
 
@@ -1169,7 +1387,44 @@ async function main() {
   }
   process.stdout.write(`  Found ${changedFiles.length} changed files\n`);
 
-  process.stdout.write("\n[7/12] Updating turl.json...\n");
+  process.stdout.write("\n[7/14] Checking project rules (turl.txt)...\n");
+  const { rules: projectRules } = readTurlRules();
+  if (projectRules.length > 0) {
+    process.stdout.write(`  Found ${projectRules.length} project rules\n`);
+    try {
+      const stat = getGitDiffStat();
+      const violationCheck = await checkRulesViolations(
+        apiKey,
+        diff,
+        stat,
+        changedFiles,
+        projectRules,
+      );
+      if (!violationCheck.passed) {
+        const shouldContinue = await promptUserForViolations(
+          violationCheck.violations,
+        );
+        if (!shouldContinue) {
+          process.stdout.write(
+            "\n  Release aborted by user. Fix violations and try again.\n",
+          );
+          process.exit(0);
+        }
+        process.stdout.write("  [WARN] Proceeding despite rule violations\n");
+      } else {
+        process.stdout.write("  [OK] No rule violations detected\n");
+      }
+    } catch (err) {
+      process.stdout.write(`  [WARN] Could not check rules: ${err.message}\n`);
+      process.stdout.write("  Continuing without rules check...\n");
+    }
+  } else {
+    process.stdout.write(
+      "  [SKIP] No project rules defined yet (turl.txt will be created after first release)\n",
+    );
+  }
+
+  process.stdout.write("\n[8/14] Updating turl.json...\n");
   try {
     const updatedConfig = {
       version: newVersion,
@@ -1183,7 +1438,7 @@ async function main() {
     process.exit(1);
   }
 
-  process.stdout.write("\n[8/12] Generating changelog...\n");
+  process.stdout.write("\n[9/14] Generating changelog...\n");
   let changelogEntry;
   const changelogDiff = getGitDiff(true);
   const changelogStat = getGitDiffStat(true);
@@ -1203,7 +1458,7 @@ async function main() {
     exitWithRollback(1);
   }
 
-  process.stdout.write("\n[9/12] Updating CHANGELOG.md...\n");
+  process.stdout.write("\n[10/14] Updating CHANGELOG.md...\n");
   try {
     updateChangelog(changelogEntry);
     process.stdout.write("  [OK] CHANGELOG.md updated\n");
@@ -1212,7 +1467,7 @@ async function main() {
     exitWithRollback(1);
   }
 
-  process.stdout.write("\n[10/12] Running production build...\n");
+  process.stdout.write("\n[11/14] Running production build...\n");
   const buildCommand = detectBuildCommand();
   if (buildCommand) {
     try {
@@ -1229,7 +1484,7 @@ async function main() {
     process.stdout.write("  [SKIP] No build command detected\n");
   }
 
-  process.stdout.write("\n[11/12] Staging all changes...\n");
+  process.stdout.write("\n[12/14] Staging all changes...\n");
   try {
     execCommand("git add -A", { silent: true });
     process.stdout.write("  [OK] All changes staged\n");
@@ -1242,7 +1497,7 @@ async function main() {
   const finalStat = getGitDiffStat(true);
   const finalChangedFiles = getChangedFiles(true);
 
-  process.stdout.write("\n[12/12] Committing and pushing...\n");
+  process.stdout.write("\n[13/14] Committing and pushing...\n");
   process.stdout.write("  Generating commit message with AI...\n");
 
   let commitMessage;
@@ -1276,6 +1531,46 @@ async function main() {
   } catch (err) {
     printError(err);
     exitWithRollback(1);
+  }
+
+  process.stdout.write("\n[14/14] Learning from this release (turl.txt)...\n");
+  try {
+    const newRules = await generateNewRules(
+      apiKey,
+      finalDiff,
+      finalStat,
+      finalChangedFiles,
+      projectRules,
+    );
+    if (newRules.length > 0) {
+      let addedCount = 0;
+      for (const rule of newRules) {
+        if (appendTurlRule(rule)) {
+          addedCount++;
+          process.stdout.write(`  [+] ${rule}\n`);
+        }
+      }
+      if (addedCount > 0) {
+        process.stdout.write(
+          `  [OK] Added ${addedCount} new rule(s) to turl.txt\n`,
+        );
+        execCommand("git add turl.txt", { silent: true, ignoreError: true });
+        execCommand("git commit --amend --no-edit", {
+          silent: true,
+          ignoreError: true,
+        });
+        execCommand(`git push origin ${branch} --force-with-lease`, {
+          silent: true,
+          ignoreError: true,
+        });
+      }
+    } else {
+      process.stdout.write(
+        "  [OK] No new rules identified from this release\n",
+      );
+    }
+  } catch (err) {
+    process.stdout.write(`  [WARN] Could not learn rules: ${err.message}\n`);
   }
 
   process.stdout.write("\n========================================\n");

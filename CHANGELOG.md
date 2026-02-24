@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7] - 2026-02-24
+
+- Introduced a new feature for managing project-specific rules with a turl.txt file, which logs rules and lessons learned from past commits to prevent future mistakes.
+- Added functionality to automatically check code changes against the rules in turl.txt before committing, warning users if any violations are detected.
+- Implemented rule learning by analyzing code changes to generate new rules based on patterns, bug fixes, or potential pitfalls, ensuring they don't duplicate existing rules.
+- Enhanced the release process to include rule violation checks using an API call to analyze diffs against project rules, with detailed feedback on violations.
+- Added user prompting for rule violations, allowing developers to decide whether to proceed with a release despite detected issues.
+- Updated the progress tracking in the main function to reflect additional steps (from 12 to 14) related to rule management and violation checks.
+
 ## [2.6] - 2026-02-03
 
 - Updated README.md with a restructured layout, renaming "Setup" to "Quick Start" for clearer onboarding.
