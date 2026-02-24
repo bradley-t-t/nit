@@ -10,3 +10,5 @@
 - When updating the UI color scheme, ensure consistency across all UI elements (e.g., borders, status icons, headers) by using a unified set of color codes to maintain visual coherence.
 - Document all UI redesigns and formatting changes in the changelog with specific details about color updates and layout improvements for clear communication of visual enhancements.
 - Align the version number in the codebase (e.g., src/index.js) with the version in package.json and changelog to prevent discrepancies during release or deployment processes.
+- When refining prompts for automated code review tools, ensure the instructions are explicit about the criteria for identifying violations, including clear examples of what constitutes a violation and what does not, to minimize false positives and improve accuracy.
+- Structure violation data in code review processes to include detailed metadata (e.g., rule number, rule text, and specific explanation) for better tracking, reporting, and user feedback.

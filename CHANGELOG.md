@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1] - 2026-02-24
+
+- Improved the rule violation detection prompt in the code review process to be more precise and conservative. The updated prompt now emphasizes that violations must be clear and definitive, provides specific examples of what constitutes a violation versus what does not, and instructs the reviewer to err on the side of no violations when in doubt.
+- Enhanced the handling of violation responses by parsing and structuring them with detailed information, including rule numbers and explanations, for better clarity and tracking.
+- Revamped the user prompt display for rule violations with a new text wrapping function to ensure content fits within the display box, and improved formatting for better readability with structured headers and rule details.
+
 ## [3.0] - 2026-02-24
 
 - Revamped the UI design in the command-line interface with updated color schemes for better visual distinction, replacing old colors like cyan and green with brighter variants such as brightBlue and brightRed.

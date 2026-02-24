@@ -1218,9 +1218,9 @@ async function checkRulesViolations(apiKey, diff, stat, changedFiles, rules) {
 
   const rulesText = rules.map((r, i) => `${i + 1}. ${r}`).join("\n");
 
-  const prompt = `You are a strict code reviewer. Analyze the following code changes and check if they violate ANY of the project rules below.
+  const prompt = `You are a code reviewer checking if code changes ACTIVELY VIOLATE or CONTRADICT established project rules.
 
-PROJECT RULES (these must NOT be violated):
+PROJECT RULES:
 ${rulesText}
 
 Changed files: ${changedFiles.join(", ")}
@@ -1231,18 +1231,37 @@ ${stat}
 Code changes (diff):
 ${truncatedDiff}
 
-INSTRUCTIONS:
-1. Carefully check EACH rule against the code changes
-2. If ANY rule is violated, list it as a violation
-3. Be specific about WHERE in the code the violation occurs (file name, what was done)
-4. If no violations found, respond with exactly: NO_VIOLATIONS
+CRITICAL INSTRUCTIONS - READ CAREFULLY:
+1. A violation ONLY occurs when the code changes DEFINITIVELY and CLEARLY break a rule
+2. NOT following a rule is NOT a violation - rules only apply in specific contexts
+3. If a rule is about "X should be done" and the changes don't involve X, that is NOT a violation
+4. When in doubt, it is NOT a violation - err heavily on the side of NO_VIOLATIONS
+5. Do NOT flag theoretical or speculative violations - only flag CLEAR, OBVIOUS ones
+
+IMPORTANT CONTEXT:
+- This tool auto-generates changelogs and commit messages, so "document in changelog" rules are handled automatically
+- If code uses existing constants/color variables from the codebase, it IS maintaining consistency
+- If code uses a project's established pattern (e.g., COLORS object, existing UI helper functions), it IS consistent
+
+Examples of what IS a violation:
+- Rule says "use Tailwind CSS" but code adds NEW inline styles or NEW CSS files
+- Rule says "put hooks in app/hooks" but code creates a NEW hook in a wrong folder
+- Rule says "keep versions in sync" but code updates one version WITHOUT the other in the SAME commit
+
+Examples of what is NOT a violation:
+- Rule about "documenting changes" - the release tool handles this automatically
+- Rule about "using consistent colors" when code uses the existing COLORS constant/variable
+- Rule about "file organization" when the commit doesn't create new files of that type
+- ANY rule where the spirit of the rule is being followed even if not literally word-for-word
+- Any rule that requires human judgment about "enough" or "sufficient"
+
+Be EXTREMELY conservative. Only flag something as a violation if you are 100% certain it breaks a rule.
+If you're not 100% sure, respond with: NO_VIOLATIONS
 
 Output format (if violations found):
-VIOLATION: [Rule number] - [Brief description of how it was violated and where]
-VIOLATION: [Rule number] - [Brief description]
-...
+VIOLATION: [Rule number] - [Specific explanation of how the code DEFINITIVELY breaks this rule]
 
-Output format (if no violations):
+Output format (if no violations or unsure):
 NO_VIOLATIONS`;
 
   const response = await callGrokApi(apiKey, prompt);
@@ -1257,7 +1276,31 @@ NO_VIOLATIONS`;
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith("VIOLATION:")) {
-      violations.push(trimmed.replace("VIOLATION:", "").trim());
+      const violationText = trimmed.replace("VIOLATION:", "").trim();
+      const ruleMatch = violationText.match(/^(\d+)\s*-\s*/);
+      if (ruleMatch) {
+        const ruleIndex = parseInt(ruleMatch[1], 10) - 1;
+        const explanation = violationText.replace(/^\d+\s*-\s*/, "").trim();
+        if (ruleIndex >= 0 && ruleIndex < rules.length) {
+          violations.push({
+            ruleNumber: ruleIndex + 1,
+            rule: rules[ruleIndex],
+            explanation,
+          });
+        } else {
+          violations.push({
+            ruleNumber: null,
+            rule: null,
+            explanation: violationText,
+          });
+        }
+      } else {
+        violations.push({
+          ruleNumber: null,
+          rule: null,
+          explanation: violationText,
+        });
+      }
     }
   }
 
@@ -1340,43 +1383,90 @@ async function promptUserForViolations(violations) {
     output: process.stdout,
   });
 
-  const BOX_WIDTH = 60;
-  const CONTENT_WIDTH = BOX_WIDTH - 4;
+  const wrapText = (text, maxWidth) => {
+    const words = text.split(" ");
+    const lines = [];
+    let currentLine = "";
+
+    for (const word of words) {
+      if ((currentLine + " " + word).trim().length <= maxWidth) {
+        currentLine = (currentLine + " " + word).trim();
+      } else {
+        if (currentLine) lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  };
 
   return new Promise((resolve) => {
     process.stdout.write(`\n\n`);
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}╔${"═".repeat(BOX_WIDTH - 2)}╗${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}┌────────────────────────────────────────────────────────────────────────────┐${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} ${COLORS.bright}RULE VIOLATIONS DETECTED${COLORS.reset}${" ".repeat(CONTENT_WIDTH - 27)}${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} ${COLORS.bright}RULE VIOLATIONS DETECTED${COLORS.reset}                                              ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}╠${"═".repeat(BOX_WIDTH - 2)}╣${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}├────────────────────────────────────────────────────────────────────────────┤${COLORS.reset}\n`,
     );
 
-    for (const violation of violations) {
-      const maxLen = CONTENT_WIDTH - 4;
-      const truncated =
-        violation.length > maxLen
-          ? violation.substring(0, maxLen - 3) + "..."
-          : violation;
+    for (let i = 0; i < violations.length; i++) {
+      const violation = violations[i];
+      const ruleHeader = violation.ruleNumber
+        ? `Rule ${violation.ruleNumber}:`
+        : "Violation:";
+
       process.stdout.write(
-        `  ${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${truncated.padEnd(CONTENT_WIDTH - 4)}${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}\n`,
+        `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}                                                                            ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
       );
+      const headerPadding = 72 - ruleHeader.length - 2;
+      process.stdout.write(
+        `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}${ruleHeader}${COLORS.reset}${" ".repeat(Math.max(0, headerPadding))}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+      );
+
+      if (violation.rule) {
+        const ruleLines = wrapText(violation.rule, 68);
+        for (const line of ruleLines) {
+          const padding = 72 - line.length;
+          process.stdout.write(
+            `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}    ${COLORS.dim}${line}${COLORS.reset}${" ".repeat(Math.max(0, padding))}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+          );
+        }
+      }
+
+      if (violation.explanation) {
+        process.stdout.write(
+          `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}                                                                            ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+        );
+        const explanationLines = wrapText(
+          `Issue: ${violation.explanation}`,
+          68,
+        );
+        for (const line of explanationLines) {
+          const padding = 72 - line.length;
+          process.stdout.write(
+            `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}    ${COLORS.brightRed}${line}${COLORS.reset}${" ".repeat(Math.max(0, padding))}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+          );
+        }
+      }
     }
 
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}╠${"═".repeat(BOX_WIDTH - 2)}╣${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}                                                                            ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}  ${COLORS.dim}These changes may violate project rules.${COLORS.reset}${" ".repeat(CONTENT_WIDTH - 42)}${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}├────────────────────────────────────────────────────────────────────────────┤${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}  ${COLORS.dim}Fix these issues before releasing.${COLORS.reset}${" ".repeat(CONTENT_WIDTH - 36)}${COLORS.brightRed}${COLORS.bright}║${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}These changes may violate project rules.${COLORS.reset}                                ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}╚${"═".repeat(BOX_WIDTH - 2)}╝${COLORS.reset}\n\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}Review and fix these issues before releasing, or continue at your own risk.${COLORS.reset} ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+    );
+    process.stdout.write(
+      `  ${COLORS.brightRed}${COLORS.bright}└────────────────────────────────────────────────────────────────────────────┘${COLORS.reset}\n\n`,
     );
 
     rl.question(
