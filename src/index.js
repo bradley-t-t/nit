@@ -8,9 +8,262 @@ import { run as runCleanup } from "./cleanup.js";
 const PROJECT_ROOT = process.cwd();
 const args = process.argv.slice(2);
 
+const PACKAGE_VERSION = "1.0.0";
+const PACKAGE_NAME = "turl-release";
+
+const COLORS = {
+  reset: "\x1b[0m",
+  bright: "\x1b[1m",
+  dim: "\x1b[2m",
+  cyan: "\x1b[36m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  red: "\x1b[31m",
+  magenta: "\x1b[35m",
+  blue: "\x1b[34m",
+  white: "\x1b[37m",
+  bgBlue: "\x1b[44m",
+  bgCyan: "\x1b[46m",
+  bgGreen: "\x1b[42m",
+  bgRed: "\x1b[41m",
+};
+
+const SYMBOLS = {
+  check: "✓",
+  cross: "✗",
+  arrow: "→",
+  arrowRight: "▸",
+  dot: "●",
+  star: "★",
+  lightning: "⚡",
+  rocket: "◉",
+  gear: "⚙",
+  warning: "⚠",
+  info: "ℹ",
+  block: "█",
+  blockLight: "░",
+  blockMed: "▒",
+  line: "─",
+  corner: "╭",
+  cornerEnd: "╰",
+  vertical: "│",
+  spinner: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+};
+
+const ui = {
+  clear: () => process.stdout.write("\x1b[2J\x1b[H"),
+
+  hideCursor: () => process.stdout.write("\x1b[?25l"),
+
+  showCursor: () => process.stdout.write("\x1b[?25h"),
+
+  moveTo: (x, y) => process.stdout.write(`\x1b[${y};${x}H`),
+
+  clearLine: () => process.stdout.write("\x1b[2K"),
+
+  color: (text, ...colors) => colors.join("") + text + COLORS.reset,
+
+  box: (text, width = 50) => {
+    const padding = Math.max(0, width - text.length - 4);
+    const leftPad = Math.floor(padding / 2);
+    const rightPad = padding - leftPad;
+    return (
+      `${COLORS.cyan}╭${"─".repeat(width - 2)}╮${COLORS.reset}\n` +
+      `${COLORS.cyan}│${COLORS.reset}${" ".repeat(leftPad + 1)}${text}${" ".repeat(rightPad + 1)}${COLORS.cyan}│${COLORS.reset}\n` +
+      `${COLORS.cyan}╰${"─".repeat(width - 2)}╯${COLORS.reset}`
+    );
+  },
+
+  header: () => {
+    const lines = [
+      `${COLORS.cyan}${COLORS.bright}`,
+      `  ╔════════════════════════════════════════════════════════╗`,
+      `  ║                                                        ║`,
+      `  ║   ████████╗██╗   ██╗██████╗ ██╗                        ║`,
+      `  ║   ╚══██╔══╝██║   ██║██╔══██╗██║                        ║`,
+      `  ║      ██║   ██║   ██║██████╔╝██║                        ║`,
+      `  ║      ██║   ██║   ██║██╔══██╗██║                        ║`,
+      `  ║      ██║   ╚██████╔╝██║  ██║███████╗                   ║`,
+      `  ║      ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝                   ║`,
+      `  ║                                                        ║`,
+      `  ║   ${COLORS.reset}${COLORS.dim}Automated Release Management System${COLORS.cyan}${COLORS.bright}             ║`,
+      `  ║   ${COLORS.reset}${COLORS.dim}v${PACKAGE_VERSION}${COLORS.cyan}${COLORS.bright}                                             ║`,
+      `  ║                                                        ║`,
+      `  ╚════════════════════════════════════════════════════════╝`,
+      `${COLORS.reset}`,
+    ];
+    return lines.join("\n");
+  },
+
+  progressBar: (current, total, width = 40, label = "") => {
+    const percentage = Math.min(100, Math.round((current / total) * 100));
+    const filled = Math.round((current / total) * width);
+    const empty = width - filled;
+    const bar =
+      COLORS.green +
+      SYMBOLS.block.repeat(filled) +
+      COLORS.dim +
+      SYMBOLS.blockLight.repeat(empty) +
+      COLORS.reset;
+    const percentStr = `${percentage}%`.padStart(4);
+    return `  ${COLORS.cyan}${label.padEnd(25)}${COLORS.reset} [${bar}] ${COLORS.bright}${percentStr}${COLORS.reset}`;
+  },
+
+  step: (num, total, text, status = "running") => {
+    const statusIcons = {
+      running: `${COLORS.yellow}${SYMBOLS.arrowRight}${COLORS.reset}`,
+      success: `${COLORS.green}${SYMBOLS.check}${COLORS.reset}`,
+      error: `${COLORS.red}${SYMBOLS.cross}${COLORS.reset}`,
+      skip: `${COLORS.dim}${SYMBOLS.dot}${COLORS.reset}`,
+      warn: `${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset}`,
+    };
+    const icon = statusIcons[status] || statusIcons.running;
+    return `\n  ${COLORS.dim}[${num}/${total}]${COLORS.reset} ${icon} ${text}`;
+  },
+
+  subStep: (text, status = "info") => {
+    const statusStyles = {
+      info: `${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset}`,
+      success: `${COLORS.green}${SYMBOLS.check}${COLORS.reset}`,
+      error: `${COLORS.red}${SYMBOLS.cross}${COLORS.reset}`,
+      warn: `${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset}`,
+    };
+    const icon = statusStyles[status] || statusStyles.info;
+    return `       ${icon} ${COLORS.dim}${text}${COLORS.reset}`;
+  },
+
+  spinner: (text) => {
+    let frame = 0;
+    let interval;
+    return {
+      start: () => {
+        ui.hideCursor();
+        interval = setInterval(() => {
+          process.stdout.write(
+            `\r  ${COLORS.cyan}${SYMBOLS.spinner[frame]}${COLORS.reset} ${text}`,
+          );
+          frame = (frame + 1) % SYMBOLS.spinner.length;
+        }, 80);
+      },
+      stop: (finalText, success = true) => {
+        clearInterval(interval);
+        ui.showCursor();
+        const icon = success
+          ? `${COLORS.green}${SYMBOLS.check}${COLORS.reset}`
+          : `${COLORS.red}${SYMBOLS.cross}${COLORS.reset}`;
+        process.stdout.write(`\r  ${icon} ${finalText}\n`);
+      },
+    };
+  },
+
+  divider: (char = "─", width = 56) =>
+    `  ${COLORS.dim}${char.repeat(width)}${COLORS.reset}`,
+
+  highlight: (text) => `${COLORS.bright}${COLORS.cyan}${text}${COLORS.reset}`,
+
+  success: (text) => `${COLORS.green}${text}${COLORS.reset}`,
+
+  error: (text) => `${COLORS.red}${text}${COLORS.reset}`,
+
+  warn: (text) => `${COLORS.yellow}${text}${COLORS.reset}`,
+
+  info: (text) => `${COLORS.blue}${text}${COLORS.reset}`,
+};
+
+async function checkForUpdates() {
+  try {
+    const latestVersion = execSync(`npm view ${PACKAGE_NAME} version`, {
+      encoding: "utf-8",
+      stdio: "pipe",
+    }).trim();
+
+    if (latestVersion && latestVersion !== PACKAGE_VERSION) {
+      const [latestMajor, latestMinor, latestPatch] = latestVersion
+        .split(".")
+        .map(Number);
+      const [currentMajor, currentMinor, currentPatch] =
+        PACKAGE_VERSION.split(".").map(Number);
+
+      const isNewer =
+        latestMajor > currentMajor ||
+        (latestMajor === currentMajor && latestMinor > currentMinor) ||
+        (latestMajor === currentMajor &&
+          latestMinor === currentMinor &&
+          latestPatch > currentPatch);
+
+      if (isNewer) {
+        return {
+          hasUpdate: true,
+          currentVersion: PACKAGE_VERSION,
+          latestVersion,
+        };
+      }
+    }
+    return {
+      hasUpdate: false,
+      currentVersion: PACKAGE_VERSION,
+      latestVersion: PACKAGE_VERSION,
+    };
+  } catch {
+    return {
+      hasUpdate: false,
+      currentVersion: PACKAGE_VERSION,
+      latestVersion: PACKAGE_VERSION,
+      error: true,
+    };
+  }
+}
+
+async function promptForUpdate(updateInfo) {
+  const readline = await import("readline");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    process.stdout.write(`\n`);
+    process.stdout.write(
+      `  ${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset} ${COLORS.bright}Update Available!${COLORS.reset}\n`,
+    );
+    process.stdout.write(
+      `  ${COLORS.dim}Current: v${updateInfo.currentVersion} ${SYMBOLS.arrow} Latest: v${updateInfo.latestVersion}${COLORS.reset}\n\n`,
+    );
+
+    rl.question(
+      `  ${COLORS.cyan}?${COLORS.reset} Update ${PACKAGE_NAME} now? (Y/n): `,
+      (answer) => {
+        rl.close();
+        const normalized = answer.trim().toLowerCase();
+        resolve(
+          normalized === "" || normalized === "y" || normalized === "yes",
+        );
+      },
+    );
+  });
+}
+
+async function performUpdate() {
+  const spin = ui.spinner("Updating turl-release...");
+  spin.start();
+
+  try {
+    execSync(`npm install -g ${PACKAGE_NAME}@latest`, { stdio: "pipe" });
+    spin.stop("Update complete! Please restart turl-release.", true);
+    return true;
+  } catch (err) {
+    spin.stop(`Update failed: ${err.message}`, false);
+    return false;
+  }
+}
+
 function parseArgs() {
   const options = {
     branch: null,
+    skipUpdate: false,
+    interactive: false,
+    verbose: false,
+    dryRun: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -20,6 +273,14 @@ function parseArgs() {
       i++;
     } else if (arg.startsWith("--branch=")) {
       options.branch = arg.split("=")[1];
+    } else if (arg === "--skip-update" || arg === "-s") {
+      options.skipUpdate = true;
+    } else if (arg === "--interactive" || arg === "-i") {
+      options.interactive = true;
+    } else if (arg === "--verbose" || arg === "-v") {
+      options.verbose = true;
+    } else if (arg === "--dry-run" || arg === "-d") {
+      options.dryRun = true;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -31,29 +292,79 @@ function parseArgs() {
 
 function printHelp() {
   process.stdout.write(`
-turl-release - Automated semantic versioning and release tool
+${ui.header()}
 
-Usage: turl-release [options]
+  ${COLORS.bright}Usage:${COLORS.reset} turl-release [options]
 
-Options:
-  -b, --branch <name>   Override the branch to push to (default: from turl.json or "main")
-  -h, --help            Show this help message
+  ${COLORS.bright}Options:${COLORS.reset}
+    ${COLORS.cyan}-b, --branch <name>${COLORS.reset}   Override the branch to push to (default: from turl.json or "main")
+    ${COLORS.cyan}-s, --skip-update${COLORS.reset}    Skip automatic update check for turl-release
+    ${COLORS.cyan}-i, --interactive${COLORS.reset}    Run in interactive mode with step-by-step prompts
+    ${COLORS.cyan}-v, --verbose${COLORS.reset}        Show detailed output during release
+    ${COLORS.cyan}-d, --dry-run${COLORS.reset}        Preview release without making changes
+    ${COLORS.cyan}-h, --help${COLORS.reset}           Show this help message
 
-Configuration (turl.json):
-  {
-    "version": "1.0",
-    "projectName": "my-project",
-    "branch": "main"
-  }
+  ${COLORS.bright}Configuration (turl.json):${COLORS.reset}
+    {
+      "version": "1.0",
+      "projectName": "my-project",
+      "branch": "main"
+    }
 
-Project Rules (turl.txt):
-  turl-release automatically manages a turl.txt file that:
-  - Logs project-specific rules and lessons learned from past commits
-  - Checks your changes against these rules before committing
-  - Warns you if changes violate any rules
-  - Learns new rules from each release to prevent future mistakes
+  ${COLORS.bright}Project Rules (turl.txt):${COLORS.reset}
+    turl-release automatically manages a turl.txt file that:
+    ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} Logs project-specific rules and lessons learned from past commits
+    ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} Checks your changes against these rules before committing
+    ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} Warns you if changes violate any rules
+    ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} Learns new rules from each release to prevent future mistakes
 
 `);
+}
+
+async function interactiveMenu() {
+  const readline = await import("readline");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const question = (prompt) =>
+    new Promise((resolve) => rl.question(prompt, resolve));
+
+  process.stdout.write(
+    `\n  ${COLORS.bright}${COLORS.cyan}Interactive Mode${COLORS.reset}\n`,
+  );
+  process.stdout.write(`  ${ui.divider()}\n\n`);
+
+  const options = {
+    branch: null,
+    skipBuild: false,
+    skipFormat: false,
+    skipRulesCheck: false,
+  };
+
+  const branchAnswer = await question(
+    `  ${COLORS.cyan}?${COLORS.reset} Branch to push to (leave empty for default): `,
+  );
+  if (branchAnswer.trim()) options.branch = branchAnswer.trim();
+
+  const buildAnswer = await question(
+    `  ${COLORS.cyan}?${COLORS.reset} Run production build? (Y/n): `,
+  );
+  options.skipBuild = buildAnswer.trim().toLowerCase() === "n";
+
+  const formatAnswer = await question(
+    `  ${COLORS.cyan}?${COLORS.reset} Run code formatter? (Y/n): `,
+  );
+  options.skipFormat = formatAnswer.trim().toLowerCase() === "n";
+
+  const rulesAnswer = await question(
+    `  ${COLORS.cyan}?${COLORS.reset} Check project rules before commit? (Y/n): `,
+  );
+  options.skipRulesCheck = rulesAnswer.trim().toLowerCase() === "n";
+
+  rl.close();
+  return options;
 }
 
 const ErrorCodes = {
@@ -990,24 +1301,45 @@ async function promptUserForViolations(violations) {
   });
 
   return new Promise((resolve) => {
-    process.stdout.write("\n  ----------------------------------------\n");
-    process.stdout.write("  [!] RULE VIOLATIONS DETECTED\n");
-    process.stdout.write("  ----------------------------------------\n");
+    process.stdout.write(
+      `\n\n  ${COLORS.red}${COLORS.bright}╔════════════════════════════════════════════════════════╗${COLORS.reset}\n`,
+    );
+    process.stdout.write(
+      `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${SYMBOLS.warning} ${COLORS.bright}RULE VIOLATIONS DETECTED${COLORS.reset}                           ${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+    );
+    process.stdout.write(
+      `  ${COLORS.red}${COLORS.bright}╠════════════════════════════════════════════════════════╣${COLORS.reset}\n`,
+    );
 
     for (const violation of violations) {
-      process.stdout.write(`  -> ${violation}\n`);
+      const truncated =
+        violation.length > 52 ? violation.substring(0, 49) + "..." : violation;
+      process.stdout.write(
+        `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${COLORS.yellow}${SYMBOLS.arrowRight}${COLORS.reset} ${truncated.padEnd(52)}${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+      );
     }
 
     process.stdout.write(
-      "\n  These changes may violate project rules defined in turl.txt.\n",
+      `  ${COLORS.red}${COLORS.bright}╠════════════════════════════════════════════════════════╣${COLORS.reset}\n`,
     );
-    process.stdout.write("  You should fix these issues before releasing.\n\n");
+    process.stdout.write(
+      `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${COLORS.dim}These changes may violate project rules.${COLORS.reset}             ${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+    );
+    process.stdout.write(
+      `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${COLORS.dim}Fix these issues before releasing.${COLORS.reset}                  ${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+    );
+    process.stdout.write(
+      `  ${COLORS.red}${COLORS.bright}╚════════════════════════════════════════════════════════╝${COLORS.reset}\n\n`,
+    );
 
-    rl.question("  Continue anyway? (y/N): ", (answer) => {
-      rl.close();
-      const normalized = answer.trim().toLowerCase();
-      resolve(normalized === "y" || normalized === "yes");
-    });
+    rl.question(
+      `  ${COLORS.cyan}?${COLORS.reset} Continue anyway? (y/N): `,
+      (answer) => {
+        rl.close();
+        const normalized = answer.trim().toLowerCase();
+        resolve(normalized === "y" || normalized === "yes");
+      },
+    );
   });
 }
 
@@ -1194,19 +1526,6 @@ function gitPush(branch = "main") {
   }
 }
 
-function printError(err) {
-  process.stdout.write(`\n  ERROR: ${err.message}\n`);
-
-  if (err.details) {
-    if (err.details.suggestion) {
-      process.stdout.write(`  SUGGESTION: ${err.details.suggestion}\n`);
-    }
-    if (err.details.helpUrl) {
-      process.stdout.write(`  MORE INFO: ${err.details.helpUrl}\n`);
-    }
-  }
-}
-
 let originalTurlConfig = null;
 
 function rollbackVersion() {
@@ -1214,11 +1533,11 @@ function rollbackVersion() {
     try {
       writeTurlConfig(originalTurlConfig);
       process.stdout.write(
-        "  [ROLLBACK] Restored original version in turl.json\n",
+        `  ${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset} Rolled back version in turl.json\n`,
       );
     } catch (err) {
       process.stdout.write(
-        `  [WARN] Failed to rollback version: ${err.message}\n`,
+        `  ${COLORS.red}${SYMBOLS.cross}${COLORS.reset} Failed to rollback version: ${err.message}\n`,
       );
     }
   }
@@ -1231,166 +1550,256 @@ function exitWithRollback(code = 1) {
 
 async function main() {
   const cliOptions = parseArgs();
+  const TOTAL_STEPS = 15;
 
-  process.stdout.write("\n========================================\n");
-  process.stdout.write("       TURL-RELEASE v1.0.0\n");
-  process.stdout.write("========================================\n\n");
+  process.stdout.write(ui.header());
+  process.stdout.write("\n");
 
-  process.stdout.write("[0/14] Pre-flight checks...\n");
+  if (!cliOptions.skipUpdate) {
+    process.stdout.write(
+      ui.step(0, TOTAL_STEPS, "Checking for updates...", "running"),
+    );
+    const updateInfo = await checkForUpdates();
+    if (updateInfo.hasUpdate) {
+      const shouldUpdate = await promptForUpdate(updateInfo);
+      if (shouldUpdate) {
+        const updated = await performUpdate();
+        if (updated) {
+          process.exit(0);
+        }
+      }
+      process.stdout.write(
+        ui.subStep("Continuing with current version", "info"),
+      );
+    } else if (updateInfo.error) {
+      process.stdout.write(
+        ui.subStep("Could not check for updates (offline?)", "warn"),
+      );
+    } else {
+      process.stdout.write(
+        ui.subStep(`v${PACKAGE_VERSION} is the latest version`, "success"),
+      );
+    }
+  }
+
+  let interactiveOptions = {};
+  if (cliOptions.interactive) {
+    interactiveOptions = await interactiveMenu();
+  }
+
+  process.stdout.write(
+    ui.step(1, TOTAL_STEPS, "Running pre-flight checks...", "running"),
+  );
 
   try {
     checkGitInstalled();
-    process.stdout.write("  [OK] Git is installed\n");
+    process.stdout.write(ui.subStep("Git is installed", "success"));
   } catch (err) {
-    printError(err);
+    process.stdout.write(ui.subStep(`${err.message}`, "error"));
+    if (err.details?.suggestion)
+      process.stdout.write(ui.subStep(err.details.suggestion, "info"));
     process.exit(1);
   }
 
   try {
     checkGitRepository();
-    process.stdout.write("  [OK] Git repository initialized\n");
+    process.stdout.write(ui.subStep("Git repository initialized", "success"));
   } catch (err) {
-    printError(err);
+    process.stdout.write(ui.subStep(`${err.message}`, "error"));
+    if (err.details?.suggestion)
+      process.stdout.write(ui.subStep(err.details.suggestion, "info"));
     process.exit(1);
   }
 
   try {
     checkGitRemote();
-    process.stdout.write("  [OK] Git remote configured\n");
+    process.stdout.write(ui.subStep("Git remote configured", "success"));
   } catch (err) {
-    printError(err);
+    process.stdout.write(ui.subStep(`${err.message}`, "error"));
+    if (err.details?.suggestion)
+      process.stdout.write(ui.subStep(err.details.suggestion, "info"));
     process.exit(1);
   }
 
   const nodeModulesCheck = checkNodeModules();
   if (!nodeModulesCheck.exists) {
-    process.stdout.write(`  [WARN] ${nodeModulesCheck.warning}\n`);
+    process.stdout.write(ui.subStep(nodeModulesCheck.warning, "warn"));
   } else {
-    process.stdout.write("  [OK] node_modules found\n");
+    process.stdout.write(ui.subStep("node_modules found", "success"));
   }
 
-  process.stdout.write("\n[1/14] Loading environment variables...\n");
+  process.stdout.write(
+    ui.step(2, TOTAL_STEPS, "Loading environment variables...", "running"),
+  );
   loadEnv();
   const apiKey = getApiKey();
 
   try {
     validateApiKey(apiKey);
-    process.stdout.write("  [OK] API key loaded and validated\n");
+    process.stdout.write(ui.subStep("API key loaded and validated", "success"));
   } catch (err) {
-    printError(err);
+    process.stdout.write(ui.subStep(`${err.message}`, "error"));
+    if (err.details?.suggestion)
+      process.stdout.write(ui.subStep(err.details.suggestion, "info"));
+    if (err.details?.helpUrl)
+      process.stdout.write(
+        ui.subStep(`More info: ${err.details.helpUrl}`, "info"),
+      );
     process.exit(1);
   }
 
-  process.stdout.write("\n[2/14] Reading turl.json config...\n");
+  process.stdout.write(
+    ui.step(3, TOTAL_STEPS, "Reading turl.json config...", "running"),
+  );
   let turlConfig;
   try {
     turlConfig = readTurlConfig();
     originalTurlConfig = { ...turlConfig };
-    process.stdout.write(`  Project: ${turlConfig.projectName}\n`);
-    process.stdout.write(`  Current version: ${turlConfig.version}\n`);
     process.stdout.write(
-      `  Branch: ${cliOptions.branch || turlConfig.branch}\n`,
+      ui.subStep(`Project: ${ui.highlight(turlConfig.projectName)}`, "info"),
+    );
+    process.stdout.write(
+      ui.subStep(
+        `Current version: ${ui.highlight(turlConfig.version)}`,
+        "info",
+      ),
+    );
+    process.stdout.write(
+      ui.subStep(
+        `Branch: ${ui.highlight(interactiveOptions.branch || cliOptions.branch || turlConfig.branch)}`,
+        "info",
+      ),
     );
   } catch (err) {
-    printError(err);
+    process.stdout.write(ui.subStep(`${err.message}`, "error"));
     process.exit(1);
   }
 
-  const currentVersion = turlConfig.version;
   const projectName = turlConfig.projectName;
-  const branch = cliOptions.branch || turlConfig.branch;
+  const branch =
+    interactiveOptions.branch || cliOptions.branch || turlConfig.branch;
 
-  process.stdout.write("\n[3/14] Calculating new version...\n");
-  const newVersion = incrementVersion(currentVersion);
-  process.stdout.write(`  New version: ${newVersion}\n`);
+  process.stdout.write(
+    ui.step(4, TOTAL_STEPS, "Calculating new version...", "running"),
+  );
+  const newVersion = incrementVersion(turlConfig.version);
+  process.stdout.write(
+    ui.subStep(
+      `${turlConfig.version} ${SYMBOLS.arrow} ${ui.highlight(newVersion)}`,
+      "success",
+    ),
+  );
 
-  process.stdout.write("\n[4/14] Running code cleanup...\n");
+  if (cliOptions.dryRun) {
+    process.stdout.write(
+      `\n\n  ${COLORS.yellow}${SYMBOLS.warning}${COLORS.reset} ${COLORS.bright}DRY RUN MODE${COLORS.reset}\n`,
+    );
+    process.stdout.write(
+      `  ${COLORS.dim}No changes will be made to your repository.${COLORS.reset}\n\n`,
+    );
+  }
+
+  process.stdout.write(
+    ui.step(5, TOTAL_STEPS, "Running code cleanup...", "running"),
+  );
   try {
     const cleanupStats = await runCleanup(PROJECT_ROOT);
     process.stdout.write(
-      `  Removed ${cleanupStats.consoleLogsRemoved} console.log calls\n`,
+      ui.subStep(
+        `Removed ${cleanupStats.consoleLogsRemoved} console.log calls`,
+        "success",
+      ),
     );
     process.stdout.write(
-      `  Removed ${cleanupStats.cssClassesRemoved} unused CSS classes\n`,
+      ui.subStep(
+        `Removed ${cleanupStats.cssClassesRemoved} unused CSS classes`,
+        "success",
+      ),
     );
 
-    if (cleanupStats.errors && cleanupStats.errors.length > 0) {
+    if (cleanupStats.errors?.length > 0) {
       process.stdout.write(
-        `  [WARN] ${cleanupStats.errors.length} cleanup errors (non-fatal)\n`,
-      );
-      for (const error of cleanupStats.errors.slice(0, 3)) {
-        process.stdout.write(`    - ${error.message}\n`);
-      }
-    }
-
-    if (cleanupStats.warnings && cleanupStats.warnings.length > 0) {
-      process.stdout.write(
-        `  [WARN] ${cleanupStats.warnings.length} cleanup warnings\n`,
+        ui.subStep(
+          `${cleanupStats.errors.length} cleanup errors (non-fatal)`,
+          "warn",
+        ),
       );
     }
   } catch (err) {
     process.stdout.write(
-      `  [WARN] Cleanup error (non-fatal): ${err.message}\n`,
+      ui.subStep(`Cleanup error (non-fatal): ${err.message}`, "warn"),
     );
   }
 
-  process.stdout.write("\n[5/14] Running code formatter...\n");
-  const formatResult = detectFormatCommand();
+  process.stdout.write(
+    ui.step(6, TOTAL_STEPS, "Running code formatter...", "running"),
+  );
+  if (!interactiveOptions.skipFormat) {
+    const formatResult = detectFormatCommand();
 
-  if (formatResult.command) {
-    try {
-      execCommand(formatResult.command, { silent: true, ignoreError: false });
-      process.stdout.write(`  [OK] Formatted with: ${formatResult.command}\n`);
-    } catch (err) {
-      const errorMsg = err.message || "";
-
-      if (
-        errorMsg.includes("ENOENT") ||
-        errorMsg.includes("not found") ||
-        errorMsg.includes("command not found")
-      ) {
-        if (formatResult.type === "prettier") {
+    if (formatResult.command) {
+      try {
+        if (!cliOptions.dryRun) {
+          execCommand(formatResult.command, {
+            silent: true,
+            ignoreError: false,
+          });
+        }
+        process.stdout.write(
+          ui.subStep(`Formatted with: ${formatResult.command}`, "success"),
+        );
+      } catch (err) {
+        const errorMsg = err.message || "";
+        if (errorMsg.includes("ENOENT") || errorMsg.includes("not found")) {
           process.stdout.write(
-            "  [WARN] Prettier not found. Install with: npm install --save-dev prettier\n",
+            ui.subStep("Formatter not found, skipping...", "warn"),
           );
         } else {
           process.stdout.write(
-            `  [WARN] Format command not available: ${formatResult.command}\n`,
+            ui.subStep(`Format failed: ${err.message}`, "warn"),
           );
         }
-      } else if (errorMsg.includes("EACCES")) {
-        process.stdout.write("  [WARN] Permission denied running formatter\n");
-      } else {
-        process.stdout.write(`  [WARN] Format failed: ${err.message}\n`);
       }
-      process.stdout.write("  Continuing without formatting...\n");
+    } else {
+      process.stdout.write(
+        ui.subStep(formatResult.warning || "No formatter detected", "skip"),
+      );
     }
   } else {
-    process.stdout.write(
-      `  [SKIP] ${formatResult.warning || "No formatter detected"}\n`,
-    );
-    if (formatResult.suggestion) {
-      process.stdout.write(`  TIP: ${formatResult.suggestion}\n`);
-    }
+    process.stdout.write(ui.subStep("Skipped by user", "skip"));
   }
 
-  process.stdout.write("\n[6/14] Checking for changes...\n");
+  process.stdout.write(
+    ui.step(7, TOTAL_STEPS, "Checking for changes...", "running"),
+  );
   const diff = getGitDiff();
   const changedFiles = getChangedFiles();
 
   if (!hasChanges() && !diff.trim()) {
-    process.stdout.write("  No changes detected. Nothing to release.\n");
-    process.stdout.write("\n========================================\n");
-    process.stdout.write("  Release skipped - no changes\n");
-    process.stdout.write("========================================\n\n");
+    process.stdout.write(
+      ui.subStep("No changes detected. Nothing to release.", "warn"),
+    );
+    process.stdout.write(
+      `\n\n  ${ui.box("Release skipped - no changes", 40)}\n\n`,
+    );
     process.exit(0);
   }
-  process.stdout.write(`  Found ${changedFiles.length} changed files\n`);
+  process.stdout.write(
+    ui.subStep(
+      `Found ${ui.highlight(changedFiles.length.toString())} changed files`,
+      "success",
+    ),
+  );
 
-  process.stdout.write("\n[7/14] Checking project rules (turl.txt)...\n");
+  process.stdout.write(
+    ui.step(8, TOTAL_STEPS, "Checking project rules (turl.txt)...", "running"),
+  );
   const { rules: projectRules } = readTurlRules();
-  if (projectRules.length > 0) {
-    process.stdout.write(`  Found ${projectRules.length} project rules\n`);
+
+  if (!interactiveOptions.skipRulesCheck && projectRules.length > 0) {
+    process.stdout.write(
+      ui.subStep(`Found ${projectRules.length} project rules`, "info"),
+    );
     try {
       const stat = getGitDiffStat();
       const violationCheck = await checkRulesViolations(
@@ -1406,39 +1815,52 @@ async function main() {
         );
         if (!shouldContinue) {
           process.stdout.write(
-            "\n  Release aborted by user. Fix violations and try again.\n",
+            `\n  ${COLORS.red}${SYMBOLS.cross}${COLORS.reset} Release aborted. Fix violations and try again.\n\n`,
           );
           process.exit(0);
         }
-        process.stdout.write("  [WARN] Proceeding despite rule violations\n");
+        process.stdout.write(
+          ui.subStep("Proceeding despite rule violations", "warn"),
+        );
       } else {
-        process.stdout.write("  [OK] No rule violations detected\n");
+        process.stdout.write(
+          ui.subStep("No rule violations detected", "success"),
+        );
       }
     } catch (err) {
-      process.stdout.write(`  [WARN] Could not check rules: ${err.message}\n`);
-      process.stdout.write("  Continuing without rules check...\n");
+      process.stdout.write(
+        ui.subStep(`Could not check rules: ${err.message}`, "warn"),
+      );
     }
+  } else if (interactiveOptions.skipRulesCheck) {
+    process.stdout.write(ui.subStep("Skipped by user", "skip"));
   } else {
-    process.stdout.write(
-      "  [SKIP] No project rules defined yet (turl.txt will be created after first release)\n",
-    );
+    process.stdout.write(ui.subStep("No project rules defined yet", "skip"));
   }
 
-  process.stdout.write("\n[8/14] Updating turl.json...\n");
+  process.stdout.write(
+    ui.step(9, TOTAL_STEPS, "Updating turl.json...", "running"),
+  );
   try {
     const updatedConfig = {
       version: newVersion,
-      projectName: projectName,
+      projectName,
       branch: turlConfig.branch,
     };
-    writeTurlConfig(updatedConfig);
-    process.stdout.write(`  Updated to version ${newVersion}\n`);
+    if (!cliOptions.dryRun) {
+      writeTurlConfig(updatedConfig);
+    }
+    process.stdout.write(
+      ui.subStep(`Updated to version ${ui.highlight(newVersion)}`, "success"),
+    );
   } catch (err) {
-    printError(err);
+    process.stdout.write(ui.subStep(`${err.message}`, "error"));
     process.exit(1);
   }
 
-  process.stdout.write("\n[9/14] Generating changelog...\n");
+  process.stdout.write(
+    ui.step(10, TOTAL_STEPS, "Generating changelog with AI...", "running"),
+  );
   let changelogEntry;
   const changelogDiff = getGitDiff(true);
   const changelogStat = getGitDiffStat(true);
@@ -1452,44 +1874,65 @@ async function main() {
       changelogStat,
       changelogFiles,
     );
-    process.stdout.write("  [OK] Changelog generated with AI\n");
+    process.stdout.write(
+      ui.subStep("Changelog generated successfully", "success"),
+    );
   } catch (err) {
-    printError(err);
+    process.stdout.write(ui.subStep(`${err.message}`, "error"));
     exitWithRollback(1);
   }
 
-  process.stdout.write("\n[10/14] Updating CHANGELOG.md...\n");
+  process.stdout.write(
+    ui.step(11, TOTAL_STEPS, "Updating CHANGELOG.md...", "running"),
+  );
   try {
-    updateChangelog(changelogEntry);
-    process.stdout.write("  [OK] CHANGELOG.md updated\n");
+    if (!cliOptions.dryRun) {
+      updateChangelog(changelogEntry);
+    }
+    process.stdout.write(ui.subStep("CHANGELOG.md updated", "success"));
   } catch (err) {
-    printError(err);
+    process.stdout.write(ui.subStep(`${err.message}`, "error"));
     exitWithRollback(1);
   }
 
-  process.stdout.write("\n[11/14] Running production build...\n");
-  const buildCommand = detectBuildCommand();
-  if (buildCommand) {
-    try {
-      await runBuild(buildCommand);
-      process.stdout.write("  [OK] Build completed successfully\n");
-    } catch (err) {
-      process.stdout.write(`  [WARN] Build failed: ${err.message}\n`);
-      if (err.details && err.details.suggestion) {
-        process.stdout.write(`  TIP: ${err.details.suggestion}\n`);
+  process.stdout.write(
+    ui.step(12, TOTAL_STEPS, "Running production build...", "running"),
+  );
+  if (!interactiveOptions.skipBuild) {
+    const buildCommand = detectBuildCommand();
+    if (buildCommand) {
+      try {
+        if (!cliOptions.dryRun) {
+          await runBuild(buildCommand);
+        }
+        process.stdout.write(
+          ui.subStep("Build completed successfully", "success"),
+        );
+      } catch (err) {
+        process.stdout.write(
+          ui.subStep(`Build failed: ${err.message}`, "warn"),
+        );
+        process.stdout.write(ui.subStep("Continuing with release...", "info"));
       }
-      process.stdout.write("  Continuing with release...\n");
+    } else {
+      process.stdout.write(ui.subStep("No build command detected", "skip"));
     }
   } else {
-    process.stdout.write("  [SKIP] No build command detected\n");
+    process.stdout.write(ui.subStep("Skipped by user", "skip"));
   }
 
-  process.stdout.write("\n[12/14] Staging all changes...\n");
+  process.stdout.write(
+    ui.step(13, TOTAL_STEPS, "Staging all changes...", "running"),
+  );
   try {
-    execCommand("git add -A", { silent: true });
-    process.stdout.write("  [OK] All changes staged\n");
+    if (!cliOptions.dryRun) {
+      execCommand("git add -A", { silent: true });
+    }
+    process.stdout.write(ui.subStep("All changes staged", "success"));
   } catch (err) {
-    process.stdout.write(`  [ERROR] Failed to stage changes: ${err.message}\n`);
+    process.stdout.write(
+      ui.subStep(`Failed to stage changes: ${err.message}`, "error"),
+    );
     exitWithRollback(1);
   }
 
@@ -1497,8 +1940,12 @@ async function main() {
   const finalStat = getGitDiffStat(true);
   const finalChangedFiles = getChangedFiles(true);
 
-  process.stdout.write("\n[13/14] Committing and pushing...\n");
-  process.stdout.write("  Generating commit message with AI...\n");
+  process.stdout.write(
+    ui.step(14, TOTAL_STEPS, "Committing and pushing...", "running"),
+  );
+  process.stdout.write(
+    ui.subStep("Generating commit message with AI...", "info"),
+  );
 
   let commitMessage;
   try {
@@ -1510,30 +1957,42 @@ async function main() {
       finalStat,
       finalChangedFiles,
     );
-    process.stdout.write("  [OK] Commit message generated\n");
+    process.stdout.write(ui.subStep("Commit message generated", "success"));
   } catch (err) {
-    printError(err);
+    process.stdout.write(ui.subStep(`${err.message}`, "error"));
     exitWithRollback(1);
   }
 
-  try {
-    gitCommit(commitMessage);
-    process.stdout.write("  [OK] Committed successfully\n");
-  } catch (err) {
-    printError(err);
-    exitWithRollback(1);
+  if (!cliOptions.dryRun) {
+    try {
+      gitCommit(commitMessage);
+      process.stdout.write(ui.subStep("Committed successfully", "success"));
+    } catch (err) {
+      process.stdout.write(ui.subStep(`${err.message}`, "error"));
+      exitWithRollback(1);
+    }
+
+    process.stdout.write(ui.subStep(`Pushing to origin/${branch}...`, "info"));
+    try {
+      gitPush(branch);
+      process.stdout.write(ui.subStep("Pushed successfully", "success"));
+    } catch (err) {
+      process.stdout.write(ui.subStep(`${err.message}`, "error"));
+      exitWithRollback(1);
+    }
+  } else {
+    process.stdout.write(ui.subStep("Commit skipped (dry run)", "skip"));
+    process.stdout.write(ui.subStep("Push skipped (dry run)", "skip"));
   }
 
-  process.stdout.write(`  Pushing to origin/${branch}...\n`);
-  try {
-    gitPush(branch);
-    process.stdout.write("  [OK] Pushed successfully\n");
-  } catch (err) {
-    printError(err);
-    exitWithRollback(1);
-  }
-
-  process.stdout.write("\n[14/14] Learning from this release (turl.txt)...\n");
+  process.stdout.write(
+    ui.step(
+      15,
+      TOTAL_STEPS,
+      "Learning from this release (turl.txt)...",
+      "running",
+    ),
+  );
   try {
     const newRules = await generateNewRules(
       apiKey,
@@ -1545,14 +2004,17 @@ async function main() {
     if (newRules.length > 0) {
       let addedCount = 0;
       for (const rule of newRules) {
-        if (appendTurlRule(rule)) {
+        if (!cliOptions.dryRun && appendTurlRule(rule)) {
           addedCount++;
-          process.stdout.write(`  [+] ${rule}\n`);
+          process.stdout.write(ui.subStep(`NEW: ${rule}`, "success"));
+        } else if (cliOptions.dryRun) {
+          process.stdout.write(ui.subStep(`Would add: ${rule}`, "info"));
+          addedCount++;
         }
       }
-      if (addedCount > 0) {
+      if (addedCount > 0 && !cliOptions.dryRun) {
         process.stdout.write(
-          `  [OK] Added ${addedCount} new rule(s) to turl.txt\n`,
+          ui.subStep(`Added ${addedCount} new rule(s) to turl.txt`, "success"),
         );
         execCommand("git add public/turl.txt", {
           silent: true,
@@ -1569,33 +2031,83 @@ async function main() {
       }
     } else {
       process.stdout.write(
-        "  [OK] No new rules identified from this release\n",
+        ui.subStep("No new rules identified from this release", "info"),
       );
     }
   } catch (err) {
-    process.stdout.write(`  [WARN] Could not learn rules: ${err.message}\n`);
+    process.stdout.write(
+      ui.subStep(`Could not learn rules: ${err.message}`, "warn"),
+    );
   }
 
-  process.stdout.write("\n========================================\n");
-  process.stdout.write(`  ${projectName} v${newVersion} released!\n`);
-  process.stdout.write("========================================\n\n");
+  process.stdout.write("\n\n");
+  process.stdout.write(
+    `  ${COLORS.green}${COLORS.bright}╔════════════════════════════════════════════════════════╗${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}                                                        ${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}   ${SYMBOLS.check} ${COLORS.bright}Release Complete!${COLORS.reset}                               ${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}                                                        ${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Project:${COLORS.reset} ${COLORS.cyan}${projectName.padEnd(40)}${COLORS.reset}${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Version:${COLORS.reset} ${COLORS.cyan}v${newVersion.padEnd(39)}${COLORS.reset}${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Branch:${COLORS.reset}  ${COLORS.cyan}${branch.padEnd(40)}${COLORS.reset}${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.green}${COLORS.bright}║${COLORS.reset}                                                        ${COLORS.green}${COLORS.bright}║${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.green}${COLORS.bright}╚════════════════════════════════════════════════════════╝${COLORS.reset}\n\n`,
+  );
 }
 
 main().catch((err) => {
+  ui.showCursor();
+  process.stdout.write(
+    `\n\n  ${COLORS.red}${COLORS.bright}╔════════════════════════════════════════════════════════╗${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.red}${COLORS.bright}║${COLORS.reset}  ${SYMBOLS.cross} ${COLORS.bright}Release Failed${COLORS.reset}                                    ${COLORS.red}${COLORS.bright}║${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.red}${COLORS.bright}╚════════════════════════════════════════════════════════╝${COLORS.reset}\n\n`,
+  );
+
   if (err instanceof TurlError) {
-    process.stdout.write(`\nRelease failed: ${err.message}\n`);
-    if (err.details && err.details.suggestion) {
-      process.stdout.write(`Suggestion: ${err.details.suggestion}\n`);
+    process.stdout.write(
+      `  ${COLORS.red}${SYMBOLS.cross}${COLORS.reset} ${err.message}\n`,
+    );
+    if (err.details?.suggestion) {
+      process.stdout.write(
+        `  ${COLORS.dim}${SYMBOLS.arrowRight}${COLORS.reset} ${err.details.suggestion}\n`,
+      );
     }
     if (err.code) {
-      process.stdout.write(`Error code: ${err.code}\n`);
+      process.stdout.write(
+        `  ${COLORS.dim}Error code: ${err.code}${COLORS.reset}\n`,
+      );
     }
   } else {
-    process.stdout.write(`\nRelease failed: ${err.message}\n`);
+    process.stdout.write(
+      `  ${COLORS.red}${SYMBOLS.cross}${COLORS.reset} ${err.message}\n`,
+    );
     if (err.stack && process.env.DEBUG) {
-      process.stdout.write(`Stack trace:\n${err.stack}\n`);
+      process.stdout.write(
+        `\n  ${COLORS.dim}Stack trace:\n${err.stack}${COLORS.reset}\n`,
+      );
     }
   }
+
+  process.stdout.write("\n");
   rollbackVersion();
   process.exit(1);
 });

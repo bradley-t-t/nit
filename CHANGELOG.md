@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9] - 2026-02-24
+
+- Added a comprehensive UI toolkit with color-coded output, symbols, and formatting utilities for a more visually appealing and interactive command-line experience.
+- Introduced new UI components including progress bars, spinners, step indicators, and formatted headers to improve user feedback during operations.
+- Implemented a version update checker to detect if a newer version of the tool is available on npm, with a prompt to update if applicable.
+- Added interactive user prompts for update confirmation using the readline module for better user control over tool updates.
+
 ## [2.8] - 2026-02-24
 
 - Updated the file path for turl.txt to be located in the "public" directory instead of the project root.
