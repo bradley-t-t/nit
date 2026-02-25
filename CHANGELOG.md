@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5] - 2026-02-25
+
+- Improved the rule parsing logic in `readTurlRules()` to handle various bullet formats by replacing multiple bullet variations with a more robust regex pattern.
+- Added filtering in `readTurlRules()` to exclude rules starting with HTML comment markers like `<!--`, ensuring only valid rules are processed.
+- Introduced a new `isValidRule()` function to validate rules by checking for content, length constraints, and excluding specific markers like HTML comments or TURL-specific tags.
+- Enhanced rule formatting and filtering in `writeTurlRules()` to ensure only valid and properly formatted rules are written to the documentation file.
+- Updated project rules documentation in `.github/copilot-instructions.md` to consolidate and clarify guidelines for better integration with GitHub Copilot.
+
 ## [3.4] - 2026-02-25
 
 - Moved project rules from `public/turl.txt` to `.github/copilot-instructions.md` for better organization and integration with GitHub Copilot.

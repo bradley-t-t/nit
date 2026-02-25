@@ -23,11 +23,11 @@ Do not edit this section manually - it will be overwritten.
 - When adding new commands or features, update the help menu in the same commit to reflect the new functionality and ensure user guidance remains accurate.
 - Include support for command-specific flags (like `--quiet` or `-q`) when introducing new commands to allow users to control output verbosity or behavior.
 - When adding new commands or features, update the help menu and changelog in the same commit to ensure documentation remains accurate and up-to-date.
-- Store project rules in `.github/copilot-instructions.md` instead of a separate text file like `public/turl.txt` for better integration with GitHub Copilot and to maintain a centralized location for development guidelines.
-- Use defined section markers (e.g., `<!-- TURL-RULES-START -->` and `.
+- Store project rules in `.github/copilot-instructions.md` for better integration with GitHub Copilot and centralized development guidelines.
+- Use defined section markers when managing rules in documentation files to ensure accurate reading and writing of rule content.
 - Automatically create necessary directories (e.g., `.github/`) when writing configuration or documentation files to prevent errors due to missing paths.
-- Store project rules in `.github/copilot-instructions.md` instead of `public/turl.txt` for better integration with GitHub Copilot and improved organization.
-- Automatically create necessary directories (e.g., `.github/`) when writing rule files if they do not exist to prevent file operation failures.
-<!-- TURL-RULES-END -->`) when managing rules in documentation files to ensure accurate reading and writing of rule content.
-<!-- TURL-RULES-END -->`) when managing rules in documentation files to ensure automated updates only affect the intended sections.
+- When parsing rules from documentation files, use a robust regex pattern to handle various bullet formats (e.g., `-` or `*`) and filter out invalid content like HTML comments to ensure only valid rules are processed.
+- Implement a dedicated validation function for rules (e.g., `isValidRule()`) to enforce content, length, and format constraints, preventing invalid or irrelevant entries from being included in the rule set.
+- When parsing rules from documentation files, use robust regex patterns to handle various bullet formats (e.g., `-` or `*`) and filter out invalid content like HTML comments to ensure only valid rules are processed.
+- Implement validation checks for rules, such as content length constraints and exclusion of specific markers (e.g., HTML comments or project-specific tags), to prevent processing irrelevant or malformed entries.
 <!-- TURL-RULES-END -->

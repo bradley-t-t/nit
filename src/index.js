@@ -8,7 +8,7 @@ import { run as runCleanup } from "./cleanup.js";
 const PROJECT_ROOT = process.cwd();
 const args = process.argv.slice(2);
 
-const PACKAGE_VERSION = "3.2.0";
+const PACKAGE_VERSION = "3.4.0";
 const PACKAGE_NAME = "turl-release";
 
 const COLORS = {
@@ -1215,8 +1215,12 @@ function readTurlRules() {
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith("- ")) {
-      const cleanedRule = trimmed.slice(2).trim();
-      if (cleanedRule && !cleanedRule.startsWith("_")) {
+      const cleanedRule = trimmed.replace(/^([-*]\s*)+/, "").trim();
+      if (
+        cleanedRule &&
+        !cleanedRule.startsWith("_") &&
+        !cleanedRule.startsWith("<!--")
+      ) {
         rules.push(cleanedRule);
       }
     }
@@ -1227,7 +1231,7 @@ function readTurlRules() {
 
 function formatRule(rule) {
   let formatted = rule
-    .replace(/^[-*]\s*/, "")
+    .replace(/^([-*]\s*)+/, "")
     .trim()
     .replace(/\s+/g, " ");
 
@@ -1267,13 +1271,23 @@ function deduplicateRules(rules) {
   return result;
 }
 
+function isValidRule(rule) {
+  if (!rule || typeof rule !== "string") return false;
+  if (rule.includes("<!--") || rule.includes("-->")) return false;
+  if (rule.includes("TURL-RULES-")) return false;
+  if (rule.length < 10 || rule.length > 500) return false;
+  return true;
+}
+
 function writeTurlRules(rules) {
   const githubDir = path.join(PROJECT_ROOT, ".github");
   if (!fs.existsSync(githubDir)) {
     fs.mkdirSync(githubDir, { recursive: true });
   }
 
-  const formattedRules = rules.map(formatRule).filter(Boolean);
+  const formattedRules = rules
+    .map(formatRule)
+    .filter((r) => Boolean(r) && isValidRule(r));
   const dedupedRules = deduplicateRules(formattedRules);
 
   let existingContent = "";
