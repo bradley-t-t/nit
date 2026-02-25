@@ -2,7 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.9] - 2026-02-25
+
+- Simplified the tool to a single command, `turl-release`, which now handles the entire release process automatically without the need for subcommands.
+- Removed all previous subcommands such as `init`, `analyze`, `sync`, `rules`, `learn`, `forget`, and `cleanup` from the codebase, consolidating their functionality into the main command.
+- Updated the help menu to reflect the new streamlined workflow, listing all automated steps like code cleanup, formatting with Prettier, version incrementing, changelog generation, and rule syncing.
+- Added a new `--quiet` or `-q` option to minimize output during execution.
+- Revised the usage instructions to focus on options rather than commands, providing clear examples for running a release, previewing changes, or specifying a branch.
+
 ## [3.8] - 2026-02-25
+
+- Simplified to a single command: just run `turl-release` and everything happens automatically.
+- Removed all subcommands (init, analyze, sync, rules, learn, forget, cleanup) - everything is now built into the release process.
+- Git hooks are automatically installed on first release.
+- Rules are automatically cleaned up and formatted each release.
+- No setup required - just run the command.
+
+## [3.7] - 2026-02-25
 
 - Added a new `cleanup` command (also accessible as `fix-rules`) to reformat and fix rules in copilot-instructions.md, ensuring consistent formatting and removing issues like duplicate dashes.
 - Enhanced rule parsing and formatting logic with improved regex patterns to handle various bullet styles and whitespace more effectively.

@@ -8,7 +8,7 @@ import { run as runCleanup } from "./cleanup.js";
 const PROJECT_ROOT = process.cwd();
 const args = process.argv.slice(2);
 
-const PACKAGE_VERSION = "3.7.0";
+const PACKAGE_VERSION = "3.8.0";
 const PACKAGE_NAME = "turl-release";
 
 const COLORS = {
@@ -262,8 +262,7 @@ function parseArgs() {
     interactive: false,
     verbose: false,
     dryRun: false,
-    command: null,
-    commandArgs: [],
+    quiet: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -281,38 +280,11 @@ function parseArgs() {
       options.verbose = true;
     } else if (arg === "--dry-run" || arg === "-d") {
       options.dryRun = true;
+    } else if (arg === "--quiet" || arg === "-q") {
+      options.quiet = true;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
-    } else if (arg === "init") {
-      options.command = "init";
-      break;
-    } else if (arg === "sync") {
-      options.command = "sync";
-      break;
-    } else if (arg === "analyze") {
-      options.command = "analyze";
-      options.commandArgs = args.slice(i + 1);
-      break;
-    } else if (arg === "learn" || arg === "add-rule") {
-      options.command = "learn";
-      options.commandArgs = args.slice(i + 1);
-      break;
-    } else if (arg === "rules" || arg === "list-rules") {
-      options.command = "rules";
-      break;
-    } else if (arg === "forget" || arg === "remove-rule") {
-      options.command = "forget";
-      options.commandArgs = args.slice(i + 1);
-      break;
-    } else if (arg === "cleanup" || arg === "fix-rules") {
-      options.command = "cleanup";
-      break;
-    } else if (arg === "_post-commit") {
-      options.command = "_post-commit";
-      break;
-    } else if (arg === "--quiet" || arg === "-q") {
-      options.quiet = true;
     }
   }
 
@@ -323,32 +295,33 @@ function printHelp() {
   process.stdout.write(`
 ${ui.header()}
 
-  ${COLORS.bright}Usage:${COLORS.reset} turl-release [command] [options]
+  ${COLORS.bright}Usage:${COLORS.reset} turl-release [options]
 
-  ${COLORS.bright}Commands:${COLORS.reset}
-    ${COLORS.brightBlue}init${COLORS.reset}                  Set up automatic learning (git hooks + Copilot sync)
-    ${COLORS.brightBlue}analyze${COLORS.reset}               Learn from your git history (past commits)
-    ${COLORS.brightBlue}sync${COLORS.reset}                  Sync rules to .github/copilot-instructions.md
-    ${COLORS.brightBlue}rules${COLORS.reset}                 List all project rules
-    ${COLORS.brightBlue}learn <rule>${COLORS.reset}          Manually add a rule
-    ${COLORS.brightBlue}forget <number>${COLORS.reset}       Remove a rule by number
-    ${COLORS.brightBlue}cleanup${COLORS.reset}               Fix and reformat all rules in copilot-instructions.md
+  ${COLORS.bright}What it does (all automatic):${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks for turl-release updates and auto-updates
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs code cleanup (removes console.logs)
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Formats code with Prettier
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks changes against project rules
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Increments version in turl.json + package.json
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Generates AI changelog and commit message
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs production build
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Commits and pushes to git
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Learns new rules from changes (like Claude's lessons.md)
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Syncs rules to .github/copilot-instructions.md
 
   ${COLORS.bright}Options:${COLORS.reset}
     ${COLORS.brightBlue}-b, --branch <name>${COLORS.reset}   Override branch to push to
-    ${COLORS.brightBlue}-s, --skip-update${COLORS.reset}    Skip update check
-    ${COLORS.brightBlue}-i, --interactive${COLORS.reset}    Interactive mode
-    ${COLORS.brightBlue}-d, --dry-run${COLORS.reset}        Preview without changes
-    ${COLORS.brightBlue}-h, --help${COLORS.reset}           Show this help
+    ${COLORS.brightBlue}-s, --skip-update${COLORS.reset}     Skip turl-release update check
+    ${COLORS.brightBlue}-i, --interactive${COLORS.reset}     Interactive mode (prompts for options)
+    ${COLORS.brightBlue}-d, --dry-run${COLORS.reset}         Preview without making changes
+    ${COLORS.brightBlue}-q, --quiet${COLORS.reset}           Minimal output
+    ${COLORS.brightBlue}-h, --help${COLORS.reset}            Show this help
 
-  ${COLORS.bright}Quick Start (run once per project):${COLORS.reset}
-    ${COLORS.brightBlue}turl-release init${COLORS.reset}     Sets up automatic learning
-
-  ${COLORS.bright}How It Works (like Claude's lessons.md):${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Single source of truth:${COLORS.reset} .github/copilot-instructions.md
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Auto-learns:${COLORS.reset} From every commit and release
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Copilot integration:${COLORS.reset} Rules appear in Copilot context
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Release checks:${COLORS.reset} Warns before committing rule violations
+  ${COLORS.bright}Examples:${COLORS.reset}
+    ${COLORS.dim}turl-release${COLORS.reset}              Run a full release
+    ${COLORS.dim}turl-release -d${COLORS.reset}           Preview what would happen
+    ${COLORS.dim}turl-release -b develop${COLORS.reset}   Release to develop branch
+    ${COLORS.dim}turl-release -b develop${COLORS.reset}   Release to develop branch
 
 `);
 }
@@ -1356,565 +1329,10 @@ function appendTurlRule(newRule) {
   return false;
 }
 
-function removeTurlRule(ruleNumber) {
-  const { rules } = readTurlRules();
-  const index = ruleNumber - 1;
-
-  if (index < 0 || index >= rules.length) {
-    return { success: false, error: `Rule #${ruleNumber} does not exist` };
-  }
-
-  const removedRule = rules[index];
-  rules.splice(index, 1);
-  writeTurlRules(rules);
-  return { success: true, removedRule };
-}
-
-async function handleLearnCommand(commandArgs) {
-  process.stdout.write(ui.header());
-
-  const rule = commandArgs.join(" ").trim();
-
-  if (!rule) {
-    const readline = await import("readline");
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    process.stdout.write(
-      `\n  ${COLORS.bright}Add a Rule from Copilot Chat${COLORS.reset}\n`,
-    );
-    process.stdout.write(`  ${ui.divider()}\n\n`);
-    process.stdout.write(
-      `  ${COLORS.dim}What did you learn? (e.g., "Always use early returns")${COLORS.reset}\n\n`,
-    );
-
-    const answer = await new Promise((resolve) => {
-      rl.question(
-        `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} `,
-        resolve,
-      );
-    });
-    rl.close();
-
-    if (!answer.trim()) {
-      process.stdout.write(
-        `\n  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} No rule provided. Cancelled.\n\n`,
-      );
-      process.exit(0);
-    }
-
-    const formattedRule = formatRule(answer.trim());
-    const added = appendTurlRule(answer.trim());
-    if (added) {
-      process.stdout.write(
-        `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Rule added to copilot-instructions.md:\n`,
-      );
-      process.stdout.write(
-        `  ${COLORS.dim}"${formattedRule}"${COLORS.reset}\n\n`,
-      );
-    } else {
-      process.stdout.write(
-        `\n  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} Rule already exists or is invalid.\n\n`,
-      );
-    }
-    return;
-  }
-
-  const formattedRule = formatRule(rule);
-  const added = appendTurlRule(rule);
-  if (added) {
-    process.stdout.write(
-      `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Rule added to copilot-instructions.md:\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.dim}"${formattedRule}"${COLORS.reset}\n\n`,
-    );
-  } else {
-    process.stdout.write(
-      `\n  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} Rule already exists or is invalid.\n\n`,
-    );
-  }
-}
-
-function handleRulesCommand() {
-  process.stdout.write(ui.header());
-
-  const { rules } = readTurlRules();
-
-  if (!rules.length) {
-    process.stdout.write(
-      `\n  ${COLORS.dim}No rules defined yet.${COLORS.reset}\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.dim}Rules are learned automatically from commits, or add manually:${COLORS.reset}\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.brightBlue}turl-release learn "Your rule here"${COLORS.reset}\n\n`,
-    );
-    return;
-  }
-
-  const BOX_WIDTH = 84;
-
-  process.stdout.write(`\n`);
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${COLORS.bright}┌${"─".repeat(BOX_WIDTH - 2)}┐${COLORS.reset}\n`,
-  );
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}  ${COLORS.bright}PROJECT RULES${COLORS.reset} ${COLORS.dim}(${rules.length} total)${COLORS.reset}${" ".repeat(BOX_WIDTH - 24 - String(rules.length).length)}${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}\n`,
-  );
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${COLORS.bright}├${"─".repeat(BOX_WIDTH - 2)}┤${COLORS.reset}\n`,
-  );
-
-  const wrapText = (text, maxWidth) => {
-    const words = text.split(" ");
-    const lines = [];
-    let currentLine = "";
-    for (const word of words) {
-      if ((currentLine + " " + word).trim().length <= maxWidth) {
-        currentLine = (currentLine + " " + word).trim();
-      } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine =
-          word.length > maxWidth ? word.substring(0, maxWidth) : word;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-    return lines;
-  };
-
-  for (let i = 0; i < rules.length; i++) {
-    const rule = rules[i];
-    const num = `${i + 1}.`;
-    const ruleLines = wrapText(rule, BOX_WIDTH - 10);
-
-    process.stdout.write(
-      `  ${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}\n`,
-    );
-
-    const firstLine = ruleLines[0] || "";
-    const firstLinePadding = BOX_WIDTH - num.length - firstLine.length - 6;
-    process.stdout.write(
-      `  ${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}  ${COLORS.brightBlue}${num}${COLORS.reset} ${firstLine}${" ".repeat(Math.max(0, firstLinePadding))}${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}\n`,
-    );
-
-    for (let j = 1; j < ruleLines.length; j++) {
-      const line = ruleLines[j];
-      const padding = BOX_WIDTH - line.length - 7;
-      process.stdout.write(
-        `  ${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}     ${COLORS.dim}${line}${COLORS.reset}${" ".repeat(Math.max(0, padding))}${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}\n`,
-      );
-    }
-  }
-
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightBlue}${COLORS.bright}│${COLORS.reset}\n`,
-  );
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${COLORS.bright}└${"─".repeat(BOX_WIDTH - 2)}┘${COLORS.reset}\n`,
-  );
-
-  process.stdout.write(`\n  ${COLORS.dim}Commands:${COLORS.reset}\n`);
-  process.stdout.write(
-    `  ${COLORS.brightBlue}turl-release learn "rule"${COLORS.reset}  ${COLORS.dim}Add a new rule${COLORS.reset}\n`,
-  );
-  process.stdout.write(
-    `  ${COLORS.brightBlue}turl-release forget 3${COLORS.reset}      ${COLORS.dim}Remove rule #3${COLORS.reset}\n\n`,
-  );
-}
-
-async function handleForgetCommand(commandArgs) {
-  process.stdout.write(ui.header());
-
-  const ruleNum = parseInt(commandArgs[0], 10);
-
-  if (isNaN(ruleNum)) {
-    const { rules } = readTurlRules();
-
-    if (!rules.length) {
-      process.stdout.write(
-        `\n  ${COLORS.dim}No rules to remove.${COLORS.reset}\n\n`,
-      );
-      return;
-    }
-
-    process.stdout.write(
-      `\n  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} Specify a rule number to remove.\n\n`,
-    );
-    process.stdout.write(`  ${COLORS.bright}Current rules:${COLORS.reset}\n`);
-
-    for (let i = 0; i < rules.length; i++) {
-      const preview =
-        rules[i].length > 60 ? rules[i].substring(0, 60) + "..." : rules[i];
-      process.stdout.write(
-        `  ${COLORS.brightBlue}${i + 1}.${COLORS.reset} ${COLORS.dim}${preview}${COLORS.reset}\n`,
-      );
-    }
-
-    process.stdout.write(
-      `\n  ${COLORS.dim}Usage: turl-release forget <number>${COLORS.reset}\n\n`,
-    );
-    return;
-  }
-
-  const result = removeTurlRule(ruleNum);
-
-  if (result.success) {
-    process.stdout.write(
-      `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Removed rule #${ruleNum}:\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.dim}"${result.removedRule}"${COLORS.reset}\n\n`,
-    );
-  } else {
-    process.stdout.write(
-      `\n  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} ${result.error}\n\n`,
-    );
-  }
-}
-
-function handleCleanupCommand() {
-  process.stdout.write(ui.header());
-
-  process.stdout.write(
-    `\n  ${COLORS.bright}Cleaning up copilot-instructions.md${COLORS.reset}\n`,
-  );
-  process.stdout.write(`  ${ui.divider()}\n\n`);
-
-  const { rules } = readTurlRules();
-  const originalCount = rules.length;
-
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Found ${originalCount} rules\n`,
-  );
-
-  const cleanedRules = rules
-    .map((rule) => formatRule(rule))
-    .filter((rule) => rule && isValidRule(rule));
-
-  const dedupedRules = deduplicateRules(cleanedRules);
-
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} After formatting: ${cleanedRules.length} rules\n`,
-  );
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} After deduplication: ${dedupedRules.length} rules\n\n`,
-  );
-
-  writeTurlRules(dedupedRules);
-
-  const removed = originalCount - dedupedRules.length;
-  if (removed > 0) {
-    process.stdout.write(
-      `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Removed ${removed} duplicate/invalid rules\n`,
-    );
-  }
-
-  process.stdout.write(
-    `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Rules formatted and saved to copilot-instructions.md\n\n`,
-  );
-
-  process.stdout.write(
-    `  ${COLORS.dim}All rules now properly formatted:${COLORS.reset}\n`,
-  );
-  process.stdout.write(
-    `  ${COLORS.dim}- Capitalized first letter${COLORS.reset}\n`,
-  );
-  process.stdout.write(`  ${COLORS.dim}- Single dash prefix${COLORS.reset}\n`);
-  process.stdout.write(`  ${COLORS.dim}- Proper punctuation${COLORS.reset}\n`);
-  process.stdout.write(`  ${COLORS.dim}- No duplicates${COLORS.reset}\n\n`);
-}
-
-const POST_COMMIT_HOOK_CONTENT = `#!/bin/sh
-# TURL Auto-Learning Hook - learns from each commit
-# Installed by turl-release init
-
-# Run turl learning in background (non-blocking)
-if command -v turl-release &> /dev/null; then
-  (turl-release _post-commit &> /dev/null &)
-fi
-`;
-
-const PRE_PUSH_HOOK_CONTENT = `#!/bin/sh
-# TURL Pre-Push Hook - syncs rules to Copilot instructions
-# Installed by turl-release init
-
-if command -v turl-release &> /dev/null; then
-  turl-release sync --quiet
-fi
-`;
-
 function syncRulesToCopilotInstructions() {
   const { rules } = readTurlRules();
   writeTurlRules(rules);
   return { rulesCount: rules.length, path: COPILOT_INSTRUCTIONS_PATH };
-}
-
-function handleSyncCommand(quiet = false) {
-  if (!quiet) {
-    process.stdout.write(ui.header());
-    process.stdout.write(
-      `\n  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Syncing rules to Copilot instructions...\n`,
-    );
-  }
-
-  const result = syncRulesToCopilotInstructions(quiet);
-
-  if (!quiet) {
-    process.stdout.write(
-      `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Synced ${result.rulesCount} rules to:\n`,
-    );
-    process.stdout.write(`  ${COLORS.dim}${result.path}${COLORS.reset}\n\n`);
-    process.stdout.write(
-      `  ${COLORS.dim}Copilot will now see your project rules when generating code.${COLORS.reset}\n\n`,
-    );
-  }
-}
-
-async function handleInitCommand() {
-  process.stdout.write(ui.header());
-
-  process.stdout.write(
-    `\n  ${COLORS.bright}Setting up Automatic Learning${COLORS.reset}\n`,
-  );
-  process.stdout.write(`  ${ui.divider()}\n\n`);
-
-  const hooksDir = path.join(PROJECT_ROOT, ".git", "hooks");
-
-  if (fs.existsSync(hooksDir)) {
-    const postCommitPath = path.join(hooksDir, "post-commit");
-    const prePushPath = path.join(hooksDir, "pre-push");
-
-    let postCommitContent = POST_COMMIT_HOOK_CONTENT;
-    let prePushContent = PRE_PUSH_HOOK_CONTENT;
-
-    if (fs.existsSync(postCommitPath)) {
-      const existing = fs.readFileSync(postCommitPath, "utf-8");
-      if (!existing.includes("turl-release")) {
-        postCommitContent = existing.trim() + "\n\n" + POST_COMMIT_HOOK_CONTENT;
-      } else {
-        postCommitContent = existing;
-      }
-    }
-
-    if (fs.existsSync(prePushPath)) {
-      const existing = fs.readFileSync(prePushPath, "utf-8");
-      if (!existing.includes("turl-release")) {
-        prePushContent = existing.trim() + "\n\n" + PRE_PUSH_HOOK_CONTENT;
-      } else {
-        prePushContent = existing;
-      }
-    }
-
-    fs.writeFileSync(postCommitPath, postCommitContent, { mode: 0o755 });
-    fs.writeFileSync(prePushPath, prePushContent, { mode: 0o755 });
-
-    process.stdout.write(
-      `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Git hooks installed\n`,
-    );
-    process.stdout.write(
-      `    ${COLORS.dim}post-commit: Auto-learns from each commit${COLORS.reset}\n`,
-    );
-    process.stdout.write(
-      `    ${COLORS.dim}pre-push: Syncs rules to Copilot${COLORS.reset}\n\n`,
-    );
-  } else {
-    process.stdout.write(
-      `  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} No .git/hooks directory found\n`,
-    );
-    process.stdout.write(
-      `    ${COLORS.dim}Initialize git first: git init${COLORS.reset}\n\n`,
-    );
-  }
-
-  const { rules } = readTurlRules();
-  if (!fs.existsSync(COPILOT_INSTRUCTIONS_PATH)) {
-    writeTurlRules(rules);
-    process.stdout.write(
-      `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Created .github/copilot-instructions.md\n\n`,
-    );
-  } else {
-    process.stdout.write(
-      `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} .github/copilot-instructions.md exists\n\n`,
-    );
-  }
-
-  process.stdout.write(`  ${COLORS.bright}What happens now:${COLORS.reset}\n`);
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Every commit ${SYMBOLS.arrow} TURL analyzes changes and learns patterns\n`,
-  );
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Every push ${SYMBOLS.arrow} Rules sync to Copilot instructions\n`,
-  );
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} turl-release ${SYMBOLS.arrow} Checks rules before committing\n\n`,
-  );
-
-  process.stdout.write(
-    `  ${COLORS.dim}Run "turl-release analyze" to learn from your git history.${COLORS.reset}\n\n`,
-  );
-}
-
-async function handleAnalyzeCommand(commandArgs) {
-  process.stdout.write(ui.header());
-
-  process.stdout.write(
-    `\n  ${COLORS.bright}Analyzing Git History${COLORS.reset}\n`,
-  );
-  process.stdout.write(`  ${ui.divider()}\n\n`);
-
-  const commitCount = parseInt(commandArgs[0], 10) || 20;
-
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Loading last ${commitCount} commits...\n`,
-  );
-
-  let commits;
-  try {
-    const log = execSync(
-      `git log --oneline -${commitCount} --pretty=format:"%h|%s"`,
-      {
-        cwd: PROJECT_ROOT,
-        encoding: "utf-8",
-        stdio: "pipe",
-      },
-    );
-    commits = log
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const [hash, ...msgParts] = line.split("|");
-        return { hash, message: msgParts.join("|") };
-      });
-  } catch {
-    process.stdout.write(
-      `  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} Could not read git history\n\n`,
-    );
-    return;
-  }
-
-  if (!commits.length) {
-    process.stdout.write(
-      `  ${COLORS.dim}No commits found in history.${COLORS.reset}\n\n`,
-    );
-    return;
-  }
-
-  process.stdout.write(
-    `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Found ${commits.length} commits\n\n`,
-  );
-
-  loadEnv();
-  const apiKey = getApiKey();
-
-  if (!apiKey) {
-    process.stdout.write(
-      `  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} API key required for analysis\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.dim}Add GROK_API_KEY to your .env file${COLORS.reset}\n\n`,
-    );
-    return;
-  }
-
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Analyzing commit patterns with AI...\n`,
-  );
-
-  const { rules: existingRules } = readTurlRules();
-
-  const commitSummary = commits
-    .map((c) => `- ${c.hash}: ${c.message}`)
-    .join("\n");
-
-  const prompt = `Analyze these git commits from a project and identify coding patterns, conventions, or lessons that should be remembered for future development.
-
-COMMITS:
-${commitSummary}
-
-EXISTING RULES (do not duplicate):
-${existingRules.length ? existingRules.map((r, i) => `${i + 1}. ${r}`).join("\n") : "(none)"}
-
-INSTRUCTIONS:
-1. Look for patterns in commit messages that suggest conventions (e.g., "fix:", "refactor:", patterns in naming)
-2. Identify repeated types of fixes that suggest rules to prevent issues
-3. Notice any structural patterns (file organization, naming conventions)
-4. Only suggest rules that are:
-   - Specific and actionable
-   - Not already covered by existing rules
-   - Based on clear evidence from the commits
-5. Keep rules concise (one sentence each)
-
-If no meaningful new rules can be identified, respond: NO_NEW_RULES
-
-Output format:
-RULE: [concise, actionable rule]
-RULE: [another rule]
-...`;
-
-  try {
-    const response = await callGrokApi(apiKey, prompt);
-
-    if (!response || response.trim() === "NO_NEW_RULES") {
-      process.stdout.write(
-        `\n  ${COLORS.dim}No new patterns identified from commit history.${COLORS.reset}\n\n`,
-      );
-      return;
-    }
-
-    const newRules = [];
-    const lines = response.split("\n");
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith("RULE:")) {
-        const rule = trimmed.replace("RULE:", "").trim();
-        if (rule) newRules.push(rule);
-      }
-    }
-
-    if (!newRules.length) {
-      process.stdout.write(
-        `\n  ${COLORS.dim}No new patterns identified from commit history.${COLORS.reset}\n\n`,
-      );
-      return;
-    }
-
-    process.stdout.write(
-      `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Found ${newRules.length} patterns:\n\n`,
-    );
-
-    let addedCount = 0;
-    for (const rule of newRules) {
-      const added = appendTurlRule(rule);
-      if (added) {
-        addedCount++;
-        process.stdout.write(
-          `  ${COLORS.brightBlue}+${COLORS.reset} ${rule}\n`,
-        );
-      } else {
-        process.stdout.write(
-          `  ${COLORS.dim}~ ${rule} (already exists)${COLORS.reset}\n`,
-        );
-      }
-    }
-
-    process.stdout.write(`\n`);
-
-    if (addedCount > 0) {
-      syncRulesToCopilotInstructions(true);
-      process.stdout.write(
-        `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Added ${addedCount} new rules and synced to Copilot\n\n`,
-      );
-    }
-  } catch (err) {
-    process.stdout.write(
-      `\n  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} Analysis failed: ${err.message}\n\n`,
-    );
-  }
 }
 
 async function handlePostCommitHook() {
@@ -1960,11 +1378,9 @@ async function handlePostCommitHook() {
       for (const rule of newRules) {
         appendTurlRule(rule);
       }
-      syncRulesToCopilotInstructions(true);
+      syncRulesToCopilotInstructions();
     }
-  } catch {
-    // Silent fail for background hook
-  }
+  } catch {}
 }
 
 async function checkRulesViolations(apiKey, diff, stat, changedFiles, rules) {
@@ -2475,15 +1891,63 @@ function exitWithRollback(code = 1) {
   process.exit(code);
 }
 
+function ensureGitHooksInstalled() {
+  const hooksDir = path.join(PROJECT_ROOT, ".git", "hooks");
+  if (!fs.existsSync(hooksDir)) return false;
+
+  const postCommitPath = path.join(hooksDir, "post-commit");
+
+  if (
+    !fs.existsSync(postCommitPath) ||
+    !fs.readFileSync(postCommitPath, "utf-8").includes("turl-release")
+  ) {
+    const hookContent = `#!/bin/sh
+# TURL Auto-Learning Hook
+if command -v turl-release &> /dev/null; then
+  (turl-release _post-commit &> /dev/null &)
+fi
+`;
+    let content = hookContent;
+    if (fs.existsSync(postCommitPath)) {
+      const existing = fs.readFileSync(postCommitPath, "utf-8");
+      if (!existing.includes("turl-release")) {
+        content = existing.trim() + "\n\n" + hookContent;
+      } else {
+        return true;
+      }
+    }
+    fs.writeFileSync(postCommitPath, content, { mode: 0o755 });
+    return true;
+  }
+  return true;
+}
+
+function cleanupRulesFile() {
+  const { rules } = readTurlRules();
+  if (rules.length === 0) return { cleaned: false };
+
+  const cleanedRules = rules
+    .map((rule) => formatRule(rule))
+    .filter((rule) => rule && isValidRule(rule));
+
+  const dedupedRules = deduplicateRules(cleanedRules);
+
+  if (dedupedRules.length !== rules.length) {
+    writeTurlRules(dedupedRules);
+    return { cleaned: true, before: rules.length, after: dedupedRules.length };
+  }
+  return { cleaned: false };
+}
+
 async function main() {
   const cliOptions = parseArgs();
 
-  if (cliOptions.command === "_post-commit") {
+  if (args[0] === "_post-commit") {
     await handlePostCommitHook();
     process.exit(0);
   }
 
-  if (!cliOptions.skipUpdate && !cliOptions.command) {
+  if (!cliOptions.skipUpdate) {
     const updateInfo = await checkForUpdates();
     if (updateInfo.hasUpdate) {
       process.stdout.write(
@@ -2511,52 +1975,16 @@ async function main() {
     }
   }
 
-  if (cliOptions.command === "init") {
-    await handleInitCommand();
-    process.exit(0);
-  }
-
-  if (cliOptions.command === "sync") {
-    handleSyncCommand(cliOptions.quiet);
-    process.exit(0);
-  }
-
-  if (cliOptions.command === "analyze") {
-    await handleAnalyzeCommand(cliOptions.commandArgs);
-    process.exit(0);
-  }
-
-  if (cliOptions.command === "learn") {
-    await handleLearnCommand(cliOptions.commandArgs);
-    process.exit(0);
-  }
-
-  if (cliOptions.command === "rules") {
-    handleRulesCommand();
-    process.exit(0);
-  }
-
-  if (cliOptions.command === "forget") {
-    await handleForgetCommand(cliOptions.commandArgs);
-    process.exit(0);
-  }
-
-  if (cliOptions.command === "cleanup") {
-    handleCleanupCommand();
-    process.exit(0);
-  }
-
   const TOTAL_STEPS = 15;
 
   process.stdout.write(ui.header());
   process.stdout.write("\n");
 
-  process.stdout.write(
-    ui.step(0, TOTAL_STEPS, "Version check complete", "success"),
-  );
-  process.stdout.write(
-    ui.subStep(`v${PACKAGE_VERSION} is up to date`, "success"),
-  );
+  process.stdout.write(ui.step(0, TOTAL_STEPS, "Initializing...", "success"));
+  process.stdout.write(ui.subStep(`v${PACKAGE_VERSION}`, "success"));
+
+  ensureGitHooksInstalled();
+  cleanupRulesFile();
 
   let interactiveOptions = {};
   if (cliOptions.interactive) {
