@@ -8,7 +8,7 @@ import { run as runCleanup } from "./cleanup.js";
 const PROJECT_ROOT = process.cwd();
 const args = process.argv.slice(2);
 
-const PACKAGE_VERSION = "3.4.0";
+const PACKAGE_VERSION = "3.7.0";
 const PACKAGE_NAME = "turl-release";
 
 const COLORS = {
@@ -305,6 +305,9 @@ function parseArgs() {
       options.command = "forget";
       options.commandArgs = args.slice(i + 1);
       break;
+    } else if (arg === "cleanup" || arg === "fix-rules") {
+      options.command = "cleanup";
+      break;
     } else if (arg === "_post-commit") {
       options.command = "_post-commit";
       break;
@@ -329,6 +332,7 @@ ${ui.header()}
     ${COLORS.brightBlue}rules${COLORS.reset}                 List all project rules
     ${COLORS.brightBlue}learn <rule>${COLORS.reset}          Manually add a rule
     ${COLORS.brightBlue}forget <number>${COLORS.reset}       Remove a rule by number
+    ${COLORS.brightBlue}cleanup${COLORS.reset}               Fix and reformat all rules in copilot-instructions.md
 
   ${COLORS.bright}Options:${COLORS.reset}
     ${COLORS.brightBlue}-b, --branch <name>${COLORS.reset}   Override branch to push to
@@ -340,10 +344,10 @@ ${ui.header()}
   ${COLORS.bright}Quick Start (run once per project):${COLORS.reset}
     ${COLORS.brightBlue}turl-release init${COLORS.reset}     Sets up automatic learning
 
-  ${COLORS.bright}How Automatic Learning Works:${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Git hooks:${COLORS.reset} Learns from every commit automatically
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Copilot sync:${COLORS.reset} Rules auto-sync to .github/copilot-instructions.md
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}History analysis:${COLORS.reset} Run "analyze" to learn from past commits
+  ${COLORS.bright}How It Works (like Claude's lessons.md):${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Single source of truth:${COLORS.reset} .github/copilot-instructions.md
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Auto-learns:${COLORS.reset} From every commit and release
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Copilot integration:${COLORS.reset} Rules appear in Copilot context
     ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Release checks:${COLORS.reset} Warns before committing rule violations
 
 `);
@@ -1214,12 +1218,14 @@ function readTurlRules() {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed.startsWith("- ")) {
-      const cleanedRule = trimmed.replace(/^([-*]\s*)+/, "").trim();
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      const cleanedRule = trimmed.replace(/^[\s\-*]+/, "").trim();
       if (
         cleanedRule &&
+        cleanedRule.length >= 10 &&
         !cleanedRule.startsWith("_") &&
-        !cleanedRule.startsWith("<!--")
+        !cleanedRule.startsWith("<!--") &&
+        !cleanedRule.includes("TURL-RULES-")
       ) {
         rules.push(cleanedRule);
       }
@@ -1231,7 +1237,7 @@ function readTurlRules() {
 
 function formatRule(rule) {
   let formatted = rule
-    .replace(/^([-*]\s*)+/, "")
+    .replace(/^[\s\-*]+/, "")
     .trim()
     .replace(/\s+/g, " ");
 
@@ -1568,6 +1574,58 @@ async function handleForgetCommand(commandArgs) {
       `\n  ${COLORS.brightRed}${SYMBOLS.cross}${COLORS.reset} ${result.error}\n\n`,
     );
   }
+}
+
+function handleCleanupCommand() {
+  process.stdout.write(ui.header());
+
+  process.stdout.write(
+    `\n  ${COLORS.bright}Cleaning up copilot-instructions.md${COLORS.reset}\n`,
+  );
+  process.stdout.write(`  ${ui.divider()}\n\n`);
+
+  const { rules } = readTurlRules();
+  const originalCount = rules.length;
+
+  process.stdout.write(
+    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Found ${originalCount} rules\n`,
+  );
+
+  const cleanedRules = rules
+    .map((rule) => formatRule(rule))
+    .filter((rule) => rule && isValidRule(rule));
+
+  const dedupedRules = deduplicateRules(cleanedRules);
+
+  process.stdout.write(
+    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} After formatting: ${cleanedRules.length} rules\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} After deduplication: ${dedupedRules.length} rules\n\n`,
+  );
+
+  writeTurlRules(dedupedRules);
+
+  const removed = originalCount - dedupedRules.length;
+  if (removed > 0) {
+    process.stdout.write(
+      `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Removed ${removed} duplicate/invalid rules\n`,
+    );
+  }
+
+  process.stdout.write(
+    `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Rules formatted and saved to copilot-instructions.md\n\n`,
+  );
+
+  process.stdout.write(
+    `  ${COLORS.dim}All rules now properly formatted:${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.dim}- Capitalized first letter${COLORS.reset}\n`,
+  );
+  process.stdout.write(`  ${COLORS.dim}- Single dash prefix${COLORS.reset}\n`);
+  process.stdout.write(`  ${COLORS.dim}- Proper punctuation${COLORS.reset}\n`);
+  process.stdout.write(`  ${COLORS.dim}- No duplicates${COLORS.reset}\n\n`);
 }
 
 const POST_COMMIT_HOOK_CONTENT = `#!/bin/sh
@@ -2425,6 +2483,34 @@ async function main() {
     process.exit(0);
   }
 
+  if (!cliOptions.skipUpdate && !cliOptions.command) {
+    const updateInfo = await checkForUpdates();
+    if (updateInfo.hasUpdate) {
+      process.stdout.write(
+        `\n  ${COLORS.brightBlue}${SYMBOLS.lightning}${COLORS.reset} ${COLORS.bright}TURL Update Available${COLORS.reset}\n`,
+      );
+      process.stdout.write(
+        `  ${COLORS.dim}v${updateInfo.currentVersion} ${SYMBOLS.arrow} v${updateInfo.latestVersion}${COLORS.reset}\n\n`,
+      );
+      process.stdout.write(
+        `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Auto-updating turl-release...\n`,
+      );
+      const updated = await performUpdate();
+      if (updated) {
+        process.stdout.write(
+          `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} ${COLORS.bright}Updated to v${updateInfo.latestVersion}${COLORS.reset}\n`,
+        );
+        process.stdout.write(
+          `  ${COLORS.dim}Restart turl-release to use the new version.${COLORS.reset}\n\n`,
+        );
+        process.exit(0);
+      }
+      process.stdout.write(
+        `  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} Update failed, continuing with current version\n\n`,
+      );
+    }
+  }
+
   if (cliOptions.command === "init") {
     await handleInitCommand();
     process.exit(0);
@@ -2455,44 +2541,22 @@ async function main() {
     process.exit(0);
   }
 
+  if (cliOptions.command === "cleanup") {
+    handleCleanupCommand();
+    process.exit(0);
+  }
+
   const TOTAL_STEPS = 15;
 
   process.stdout.write(ui.header());
   process.stdout.write("\n");
 
-  if (!cliOptions.skipUpdate) {
-    process.stdout.write(
-      ui.step(0, TOTAL_STEPS, "Checking for updates...", "running"),
-    );
-    const updateInfo = await checkForUpdates();
-    if (updateInfo.hasUpdate) {
-      process.stdout.write(
-        ui.subStep(
-          `Update available: v${updateInfo.currentVersion} ${SYMBOLS.arrow} v${updateInfo.latestVersion}`,
-          "info",
-        ),
-      );
-      process.stdout.write(ui.subStep("Auto-updating turl-release...", "info"));
-      const updated = await performUpdate();
-      if (updated) {
-        process.stdout.write(
-          `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} ${COLORS.bright}Restart turl-release to use the new version.${COLORS.reset}\n\n`,
-        );
-        process.exit(0);
-      }
-      process.stdout.write(
-        ui.subStep("Update failed, continuing with current version", "warn"),
-      );
-    } else if (updateInfo.error) {
-      process.stdout.write(
-        ui.subStep("Could not check for updates (offline?)", "warn"),
-      );
-    } else {
-      process.stdout.write(
-        ui.subStep(`v${PACKAGE_VERSION} is the latest version`, "success"),
-      );
-    }
-  }
+  process.stdout.write(
+    ui.step(0, TOTAL_STEPS, "Version check complete", "success"),
+  );
+  process.stdout.write(
+    ui.subStep(`v${PACKAGE_VERSION} is up to date`, "success"),
+  );
 
   let interactiveOptions = {};
   if (cliOptions.interactive) {

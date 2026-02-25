@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.8] - 2026-02-25
+
+- Added a new `cleanup` command (also accessible as `fix-rules`) to reformat and fix rules in copilot-instructions.md, ensuring consistent formatting and removing issues like duplicate dashes.
+- Enhanced rule parsing and formatting logic with improved regex patterns to handle various bullet styles and whitespace more effectively.
+- Updated the help menu to clarify the system's operation by comparing it to "Claude's lessons.md" as a single source of truth for better user understanding.
+- Implemented an automatic update check and auto-update mechanism at the start of every release process to ensure the tool uses the latest features before proceeding with any operations.
+
+## [3.7] - 2026-02-25
+
+- Implemented automatic update check and auto-update at the very start of every release, before any other operations, ensuring users always have the latest features.
+- Added `cleanup` command to fix and reformat all rules in copilot-instructions.md, removing duplicate dashes and ensuring proper formatting.
+- Fixed rule parsing to properly strip multiple leading dashes (e.g., "- - - Rule" becomes "Rule") that accumulated from previous formatting issues.
+- Improved rule formatting with better regex patterns to handle all bullet variations and whitespace.
+- Updated help menu to better describe the system as working "like Claude's lessons.md" with a single source of truth.
+- Synced version numbers across package.json (3.7.0), turl.json (3.7), and PACKAGE_VERSION constant.
+
 ## [3.6] - 2026-02-25
 
 - Improved the update process by removing the interactive prompt for updates. Now, when an update is available, the tool automatically attempts to update itself without user intervention.
