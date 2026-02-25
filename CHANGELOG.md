@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2] - 2026-02-25
+
+- Updated the purpose of rules in turl.txt to focus on helping GitHub Copilot generate consistent code, replacing the previous emphasis on learning from past commits and mistakes.
+- Revised the editing guidance in turl.txt to clarify that manual edits are preserved but may be reformatted on the next release, replacing the previous warning against manual edits.
+- Refined the project rules in turl.txt to be more concise and actionable, focusing on specific guidelines like file structure, consistent UI elements, and version synchronization.
+- Improved the rule violation detection logic in src/index.js with a structured, step-by-step analysis framework to ensure violations are only flagged when changes clearly contradict guidelines.
+- Enhanced the violation check prompt in src/index.js to emphasize conservative flagging, requiring 100% certainty before identifying a violation, and added detailed context to reduce false positives.
+
 ## [3.1] - 2026-02-24
 
 - Improved the rule violation detection prompt in the code review process to be more precise and conservative. The updated prompt now emphasizes that violations must be clear and definitive, provides specific examples of what constitutes a violation versus what does not, and instructs the reviewer to err on the side of no violations when in doubt.

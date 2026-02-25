@@ -8,7 +8,7 @@ import { run as runCleanup } from "./cleanup.js";
 const PROJECT_ROOT = process.cwd();
 const args = process.argv.slice(2);
 
-const PACKAGE_VERSION = "2.9.0";
+const PACKAGE_VERSION = "3.1.0";
 const PACKAGE_NAME = "turl-release";
 
 const COLORS = {
@@ -1152,8 +1152,8 @@ function updateChangelog(changelogEntry) {
 const TURL_TXT_PATH = path.join(PROJECT_ROOT, "public", "turl.txt");
 const TURL_TXT_HEADER = `# TURL Project Rules & Lessons Learned
 # This file is automatically managed by turl-release.
-# Rules are learned from past commits and mistakes to prevent future issues.
-# Do NOT manually edit this file unless you know what you are doing.
+# Rules are learned from commits and help GitHub Copilot generate consistent code.
+# Manual edits are preserved but may be reformatted on next release.
 
 `;
 
@@ -1218,50 +1218,54 @@ async function checkRulesViolations(apiKey, diff, stat, changedFiles, rules) {
 
   const rulesText = rules.map((r, i) => `${i + 1}. ${r}`).join("\n");
 
-  const prompt = `You are a code reviewer checking if code changes ACTIVELY VIOLATE or CONTRADICT established project rules.
+  const prompt = `You are analyzing code changes to determine if they ACTIVELY BREAK project guidelines.
 
-PROJECT RULES:
+PROJECT GUIDELINES (for context only - most will NOT apply):
 ${rulesText}
 
 Changed files: ${changedFiles.join(", ")}
-
 Diff statistics:
 ${stat}
 
-Code changes (diff):
+Code diff:
 ${truncatedDiff}
 
-CRITICAL INSTRUCTIONS - READ CAREFULLY:
-1. A violation ONLY occurs when the code changes DEFINITIVELY and CLEARLY break a rule
-2. NOT following a rule is NOT a violation - rules only apply in specific contexts
-3. If a rule is about "X should be done" and the changes don't involve X, that is NOT a violation
-4. When in doubt, it is NOT a violation - err heavily on the side of NO_VIOLATIONS
-5. Do NOT flag theoretical or speculative violations - only flag CLEAR, OBVIOUS ones
+ANALYSIS FRAMEWORK - Think step by step:
 
-IMPORTANT CONTEXT:
-- This tool auto-generates changelogs and commit messages, so "document in changelog" rules are handled automatically
-- If code uses existing constants/color variables from the codebase, it IS maintaining consistency
-- If code uses a project's established pattern (e.g., COLORS object, existing UI helper functions), it IS consistent
+STEP 1: What is actually being changed in this diff?
+- Identify the actual files modified and the nature of changes (new code, refactoring, fixes, etc.)
 
-Examples of what IS a violation:
-- Rule says "use Tailwind CSS" but code adds NEW inline styles or NEW CSS files
-- Rule says "put hooks in app/hooks" but code creates a NEW hook in a wrong folder
-- Rule says "keep versions in sync" but code updates one version WITHOUT the other in the SAME commit
+STEP 2: For each guideline, ask: "Does this diff INTRODUCE something that contradicts this guideline?"
+- A guideline is ONLY violated if the diff ADDS code that directly contradicts it
+- Guidelines about organization only apply if NEW files of that type are being created
+- Guidelines about documentation are AUTOMATICALLY handled by this release tool
+- Guidelines about consistency only apply if the changes BREAK existing patterns
 
-Examples of what is NOT a violation:
-- Rule about "documenting changes" - the release tool handles this automatically
-- Rule about "using consistent colors" when code uses the existing COLORS constant/variable
-- Rule about "file organization" when the commit doesn't create new files of that type
-- ANY rule where the spirit of the rule is being followed even if not literally word-for-word
-- Any rule that requires human judgment about "enough" or "sufficient"
+STEP 3: Apply the "New Developer Test"
+- If a new developer reviewed this diff, would they clearly see a rule being broken?
+- If it requires speculation, assumption, or deep context to see a violation, it is NOT a violation
 
-Be EXTREMELY conservative. Only flag something as a violation if you are 100% certain it breaks a rule.
-If you're not 100% sure, respond with: NO_VIOLATIONS
+AUTOMATIC PASS CONDITIONS (respond NO_VIOLATIONS immediately if ANY apply):
+- The diff is primarily updating existing patterns/code consistently
+- The diff uses existing infrastructure (constants, utilities, components) from the codebase
+- The changes are version bumps, changelog updates, or metadata changes
+- The guideline is about "documenting" something (this tool handles documentation)
+- The guideline requires subjective judgment ("enough", "sufficient", "comprehensive")
+- The guideline is aspirational/best-practice rather than a hard rule
+- You would need to see code NOT in the diff to determine a violation
 
-Output format (if violations found):
-VIOLATION: [Rule number] - [Specific explanation of how the code DEFINITIVELY breaks this rule]
+VIOLATION THRESHOLD - ALL must be true:
+1. The diff ADDS or MODIFIES code in a way that DIRECTLY contradicts a specific guideline
+2. The violation is OBJECTIVELY verifiable from the diff alone (no assumptions)
+3. A reasonable developer would agree this is a clear violation
+4. The guideline is actionable for THIS specific change (not a general best practice)
 
-Output format (if no violations or unsure):
+If ANY doubt exists, respond: NO_VIOLATIONS
+
+Output format (ONLY if 100% certain of clear violation):
+VIOLATION: [Rule number] - [One sentence explaining what specific code in the diff breaks the rule]
+
+Output format (default - use this unless absolutely certain):
 NO_VIOLATIONS`;
 
   const response = await callGrokApi(apiKey, prompt);
@@ -1325,33 +1329,47 @@ async function generateNewRules(
     ? existingRules.map((r, i) => `${i + 1}. ${r}`).join("\n")
     : "(No existing rules yet)";
 
-  const prompt = `Analyze the following code changes and identify if there are any lessons learned, patterns to follow, or mistakes to avoid in the future.
+  const prompt = `Analyze these code changes to identify valuable lessons for future development.
 
-EXISTING PROJECT RULES (do not duplicate these):
+This project uses GitHub Copilot for code generation. Rules you identify will help Copilot generate better, more consistent code in the future.
+
+EXISTING PROJECT RULES (avoid duplicates):
 ${existingRulesText}
 
 Changed files: ${changedFiles.join(", ")}
-
 Diff statistics:
 ${stat}
 
-Code changes (diff):
+Code changes:
 ${truncatedDiff}
 
-INSTRUCTIONS:
-1. Look for patterns that suggest a lesson was learned (bug fixes, refactors, safety improvements)
-2. Look for new patterns or conventions being established
-3. Identify potential pitfalls that future developers should avoid
-4. Only suggest rules that are NOT already covered by existing rules
-5. Keep rules concise, actionable, and specific to this project
-6. If no new rules are needed, respond with exactly: NO_NEW_RULES
+IDENTIFY RULES ONLY IF the diff shows:
+1. A BUG FIX - What pattern caused the bug? How to prevent it?
+2. A REFACTOR - What pattern was improved? What's the better approach?
+3. A NEW PATTERN - Is a new convention being established worth codifying?
+4. A SAFETY IMPROVEMENT - What edge case was handled? Should it always be handled?
+5. A CONSISTENCY FIX - Was something made consistent that should stay consistent?
 
-Output format (if new rules found):
-RULE: [Concise, actionable rule]
-RULE: [Another rule]
-...
+RULE QUALITY CRITERIA:
+- Specific and actionable (not vague best practices)
+- Relevant to this specific codebase and tech stack
+- Would help an AI (like Copilot) generate better code
+- Not already covered by existing rules (even partially)
+- Based on actual changes in the diff, not assumptions
 
-Output format (if no new rules):
+DO NOT create rules for:
+- General programming best practices (Copilot already knows these)
+- Version/changelog updates (handled automatically)
+- Code formatting (handled by formatters)
+- Things that are just "good to do" but not project-specific
+- Anything speculative or not clearly evidenced in the diff
+
+If no meaningful, non-duplicate rules can be extracted, respond: NO_NEW_RULES
+
+Output format (only for genuinely valuable rules):
+RULE: [Specific, actionable rule that helps future development]
+
+Output format (default):
 NO_NEW_RULES`;
 
   const response = await callGrokApi(apiKey, prompt);
@@ -1383,6 +1401,9 @@ async function promptUserForViolations(violations) {
     output: process.stdout,
   });
 
+  const BOX_WIDTH = 84;
+  const CONTENT_WIDTH = BOX_WIDTH - 6;
+
   const wrapText = (text, maxWidth) => {
     const words = text.split(" ");
     const lines = [];
@@ -1393,7 +1414,8 @@ async function promptUserForViolations(violations) {
         currentLine = (currentLine + " " + word).trim();
       } else {
         if (currentLine) lines.push(currentLine);
-        currentLine = word;
+        currentLine =
+          word.length > maxWidth ? word.substring(0, maxWidth) : word;
       }
     }
     if (currentLine) lines.push(currentLine);
@@ -1403,70 +1425,79 @@ async function promptUserForViolations(violations) {
   return new Promise((resolve) => {
     process.stdout.write(`\n\n`);
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}┌────────────────────────────────────────────────────────────────────────────┐${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}┌${"─".repeat(BOX_WIDTH - 2)}┐${COLORS.reset}\n`,
+    );
+    const headerText = `${SYMBOLS.warning} RULE VIOLATIONS DETECTED`;
+    process.stdout.write(
+      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.brightRed}${headerText}${COLORS.reset}${" ".repeat(BOX_WIDTH - headerText.length - 4)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} ${COLORS.bright}RULE VIOLATIONS DETECTED${COLORS.reset}                                              ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}├────────────────────────────────────────────────────────────────────────────┤${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}├${"─".repeat(BOX_WIDTH - 2)}┤${COLORS.reset}\n`,
     );
 
     for (let i = 0; i < violations.length; i++) {
       const violation = violations[i];
-      const ruleHeader = violation.ruleNumber
-        ? `Rule ${violation.ruleNumber}:`
-        : "Violation:";
+      const ruleNum = violation.ruleNumber || "?";
 
       process.stdout.write(
-        `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}                                                                            ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+        `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
       );
-      const headerPadding = 72 - ruleHeader.length - 2;
+
+      const ruleLabel = `${SYMBOLS.arrowRight} Rule ${ruleNum}:`;
       process.stdout.write(
-        `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}${ruleHeader}${COLORS.reset}${" ".repeat(Math.max(0, headerPadding))}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+        `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.brightBlue}${COLORS.bright}${ruleLabel}${COLORS.reset}${" ".repeat(BOX_WIDTH - ruleLabel.length - 4)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
       );
 
       if (violation.rule) {
-        const ruleLines = wrapText(violation.rule, 68);
+        const ruleLines = wrapText(violation.rule, CONTENT_WIDTH);
         for (const line of ruleLines) {
-          const padding = 72 - line.length;
+          const padding = BOX_WIDTH - line.length - 6;
           process.stdout.write(
-            `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}    ${COLORS.dim}${line}${COLORS.reset}${" ".repeat(Math.max(0, padding))}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+            `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}    ${COLORS.white}${line}${COLORS.reset}${" ".repeat(Math.max(0, padding))}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
           );
         }
       }
 
       if (violation.explanation) {
         process.stdout.write(
-          `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}                                                                            ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+          `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
         );
-        const explanationLines = wrapText(
-          `Issue: ${violation.explanation}`,
-          68,
+        const issueLabel = "Issue:";
+        process.stdout.write(
+          `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}    ${COLORS.brightRed}${issueLabel}${COLORS.reset}${" ".repeat(BOX_WIDTH - issueLabel.length - 6)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
         );
+        const explanationLines = wrapText(violation.explanation, CONTENT_WIDTH);
         for (const line of explanationLines) {
-          const padding = 72 - line.length;
+          const padding = BOX_WIDTH - line.length - 6;
           process.stdout.write(
             `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}    ${COLORS.brightRed}${line}${COLORS.reset}${" ".repeat(Math.max(0, padding))}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
           );
         }
       }
+
+      if (i < violations.length - 1) {
+        process.stdout.write(
+          `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}${"─".repeat(BOX_WIDTH - 6)}${COLORS.reset}  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+        );
+      }
     }
 
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}                                                                            ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}├────────────────────────────────────────────────────────────────────────────┤${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}├${"─".repeat(BOX_WIDTH - 2)}┤${COLORS.reset}\n`,
+    );
+    const footerLine1 = "Review these issues before releasing.";
+    const footerLine2 = "Fix violations or continue at your own risk.";
+    process.stdout.write(
+      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}${footerLine1}${COLORS.reset}${" ".repeat(BOX_WIDTH - footerLine1.length - 4)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}These changes may violate project rules.${COLORS.reset}                                ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}${footerLine2}${COLORS.reset}${" ".repeat(BOX_WIDTH - footerLine2.length - 4)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
     );
     process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}Review and fix these issues before releasing, or continue at your own risk.${COLORS.reset} ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}└────────────────────────────────────────────────────────────────────────────┘${COLORS.reset}\n\n`,
+      `  ${COLORS.brightRed}${COLORS.bright}└${"─".repeat(BOX_WIDTH - 2)}┘${COLORS.reset}\n\n`,
     );
 
     rl.question(
