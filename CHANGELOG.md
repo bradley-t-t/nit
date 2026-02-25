@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.9] - 2026-02-25
+
+- No functional changes or updates to the codebase are visible in this release as the diff only reflects a version number adjustment.
+
 ## [4.2] - 2026-02-25
 
 - Added a new guideline in copilot-instructions.md to ensure proper spacing and formatting, such as adding blank lines for readability, when updating markdown files like project rules for clear visual separation of content.
