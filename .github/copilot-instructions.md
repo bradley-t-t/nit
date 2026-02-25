@@ -33,4 +33,5 @@ Do not edit this section manually - it will be overwritten.
 - Auto-update turl-release at the start of every release before any other operations to ensure latest features are used.
 - When consolidating multiple commands into a single command, ensure that all relevant functionality from the removed commands is either integrated into the new command or explicitly documented as removed to avoid loss of features.
 - When introducing a simplified workflow or major UI change, update all related documentation (like help menus and usage instructions) in the same commit to reflect the new structure and prevent user confusion.
+- When updating markdown files like copilot-instructions.md, ensure proper spacing and formatting (e.g., adding blank lines for readability) in sections such as project rules to maintain clear visual separation of content.
 <!-- TURL-RULES-END -->

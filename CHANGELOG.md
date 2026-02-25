@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.2] - 2026-02-25
+
+- Added a new guideline in copilot-instructions.md to ensure proper spacing and formatting, such as adding blank lines for readability, when updating markdown files like project rules for clear visual separation of content.
+
 ## [4.1] - 2026-02-25
 
 - Added a blank line in the Copilot instructions markdown file for better formatting and readability in the project rules section.
