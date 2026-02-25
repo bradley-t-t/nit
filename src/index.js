@@ -1179,28 +1179,44 @@ function updateChangelog(changelogEntry) {
   );
 }
 
-const TURL_TXT_PATH = path.join(PROJECT_ROOT, "public", "turl.txt");
-const TURL_TXT_HEADER = `# TURL Project Rules & Lessons Learned
-# This file is automatically managed by turl-release.
-# Rules are learned from commits and help GitHub Copilot generate consistent code.
-# Manual edits are preserved but may be reformatted on next release.
+const COPILOT_INSTRUCTIONS_PATH = path.join(
+  PROJECT_ROOT,
+  ".github",
+  "copilot-instructions.md",
+);
 
-`;
+const TURL_SECTION_START = "<!-- TURL-RULES-START -->";
+const TURL_SECTION_END = "<!-- TURL-RULES-END -->";
 
 function readTurlRules() {
-  if (!fs.existsSync(TURL_TXT_PATH)) {
+  if (!fs.existsSync(COPILOT_INSTRUCTIONS_PATH)) {
     return { rules: [], rawContent: "" };
   }
 
-  const content = safeReadFile(TURL_TXT_PATH, "turl.txt");
-  const lines = content.split("\n");
+  const content = safeReadFile(
+    COPILOT_INSTRUCTIONS_PATH,
+    "copilot-instructions.md",
+  );
+
+  const startIdx = content.indexOf(TURL_SECTION_START);
+  const endIdx = content.indexOf(TURL_SECTION_END);
+
+  if (startIdx === -1 || endIdx === -1) {
+    return { rules: [], rawContent: content };
+  }
+
+  const sectionContent = content.slice(
+    startIdx + TURL_SECTION_START.length,
+    endIdx,
+  );
+  const lines = sectionContent.split("\n");
   const rules = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith("#")) {
-      const cleanedRule = trimmed.replace(/^-\s*/, "").trim();
-      if (cleanedRule) {
+    if (trimmed.startsWith("- ")) {
+      const cleanedRule = trimmed.slice(2).trim();
+      if (cleanedRule && !cleanedRule.startsWith("_")) {
         rules.push(cleanedRule);
       }
     }
@@ -1209,29 +1225,111 @@ function readTurlRules() {
   return { rules, rawContent: content };
 }
 
+function formatRule(rule) {
+  let formatted = rule
+    .replace(/^[-*]\s*/, "")
+    .trim()
+    .replace(/\s+/g, " ");
+
+  if (!formatted) return "";
+
+  formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+
+  if (!/[.!?]$/.test(formatted)) {
+    formatted += ".";
+  }
+
+  return formatted;
+}
+
+function normalizeForComparison(rule) {
+  return rule
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function deduplicateRules(rules) {
+  const seen = new Map();
+  const result = [];
+
+  for (const rule of rules) {
+    const normalized = normalizeForComparison(rule);
+    if (!normalized) continue;
+
+    if (!seen.has(normalized)) {
+      seen.set(normalized, true);
+      result.push(rule);
+    }
+  }
+
+  return result;
+}
+
 function writeTurlRules(rules) {
-  const rulesContent = rules.map((rule) => `- ${rule}`).join("\n");
-  safeWriteFile(
-    TURL_TXT_PATH,
-    TURL_TXT_HEADER + rulesContent + "\n",
-    "turl.txt",
-  );
+  const githubDir = path.join(PROJECT_ROOT, ".github");
+  if (!fs.existsSync(githubDir)) {
+    fs.mkdirSync(githubDir, { recursive: true });
+  }
+
+  const formattedRules = rules.map(formatRule).filter(Boolean);
+  const dedupedRules = deduplicateRules(formattedRules);
+
+  let existingContent = "";
+  if (fs.existsSync(COPILOT_INSTRUCTIONS_PATH)) {
+    existingContent = fs.readFileSync(COPILOT_INSTRUCTIONS_PATH, "utf-8");
+  }
+
+  const rulesMarkdown =
+    dedupedRules.length > 0
+      ? dedupedRules.map((r) => `- ${r}`).join("\n")
+      : "_No rules defined yet._";
+
+  const turlSection = `${TURL_SECTION_START}
+## Project Rules (Auto-managed by TURL)
+
+These rules are automatically learned from project commits and enforced during releases.
+Do not edit this section manually - it will be overwritten.
+
+${rulesMarkdown}
+${TURL_SECTION_END}`;
+
+  let newContent;
+
+  if (existingContent.includes(TURL_SECTION_START)) {
+    const regex = new RegExp(
+      `${TURL_SECTION_START}[\\s\\S]*?${TURL_SECTION_END}`,
+      "g",
+    );
+    newContent = existingContent.replace(regex, turlSection);
+  } else if (existingContent.trim()) {
+    newContent = existingContent.trim() + "\n\n" + turlSection + "\n";
+  } else {
+    newContent = `# Copilot Instructions
+
+This file provides context to GitHub Copilot for this project.
+
+${turlSection}
+`;
+  }
+
+  fs.writeFileSync(COPILOT_INSTRUCTIONS_PATH, newContent, "utf-8");
 }
 
 function appendTurlRule(newRule) {
   const { rules } = readTurlRules();
-  const normalizedNewRule = newRule.replace(/^[-*]\s*/, "").trim();
+  const formattedNew = formatRule(newRule);
 
-  const isDuplicate = rules.some((existingRule) => {
-    const normalizedExisting = existingRule
-      .replace(/^[-*]\s*/, "")
-      .trim()
-      .toLowerCase();
-    return normalizedExisting === normalizedNewRule.toLowerCase();
-  });
+  if (!formattedNew) return false;
 
-  if (!isDuplicate && normalizedNewRule) {
-    rules.push(normalizedNewRule);
+  const normalizedNew = normalizeForComparison(formattedNew);
+  const isDuplicate = rules.some(
+    (existing) => normalizeForComparison(existing) === normalizedNew,
+  );
+
+  if (!isDuplicate) {
+    rules.push(formattedNew);
     writeTurlRules(rules);
     return true;
   }
@@ -1287,13 +1385,14 @@ async function handleLearnCommand(commandArgs) {
       process.exit(0);
     }
 
+    const formattedRule = formatRule(answer.trim());
     const added = appendTurlRule(answer.trim());
     if (added) {
       process.stdout.write(
-        `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Rule added to turl.txt:\n`,
+        `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Rule added to copilot-instructions.md:\n`,
       );
       process.stdout.write(
-        `  ${COLORS.dim}"${answer.trim()}"${COLORS.reset}\n\n`,
+        `  ${COLORS.dim}"${formattedRule}"${COLORS.reset}\n\n`,
       );
     } else {
       process.stdout.write(
@@ -1303,12 +1402,15 @@ async function handleLearnCommand(commandArgs) {
     return;
   }
 
+  const formattedRule = formatRule(rule);
   const added = appendTurlRule(rule);
   if (added) {
     process.stdout.write(
-      `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Rule added to turl.txt:\n`,
+      `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Rule added to copilot-instructions.md:\n`,
     );
-    process.stdout.write(`  ${COLORS.dim}"${rule}"${COLORS.reset}\n\n`);
+    process.stdout.write(
+      `  ${COLORS.dim}"${formattedRule}"${COLORS.reset}\n\n`,
+    );
   } else {
     process.stdout.write(
       `\n  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} Rule already exists or is invalid.\n\n`,
@@ -1454,12 +1556,6 @@ async function handleForgetCommand(commandArgs) {
   }
 }
 
-const COPILOT_INSTRUCTIONS_PATH = path.join(
-  PROJECT_ROOT,
-  ".github",
-  "copilot-instructions.md",
-);
-
 const POST_COMMIT_HOOK_CONTENT = `#!/bin/sh
 # TURL Auto-Learning Hook - learns from each commit
 # Installed by turl-release init
@@ -1481,55 +1577,7 @@ fi
 
 function syncRulesToCopilotInstructions() {
   const { rules } = readTurlRules();
-
-  const githubDir = path.join(PROJECT_ROOT, ".github");
-  if (!fs.existsSync(githubDir)) {
-    fs.mkdirSync(githubDir, { recursive: true });
-  }
-
-  let existingContent = "";
-  if (fs.existsSync(COPILOT_INSTRUCTIONS_PATH)) {
-    existingContent = fs.readFileSync(COPILOT_INSTRUCTIONS_PATH, "utf-8");
-  }
-
-  const turlSectionStart = "<!-- TURL-RULES-START -->";
-  const turlSectionEnd = "<!-- TURL-RULES-END -->";
-
-  const rulesMarkdown =
-    rules.length > 0
-      ? rules.map((r) => `- ${r}`).join("\n")
-      : "_No rules defined yet._";
-
-  const turlSection = `${turlSectionStart}
-## Project Rules (Auto-managed by TURL)
-
-These rules are automatically learned from project commits and enforced during releases.
-Do not edit this section manually - it will be overwritten.
-
-${rulesMarkdown}
-${turlSectionEnd}`;
-
-  let newContent;
-
-  if (existingContent.includes(turlSectionStart)) {
-    const regex = new RegExp(
-      `${turlSectionStart}[\\s\\S]*?${turlSectionEnd}`,
-      "g",
-    );
-    newContent = existingContent.replace(regex, turlSection);
-  } else if (existingContent.trim()) {
-    newContent = existingContent.trim() + "\n\n" + turlSection;
-  } else {
-    newContent = `# Copilot Instructions
-
-This file provides context to GitHub Copilot for this project.
-
-${turlSection}
-`;
-  }
-
-  fs.writeFileSync(COPILOT_INSTRUCTIONS_PATH, newContent, "utf-8");
-
+  writeTurlRules(rules);
   return { rulesCount: rules.length, path: COPILOT_INSTRUCTIONS_PATH };
 }
 
@@ -1563,7 +1611,6 @@ async function handleInitCommand() {
   process.stdout.write(`  ${ui.divider()}\n\n`);
 
   const hooksDir = path.join(PROJECT_ROOT, ".git", "hooks");
-  let hooksInstalled = false;
 
   if (fs.existsSync(hooksDir)) {
     const postCommitPath = path.join(hooksDir, "post-commit");
@@ -1602,7 +1649,6 @@ async function handleInitCommand() {
     process.stdout.write(
       `    ${COLORS.dim}pre-push: Syncs rules to Copilot${COLORS.reset}\n\n`,
     );
-    hooksInstalled = true;
   } else {
     process.stdout.write(
       `  ${COLORS.brightRed}${SYMBOLS.warning}${COLORS.reset} No .git/hooks directory found\n`,
@@ -1612,25 +1658,17 @@ async function handleInitCommand() {
     );
   }
 
-  const publicDir = path.join(PROJECT_ROOT, "public");
-  if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
-  }
-  if (!fs.existsSync(TURL_TXT_PATH)) {
-    writeTurlRules([]);
+  const { rules } = readTurlRules();
+  if (!fs.existsSync(COPILOT_INSTRUCTIONS_PATH)) {
+    writeTurlRules(rules);
     process.stdout.write(
-      `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Created public/turl.txt\n`,
+      `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Created .github/copilot-instructions.md\n\n`,
     );
   } else {
     process.stdout.write(
-      `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} public/turl.txt exists\n`,
+      `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} .github/copilot-instructions.md exists\n\n`,
     );
   }
-
-  syncRulesToCopilotInstructions(true);
-  process.stdout.write(
-    `  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} Created .github/copilot-instructions.md\n\n`,
-  );
 
   process.stdout.write(`  ${COLORS.bright}What happens now:${COLORS.reset}\n`);
   process.stdout.write(
@@ -2645,7 +2683,7 @@ async function main() {
   );
 
   process.stdout.write(
-    ui.step(8, TOTAL_STEPS, "Checking project rules (turl.txt)...", "running"),
+    ui.step(8, TOTAL_STEPS, "Checking project rules...", "running"),
   );
   const { rules: projectRules } = readTurlRules();
 
@@ -2855,12 +2893,7 @@ async function main() {
   }
 
   process.stdout.write(
-    ui.step(
-      15,
-      TOTAL_STEPS,
-      "Learning from this release (turl.txt)...",
-      "running",
-    ),
+    ui.step(15, TOTAL_STEPS, "Learning from this release...", "running"),
   );
   try {
     const newRules = await generateNewRules(
@@ -2883,13 +2916,12 @@ async function main() {
       }
       if (addedCount > 0 && !cliOptions.dryRun) {
         process.stdout.write(
-          ui.subStep(`Added ${addedCount} new rule(s) to turl.txt`, "success"),
+          ui.subStep(
+            `Added ${addedCount} new rule(s) to copilot-instructions.md`,
+            "success",
+          ),
         );
-        syncRulesToCopilotInstructions(true);
-        process.stdout.write(
-          ui.subStep("Synced rules to Copilot instructions", "success"),
-        );
-        execCommand("git add public/turl.txt .github/copilot-instructions.md", {
+        execCommand("git add .github/copilot-instructions.md", {
           silent: true,
           ignoreError: true,
         });

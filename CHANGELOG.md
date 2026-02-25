@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4] - 2026-02-25
+
+- Moved project rules from `public/turl.txt` to `.github/copilot-instructions.md` for better organization and integration with GitHub Copilot.
+- Updated the rules management system to read from and write to the new `copilot-instructions.md` file using defined section markers for TURL rules.
+- Added functionality to format and deduplicate rules when writing to `copilot-instructions.md`, ensuring cleaner and more consistent rule presentation.
+- Created the `.github` directory automatically if it doesn't exist to support the new rules file location.
+
 ## [3.3] - 2026-02-25
 
 - Added new command-line interface commands to enhance functionality: `init` for setting up automatic learning with git hooks and Copilot sync, `sync` for updating rules to `.github/copilot-instructions.md`, `analyze` for learning from git history, `rules` (or `list-rules`) for listing project rules, `learn` (or `add-rule`) for manually adding rules, and `forget` (or `remove-rule`) for removing rules by number.
