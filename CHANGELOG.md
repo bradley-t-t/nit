@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.6] - 2026-02-25
+
+- Improved the update process by removing the interactive prompt for updates. Now, when an update is available, the tool automatically attempts to update itself without user intervention.
+- Added informative messages during the update process, showing the current and latest version numbers, and notifying the user that an auto-update is in progress.
+- Updated the messaging for update failures to clearly indicate that the update failed and the tool is continuing with the current version.
+- Enhanced user feedback by displaying a restart message after a successful update, instructing the user to restart the tool to use the new version.
+
 ## [3.5] - 2026-02-25
 
 - Improved the rule parsing logic in `readTurlRules()` to handle various bullet formats by replacing multiple bullet variations with a more robust regex pattern.

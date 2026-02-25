@@ -2466,15 +2466,22 @@ async function main() {
     );
     const updateInfo = await checkForUpdates();
     if (updateInfo.hasUpdate) {
-      const shouldUpdate = await promptForUpdate(updateInfo);
-      if (shouldUpdate) {
-        const updated = await performUpdate();
-        if (updated) {
-          process.exit(0);
-        }
+      process.stdout.write(
+        ui.subStep(
+          `Update available: v${updateInfo.currentVersion} ${SYMBOLS.arrow} v${updateInfo.latestVersion}`,
+          "info",
+        ),
+      );
+      process.stdout.write(ui.subStep("Auto-updating turl-release...", "info"));
+      const updated = await performUpdate();
+      if (updated) {
+        process.stdout.write(
+          `\n  ${COLORS.brightWhite}${SYMBOLS.check}${COLORS.reset} ${COLORS.bright}Restart turl-release to use the new version.${COLORS.reset}\n\n`,
+        );
+        process.exit(0);
       }
       process.stdout.write(
-        ui.subStep("Continuing with current version", "info"),
+        ui.subStep("Update failed, continuing with current version", "warn"),
       );
     } else if (updateInfo.error) {
       process.stdout.write(

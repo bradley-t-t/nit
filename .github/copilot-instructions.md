@@ -30,4 +30,6 @@ Do not edit this section manually - it will be overwritten.
 - Implement a dedicated validation function for rules (e.g., `isValidRule()`) to enforce content, length, and format constraints, preventing invalid or irrelevant entries from being included in the rule set.
 - When parsing rules from documentation files, use robust regex patterns to handle various bullet formats (e.g., `-` or `*`) and filter out invalid content like HTML comments to ensure only valid rules are processed.
 - Implement validation checks for rules, such as content length constraints and exclusion of specific markers (e.g., HTML comments or project-specific tags), to prevent processing irrelevant or malformed entries.
+- When implementing auto-update functionality, remove interactive prompts and provide clear feedback messages including current and latest version numbers, update status, and post-update instructions (e.g., restart prompts) to ensure a seamless user experience.
+- When implementing update mechanisms in CLI tools, automate the update process by removing interactive prompts and provide clear feedback messages about the update status (e.g., current vs. latest version, update in progress, success with restart instructions, or failure with fallback notice) to improve user experience and reduce manual intervention.
 <!-- TURL-RULES-END -->
