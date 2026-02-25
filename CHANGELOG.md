@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3] - 2026-02-25
+
+- Added new command-line interface commands to enhance functionality: `init` for setting up automatic learning with git hooks and Copilot sync, `sync` for updating rules to `.github/copilot-instructions.md`, `analyze` for learning from git history, `rules` (or `list-rules`) for listing project rules, `learn` (or `add-rule`) for manually adding rules, and `forget` (or `remove-rule`) for removing rules by number.
+- Introduced a new internal command `_post-commit` for handling post-commit operations.
+- Updated the help menu to reflect new commands and provide a clearer structure, including a "Quick Start" guide and details on automatic learning via git hooks, Copilot sync, history analysis, and release checks.
+- Added support for command-specific arguments, allowing finer control over command behavior through `commandArgs`.
+- Implemented functionality to remove rules from `turl.txt` with the `removeTurlRule` function, returning success or error based on rule existence.
+- Added an interactive prompt for the `learn` command to capture user input for new rules when no rule is provided via arguments.
+- Added a `--quiet` or `-q` flag to suppress output during operations for a less verbose experience.
+- Updated commit message guidelines in `turl.txt` to include prefixes like "TURL Release Tool:" for clarity, specify version numbers in release commits, maintain consistent prefix formatting, and ensure sequential version increments.
+
 ## [3.2] - 2026-02-25
 
 - Updated the purpose of rules in turl.txt to focus on helping GitHub Copilot generate consistent code, replacing the previous emphasis on learning from past commits and mistakes.

@@ -1,7 +1,12 @@
-# TURL Project Rules & Lessons Learned
-# This file is automatically managed by turl-release.
-# Rules are learned from commits and help GitHub Copilot generate consistent code.
-# Manual edits are preserved but may be reformatted on next release.
+# Copilot Instructions
+
+This file provides context to GitHub Copilot for this project.
+
+<!-- TURL-RULES-START -->
+## Project Rules (Auto-managed by TURL)
+
+These rules are automatically learned from project commits and enforced during releases.
+Do not edit this section manually - it will be overwritten.
 
 - Place turl.txt and turl.json in a public/ directory rather than the project root for cleaner structure.
 - When relocating files, update all code paths and git commands referencing those files to avoid commit failures.
@@ -18,3 +23,4 @@
 - When adding new commands or features, update the help menu in the same commit to reflect the new functionality and ensure user guidance remains accurate.
 - Include support for command-specific flags (like `--quiet` or `-q`) when introducing new commands to allow users to control output verbosity or behavior.
 - When adding new commands or features, update the help menu and changelog in the same commit to ensure documentation remains accurate and up-to-date.
+<!-- TURL-RULES-END -->
