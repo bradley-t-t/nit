@@ -3,7 +3,6 @@
 This file provides context to GitHub Copilot for this project.
 
 <!-- TURL-RULES-START -->
-
 ## Project Rules (Auto-managed by TURL)
 
 These rules are automatically learned from project commits and enforced during releases.
@@ -31,4 +30,6 @@ Do not edit this section manually - it will be overwritten.
 - Implement a dedicated validation function for rules to enforce content, length, and format constraints.
 - When implementing auto-update functionality, provide clear feedback messages including current and latest version numbers.
 - Auto-update turl-release at the start of every release before any other operations to ensure latest features are used.
+- When consolidating multiple commands into a single command, ensure that all relevant functionality from the removed commands is either integrated into the new command or explicitly documented as removed to avoid loss of features.
+- When introducing a simplified workflow or major UI change, update all related documentation (like help menus and usage instructions) in the same commit to reflect the new structure and prevent user confusion.
 <!-- TURL-RULES-END -->

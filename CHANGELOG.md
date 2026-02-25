@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0] - 2026-02-25
+
+- Added new project rules in the Copilot instructions to ensure that when consolidating multiple commands into a single command, all functionality from the removed commands is either integrated or explicitly documented as removed to prevent feature loss.
+- Introduced a rule in the Copilot instructions to mandate updating all related documentation, such as help menus and usage instructions, in the same commit when implementing a simplified workflow or major UI change to avoid user confusion.
+
 ## [3.9] - 2026-02-25
 
 - Simplified the tool to a single command, `turl-release`, which now handles the entire release process automatically without the need for subcommands.
