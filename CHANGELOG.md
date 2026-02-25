@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.1] - 2026-02-25
+
+- Added a blank line in the Copilot instructions markdown file for better formatting and readability in the project rules section.
+
 ## [4.0] - 2026-02-25
 
 - Added new project rules in the Copilot instructions to ensure that when consolidating multiple commands into a single command, all functionality from the removed commands is either integrated or explicitly documented as removed to prevent feature loss.
