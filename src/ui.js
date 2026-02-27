@@ -29,4 +29,18 @@ export const ui = {
       `\n  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${statusMessage}\n`,
     );
   },
+
+  printHeaderWithError: (statusMessage, errorDetail) => {
+    ui.clear();
+    process.stdout.write(ui.header());
+    process.stdout.write(
+      `\n  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${statusMessage}\n`,
+    );
+    if (errorDetail) {
+      const lines = errorDetail.split("\n").filter(Boolean);
+      for (const line of lines) {
+        process.stdout.write(`  ${COLORS.brightRed}${line}${COLORS.reset}\n`);
+      }
+    }
+  },
 };

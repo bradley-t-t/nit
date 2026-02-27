@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.8] - 2026-02-27
+
+- Improved build error handling by capturing and storing both stdout and stderr output from the build command for better debugging.
+- Enhanced error reporting in the UI by adding a new `printHeaderWithError` method to display detailed error messages with formatted output in red.
+- Updated the main release process to display detailed build error output when a build fails, using the new UI method.
+- Added detailed error output display in the release failure handler if error details are available, improving user feedback on failures.
+
 ## [4.7] - 2026-02-27
 
 - Added an extra newline before the status message in the UI output to improve readability.

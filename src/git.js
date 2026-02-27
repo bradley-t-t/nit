@@ -253,23 +253,34 @@ fi
 
 export function runBuild(buildCommand) {
   return new Promise((resolve, reject) => {
-    const [cmd, ...args] = buildCommand.split(" ");
-    const child = spawn(cmd, args, {
+    const [cmd, ...cmdArgs] = buildCommand.split(" ");
+    const child = spawn(cmd, cmdArgs, {
       cwd: PROJECT_ROOT,
       stdio: "pipe",
       shell: true,
     });
 
+    let stderrOutput = "";
+    let stdoutOutput = "";
+
+    child.stdout.on("data", (data) => {
+      stdoutOutput += data.toString();
+    });
+
+    child.stderr.on("data", (data) => {
+      stderrOutput += data.toString();
+    });
+
     child.on("close", (code) => {
-      if (code === 0) resolve();
-      else
-        reject(
-          new TurlError(
-            `Build failed with exit code ${code}`,
-            ErrorCodes.BUILD_FAILED,
-            { command: buildCommand, exitCode: code },
-          ),
-        );
+      if (code === 0) return resolve();
+      const errorOutput = (stderrOutput || stdoutOutput).trim();
+      reject(
+        new TurlError(
+          `Build failed with exit code ${code}`,
+          ErrorCodes.BUILD_FAILED,
+          { command: buildCommand, exitCode: code, output: errorOutput },
+        ),
+      );
     });
 
     child.on("error", (err) => {

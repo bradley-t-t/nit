@@ -268,7 +268,11 @@ async function main() {
     if (buildCommand) {
       try {
         if (!cliOptions.dryRun) await runBuild(buildCommand);
-      } catch {}
+      } catch (err) {
+        const errorOutput = err.details?.output || err.message;
+        ui.printHeaderWithError("Build failed", errorOutput);
+        exitWithRollback(1);
+      }
     }
   }
 
@@ -352,7 +356,12 @@ async function main() {
 
 main().catch((err) => {
   ui.showCursor();
-  ui.printHeaderWithStatus(`Release Failed: ${err.message}`);
+  const errorOutput = err.details?.output;
+  if (errorOutput) {
+    ui.printHeaderWithError(`Release Failed: ${err.message}`, errorOutput);
+  } else {
+    ui.printHeaderWithStatus(`Release Failed: ${err.message}`);
+  }
   rollbackVersion();
   process.exit(1);
 });
