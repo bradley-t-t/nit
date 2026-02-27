@@ -11,7 +11,7 @@ export function execCommand(command, options = {}) {
     return execSync(command, {
       cwd: PROJECT_ROOT,
       encoding: "utf-8",
-      stdio: options.silent ? "pipe" : "inherit",
+      stdio: options.silent !== false ? "pipe" : "inherit",
       ...options,
     });
   } catch (err) {
@@ -256,7 +256,7 @@ export function runBuild(buildCommand) {
     const [cmd, ...args] = buildCommand.split(" ");
     const child = spawn(cmd, args, {
       cwd: PROJECT_ROOT,
-      stdio: "inherit",
+      stdio: "pipe",
       shell: true,
     });
 

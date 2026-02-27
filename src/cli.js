@@ -1,6 +1,5 @@
 import { execSync } from "child_process";
 import { COLORS, SYMBOLS, PACKAGE_NAME, PACKAGE_VERSION } from "./constants.js";
-import { ui } from "./ui.js";
 
 export function parseArgs(args) {
   const options = {
@@ -40,7 +39,7 @@ export function parseArgs(args) {
 
 export function printHelp() {
   process.stdout.write(`
-${ui.header()}
+  ${COLORS.bright}TURL Release Tool${COLORS.reset} ${COLORS.dim}v${PACKAGE_VERSION}${COLORS.reset}
 
   ${COLORS.bright}Usage:${COLORS.reset} turl-release [options]
 

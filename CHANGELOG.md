@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3] - 2026-02-27
+
+- Simplified the UI module by removing complex formatting functions like box, spinner, and various text styling methods, focusing on a cleaner header display.
+- Updated the header printing logic in ui.js to prevent redundant header output by tracking if it has already been printed.
+- Moved status message display outside the header function in ui.js, allowing for more flexible UI updates.
+- Removed a large set of unused symbols and color codes from constants.js to streamline the codebase.
+- Simplified error code definitions in constants.js by removing unused error types.
+- Adjusted the help text output in cli.js to directly use colored text instead of relying on the ui module's header.
+- Changed the default stdio behavior in git.js for execCommand to use 'pipe' unless explicitly set to silent=false.
+- Modified the build command execution in git.js to use 'pipe' instead of 'inherit' for stdio in the spawn process.
+
 ## [4.2] - 2026-02-27
 
 - Simplified the interactive menu in the CLI by removing decorative formatting and color prompts, making the interface cleaner and more straightforward with prompts like "Branch (default):" and "Run build? (Y/n):".
