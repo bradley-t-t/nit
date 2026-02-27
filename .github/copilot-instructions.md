@@ -3,7 +3,6 @@
 This file provides context to GitHub Copilot for this project.
 
 <!-- TURL-RULES-START -->
-
 ## Project Rules (Auto-managed by TURL)
 
 These rules are automatically learned from project commits and enforced during releases.
@@ -34,4 +33,7 @@ Do not edit this section manually - it will be overwritten.
 - When consolidating multiple commands into a single command, ensure that all relevant functionality from the removed commands is either integrated into the new command or explicitly documented as removed to avoid loss of features.
 - When introducing a simplified workflow or major UI change, update all related documentation (like help menus and usage instructions) in the same commit to reflect the new structure and prevent user confusion.
 - When updating markdown files like copilot-instructions.md, ensure proper spacing and formatting (e.g., adding blank lines for readability) in sections such as project rules to maintain clear visual separation of content.
+- When restructuring a monolithic codebase into modular files, ensure that all functionality from the original file (e.g., index.js) is either migrated to the appropriate new modules (e.g., api.js, cli.js) or explicitly documented as removed to prevent accidental loss of features.
+- When introducing new API integrations (like Grok API for changelog generation), include comprehensive error handling for network issues, response validation, and API-specific error codes to ensure robust operation and clear user feedback.
+- When adding new modules or significant features (e.g., rules.js for guideline enforcement), centralize related logic in dedicated files to improve maintainability and make future updates easier to manage.
 <!-- TURL-RULES-END -->

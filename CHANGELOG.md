@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0] - 2023-10-05
+
+- Introduced a complete codebase restructure by splitting the monolithic index.js into modular files including api.js, cli.js, config.js, constants.js, env.js, errors.js, file-utils.js, git.js, rules.js, and ui.js for better maintainability and clarity.
+- Added a new AI-powered feature for generating changelog entries and commit messages using the Grok API, with detailed error handling for network issues and response validation.
+- Implemented a comprehensive API module in api.js to handle communication with the Grok API, including functions for generating changelogs, commit messages, and checking rule violations.
+- Enhanced the cleanup process in cleanup.js to streamline operations, reducing complexity from the previous version.
+- Introduced a dedicated CLI module in cli.js to manage command-line interactions, improving user interface and command handling.
+- Added configuration management in config.js to handle settings and preferences for the release tool.
+- Created a constants.js file to centralize error codes and other static values used across the tool.
+- Implemented environment variable handling in env.js to support configuration through environment settings.
+- Developed a custom error handling system in errors.js to provide detailed and specific error messages for various failure scenarios.
+- Added utility functions for file operations in file-utils.js to support the tool's functionality.
+- Introduced git.js for managing Git operations programmatically, enabling automated version control tasks.
+- Created a rules.js module to enforce project guidelines by checking for violations in code changes.
+- Added a ui.js module to handle user interface elements and improve interaction with the tool.
+
 ## [3.9] - 2026-02-25
 
 - No functional changes or updates to the codebase are visible in this release as the diff only reflects a version number adjustment.
