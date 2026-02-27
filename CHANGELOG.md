@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.4] - 2026-02-27
+
+- Improved version detection by dynamically fetching the installed version from package.json instead of relying on a static constant, ensuring accurate version comparison during update checks.
+- Enhanced update mechanism to detect whether turl-release is installed globally or locally, and apply the appropriate npm install command accordingly.
+- Added automatic re-execution of the tool after a successful update, restarting the process with the updated version without manual intervention.
+- Removed unnecessary delays in the update process flow for a smoother user experience.
+
 ## [4.3] - 2026-02-27
 
 - Simplified the UI module by removing complex formatting functions like box, spinner, and various text styling methods, focusing on a cleaner header display.

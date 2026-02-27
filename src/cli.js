@@ -1,5 +1,16 @@
 import { execSync } from "child_process";
+import { createRequire } from "module";
 import { COLORS, SYMBOLS, PACKAGE_NAME, PACKAGE_VERSION } from "./constants.js";
+
+function getInstalledVersion() {
+  try {
+    const require = createRequire(import.meta.url);
+    const pkg = require("../package.json");
+    return pkg.version;
+  } catch {
+    return PACKAGE_VERSION;
+  }
+}
 
 export function parseArgs(args) {
   const options = {
@@ -121,18 +132,20 @@ export async function promptUserForViolations(violations) {
 }
 
 export async function checkForUpdates() {
+  const currentVersion = getInstalledVersion();
   try {
     const latestVersion = execSync(`npm view ${PACKAGE_NAME} version`, {
       encoding: "utf-8",
       stdio: "pipe",
     }).trim();
 
-    if (latestVersion && latestVersion !== PACKAGE_VERSION) {
+    if (latestVersion && latestVersion !== currentVersion) {
       const [latestMajor, latestMinor, latestPatch] = latestVersion
         .split(".")
         .map(Number);
-      const [currentMajor, currentMinor, currentPatch] =
-        PACKAGE_VERSION.split(".").map(Number);
+      const [currentMajor, currentMinor, currentPatch] = currentVersion
+        .split(".")
+        .map(Number);
 
       const isNewer =
         latestMajor > currentMajor ||
@@ -141,31 +154,65 @@ export async function checkForUpdates() {
           latestMinor === currentMinor &&
           latestPatch > currentPatch);
 
-      if (isNewer)
-        return {
-          hasUpdate: true,
-          currentVersion: PACKAGE_VERSION,
-          latestVersion,
-        };
+      if (isNewer) return { hasUpdate: true, currentVersion, latestVersion };
     }
-    return {
-      hasUpdate: false,
-      currentVersion: PACKAGE_VERSION,
-      latestVersion: PACKAGE_VERSION,
-    };
+    return { hasUpdate: false, currentVersion, latestVersion: currentVersion };
   } catch {
     return {
       hasUpdate: false,
-      currentVersion: PACKAGE_VERSION,
-      latestVersion: PACKAGE_VERSION,
+      currentVersion,
+      latestVersion: currentVersion,
       error: true,
     };
   }
 }
 
-export async function performUpdate() {
+function detectInstallationType() {
   try {
-    execSync(`npm install -g ${PACKAGE_NAME}@latest`, { stdio: "pipe" });
+    const globalList = execSync(`npm list -g ${PACKAGE_NAME} --depth=0`, {
+      encoding: "utf-8",
+      stdio: "pipe",
+    });
+    if (globalList.includes(PACKAGE_NAME)) return "global";
+  } catch {}
+
+  try {
+    const localList = execSync(`npm list ${PACKAGE_NAME} --depth=0`, {
+      encoding: "utf-8",
+      stdio: "pipe",
+      cwd: process.cwd(),
+    });
+    if (localList.includes(PACKAGE_NAME)) return "local";
+  } catch {}
+
+  return "global";
+}
+
+export async function performUpdate() {
+  const installationType = detectInstallationType();
+  const updateCommand =
+    installationType === "global"
+      ? `npm install -g ${PACKAGE_NAME}@latest`
+      : `npm install --save-dev ${PACKAGE_NAME}@latest`;
+
+  try {
+    execSync(updateCommand, { stdio: "pipe", cwd: process.cwd() });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function reExecuteAfterUpdate() {
+  const args = process.argv
+    .slice(2)
+    .filter((a) => a !== "--skip-update" && a !== "-s");
+  const binPath = process.argv[1];
+  try {
+    execSync(`node "${binPath}" --skip-update ${args.join(" ")}`, {
+      stdio: "inherit",
+      cwd: process.cwd(),
+    });
     return true;
   } catch {
     return false;

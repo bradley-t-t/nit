@@ -49,6 +49,7 @@ import {
   promptUserForViolations,
   checkForUpdates,
   performUpdate,
+  reExecuteAfterUpdate,
 } from "./cli.js";
 
 const args = process.argv.slice(2);
@@ -83,19 +84,18 @@ async function main() {
       ui.printHeaderWithStatus(
         `Update available: v${updateInfo.currentVersion} ${SYMBOLS.arrow} v${updateInfo.latestVersion}`,
       );
-      await new Promise((r) => setTimeout(r, 500));
       ui.printHeaderWithStatus("Auto-updating turl-release...");
       const updated = await performUpdate();
       if (updated) {
         ui.printHeaderWithStatus(
-          `Updated to v${updateInfo.latestVersion} - Please restart turl-release`,
+          `Updated to v${updateInfo.latestVersion} - Restarting...`,
         );
-        process.exit(0);
+        const restarted = reExecuteAfterUpdate();
+        process.exit(restarted ? 0 : 1);
       }
       ui.printHeaderWithStatus(
         `Update failed, continuing with v${updateInfo.currentVersion}`,
       );
-      await new Promise((r) => setTimeout(r, 1000));
     }
   }
 
