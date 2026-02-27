@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.7] - 2026-02-27
+
+- Added an extra newline before the status message in the UI output to improve readability.
+- Updated the Copilot instructions file with a new empty line for better formatting in the project rules section.
+
 ## [4.6] - 2026-02-27
 
 - Updated the UI header in src/ui.js to improve the layout by adding a separator line and aligning the title and version information with the ASCII art for a cleaner and more professional look.

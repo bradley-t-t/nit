@@ -26,7 +26,7 @@ export const ui = {
     ui.clear();
     process.stdout.write(ui.header());
     process.stdout.write(
-      `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${statusMessage}\n`,
+      `\n  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${statusMessage}\n`,
     );
   },
 };
