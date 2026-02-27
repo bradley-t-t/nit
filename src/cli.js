@@ -81,11 +81,6 @@ export async function interactiveMenu() {
   const question = (prompt) =>
     new Promise((resolve) => rl.question(prompt, resolve));
 
-  process.stdout.write(
-    `\n  ${COLORS.bright}${COLORS.brightBlue}Interactive Mode${COLORS.reset}\n`,
-  );
-  process.stdout.write(`  ${ui.divider()}\n\n`);
-
   const options = {
     branch: null,
     skipBuild: false,
@@ -93,24 +88,16 @@ export async function interactiveMenu() {
     skipRulesCheck: false,
   };
 
-  const branchAnswer = await question(
-    `  ${COLORS.brightBlue}?${COLORS.reset} Branch to push to (leave empty for default): `,
-  );
+  const branchAnswer = await question(`\n  Branch (default): `);
   if (branchAnswer.trim()) options.branch = branchAnswer.trim();
 
-  const buildAnswer = await question(
-    `  ${COLORS.brightBlue}?${COLORS.reset} Run production build? (Y/n): `,
-  );
+  const buildAnswer = await question(`  Run build? (Y/n): `);
   options.skipBuild = buildAnswer.trim().toLowerCase() === "n";
 
-  const formatAnswer = await question(
-    `  ${COLORS.brightBlue}?${COLORS.reset} Run code formatter? (Y/n): `,
-  );
+  const formatAnswer = await question(`  Run formatter? (Y/n): `);
   options.skipFormat = formatAnswer.trim().toLowerCase() === "n";
 
-  const rulesAnswer = await question(
-    `  ${COLORS.brightBlue}?${COLORS.reset} Check project rules before commit? (Y/n): `,
-  );
+  const rulesAnswer = await question(`  Check rules? (Y/n): `);
   options.skipRulesCheck = rulesAnswer.trim().toLowerCase() === "n";
 
   rl.close();
@@ -124,109 +111,13 @@ export async function promptUserForViolations(violations) {
     output: process.stdout,
   });
 
-  const BOX_WIDTH = 84;
-  const CONTENT_WIDTH = BOX_WIDTH - 6;
-
-  const wrapText = (text, maxWidth) => {
-    const words = text.split(" ");
-    const lines = [];
-    let currentLine = "";
-    for (const word of words) {
-      if ((currentLine + " " + word).trim().length <= maxWidth) {
-        currentLine = (currentLine + " " + word).trim();
-      } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine =
-          word.length > maxWidth ? word.substring(0, maxWidth) : word;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-    return lines;
-  };
-
   return new Promise((resolve) => {
-    process.stdout.write(`\n\n`);
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}┌${"─".repeat(BOX_WIDTH - 2)}┐${COLORS.reset}\n`,
-    );
-    const headerText = `${SYMBOLS.warning} RULE VIOLATIONS DETECTED`;
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.brightRed}${headerText}${COLORS.reset}${" ".repeat(BOX_WIDTH - headerText.length - 4)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}├${"─".repeat(BOX_WIDTH - 2)}┤${COLORS.reset}\n`,
-    );
-
-    for (let i = 0; i < violations.length; i++) {
-      const violation = violations[i];
-      const ruleNum = violation.ruleNumber || "?";
-
-      process.stdout.write(
-        `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-      );
-
-      const ruleLabel = `${SYMBOLS.arrowRight} Rule ${ruleNum}:`;
-      process.stdout.write(
-        `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.brightBlue}${COLORS.bright}${ruleLabel}${COLORS.reset}${" ".repeat(BOX_WIDTH - ruleLabel.length - 4)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-      );
-
-      if (violation.rule) {
-        for (const line of wrapText(violation.rule, CONTENT_WIDTH)) {
-          const padding = BOX_WIDTH - line.length - 6;
-          process.stdout.write(
-            `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}    ${COLORS.white}${line}${COLORS.reset}${" ".repeat(Math.max(0, padding))}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-          );
-        }
-      }
-
-      if (violation.explanation) {
-        process.stdout.write(
-          `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-        );
-        process.stdout.write(
-          `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}    ${COLORS.brightRed}Issue:${COLORS.reset}${" ".repeat(BOX_WIDTH - 12)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-        );
-        for (const line of wrapText(violation.explanation, CONTENT_WIDTH)) {
-          const padding = BOX_WIDTH - line.length - 6;
-          process.stdout.write(
-            `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}    ${COLORS.brightRed}${line}${COLORS.reset}${" ".repeat(Math.max(0, padding))}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-          );
-        }
-      }
-
-      if (i < violations.length - 1) {
-        process.stdout.write(
-          `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}${"─".repeat(BOX_WIDTH - 6)}${COLORS.reset}  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-        );
-      }
-    }
-
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}├${"─".repeat(BOX_WIDTH - 2)}┤${COLORS.reset}\n`,
-    );
-    const footerLine1 = "Review these issues before releasing.";
-    const footerLine2 = "Fix violations or continue at your own risk.";
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}${footerLine1}${COLORS.reset}${" ".repeat(BOX_WIDTH - footerLine1.length - 4)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}  ${COLORS.dim}${footerLine2}${COLORS.reset}${" ".repeat(BOX_WIDTH - footerLine2.length - 4)}${COLORS.brightRed}${COLORS.bright}│${COLORS.reset}\n`,
-    );
-    process.stdout.write(
-      `  ${COLORS.brightRed}${COLORS.bright}└${"─".repeat(BOX_WIDTH - 2)}┘${COLORS.reset}\n\n`,
-    );
-
-    rl.question(
-      `  ${COLORS.brightBlue}?${COLORS.reset} Continue anyway? (y/N): `,
-      (answer) => {
-        rl.close();
-        const normalized = answer.trim().toLowerCase();
-        resolve(normalized === "y" || normalized === "yes");
-      },
-    );
+    process.stdout.write(`\n  Rule violations found: ${violations.length}\n`);
+    rl.question(`  Continue anyway? (y/N): `, (answer) => {
+      rl.close();
+      const normalized = answer.trim().toLowerCase();
+      resolve(normalized === "y" || normalized === "yes");
+    });
   });
 }
 
@@ -274,15 +165,10 @@ export async function checkForUpdates() {
 }
 
 export async function performUpdate() {
-  const spin = ui.spinner("Updating turl-release...");
-  spin.start();
-
   try {
     execSync(`npm install -g ${PACKAGE_NAME}@latest`, { stdio: "pipe" });
-    spin.stop("Update complete! Please restart turl-release.", true);
     return true;
-  } catch (err) {
-    spin.stop(`Update failed: ${err.message}`, false);
+  } catch {
     return false;
   }
 }

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.2] - 2026-02-27
+
+- Simplified the interactive menu in the CLI by removing decorative formatting and color prompts, making the interface cleaner and more straightforward with prompts like "Branch (default):" and "Run build? (Y/n):".
+- Overhauled the rule violation prompt display by replacing the detailed boxed output with a simple message indicating the number of violations and a basic yes/no question to continue, significantly reducing visual clutter.
+- Removed spinner animation during the update process in the CLI to streamline the update experience.
+
 ## [4.1] - 2026-02-27
 
 - Adjusted the padding width in the CLI output display for Project, Version, and Branch fields in the main function of src/index.js to improve alignment and readability by changing the padding calculation from BOX_WIDTH - 15 to BOX_WIDTH - 14.
