@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.1] - 2026-02-27
+
+- Adjusted the padding width in the CLI output display for Project, Version, and Branch fields in the main function of src/index.js to improve alignment and readability by changing the padding calculation from BOX_WIDTH - 15 to BOX_WIDTH - 14.
+- Added an empty line in the copilot-instructions.md file under the TURL-RULES-START section for better formatting.
+
 ## [4.0] - 2023-10-05
 
 - Introduced a complete codebase restructure by splitting the monolithic index.js into modular files including api.js, cli.js, config.js, constants.js, env.js, errors.js, file-utils.js, git.js, rules.js, and ui.js for better maintainability and clarity.

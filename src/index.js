@@ -556,13 +556,13 @@ async function main() {
     `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Project:${COLORS.reset} ${COLORS.brightBlue}${pad(projectName, BOX_WIDTH - 15)}${COLORS.reset}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Project:${COLORS.reset} ${COLORS.brightBlue}${pad(projectName, BOX_WIDTH - 14)}${COLORS.reset}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Version:${COLORS.reset} ${COLORS.brightBlue}${pad("v" + newVersion, BOX_WIDTH - 15)}${COLORS.reset}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Version:${COLORS.reset} ${COLORS.brightBlue}${pad("v" + newVersion, BOX_WIDTH - 14)}${COLORS.reset}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
-    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Branch:${COLORS.reset}  ${COLORS.brightBlue}${pad(branch, BOX_WIDTH - 15)}${COLORS.reset}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
+    `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}   ${COLORS.dim}Branch:${COLORS.reset}  ${COLORS.brightBlue}${pad(branch, BOX_WIDTH - 14)}${COLORS.reset}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,
   );
   process.stdout.write(
     `  ${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}${" ".repeat(BOX_WIDTH - 2)}${COLORS.brightWhite}${COLORS.bright}║${COLORS.reset}\n`,

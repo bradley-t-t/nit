@@ -36,4 +36,5 @@ Do not edit this section manually - it will be overwritten.
 - When restructuring a monolithic codebase into modular files, ensure that all functionality from the original file (e.g., index.js) is either migrated to the appropriate new modules (e.g., api.js, cli.js) or explicitly documented as removed to prevent accidental loss of features.
 - When introducing new API integrations (like Grok API for changelog generation), include comprehensive error handling for network issues, response validation, and API-specific error codes to ensure robust operation and clear user feedback.
 - When adding new modules or significant features (e.g., rules.js for guideline enforcement), centralize related logic in dedicated files to improve maintainability and make future updates easier to manage.
+- When adjusting padding or alignment in CLI output displays, ensure the calculation accounts for all visual elements (like labels and borders) to maintain proper field alignment and readability, as seen in the change from BOX_WIDTH - 15 to BOX_WIDTH - 14 for Project, Version, and Branch fields.
 <!-- TURL-RULES-END -->
