@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.6] - 2026-02-27
+
+- Updated the UI header in src/ui.js to improve the layout by adding a separator line and aligning the title and version information with the ASCII art for a cleaner and more professional look.
+- Added a small spacing adjustment in the Copilot instructions file with an extra newline for better readability.
+
 ## [4.5] - 2026-02-27
 
 - Simplified the UI header logic by removing the `headerPrinted` flag and consolidating the `printHeader` method into `printHeaderWithStatus` for more direct control over when the header is displayed.
