@@ -85,11 +85,24 @@ export function deduplicateRules(rules) {
   return result;
 }
 
+const FILE_SPECIFIC_PATTERNS = [
+  /\b(?:src|lib|dist|build|test|spec)\/\S+\.\w+/i,
+  /\bas seen in\b/i,
+  /\bin (?:the )?(?:file |module )?(?:src|lib)\/\S+/i,
+  /\b(?:function|method|variable|class) `?\w+`? in \S+\.\w+/i,
+  /\b\w+\(\)\s+in\s+\S+\.\w+/i,
+];
+
+function isFileSpecificRule(rule) {
+  return FILE_SPECIFIC_PATTERNS.some((pattern) => pattern.test(rule));
+}
+
 export function isValidRule(rule) {
   if (!rule || typeof rule !== "string") return false;
   if (rule.includes("<!--") || rule.includes("-->")) return false;
   if (rule.includes("TURL-RULES-")) return false;
-  return rule.length >= 10 && rule.length <= 500;
+  if (rule.length < 10 || rule.length > 500) return false;
+  return !isFileSpecificRule(rule);
 }
 
 export function writeTurlRules(rules) {
@@ -144,7 +157,7 @@ ${turlSection}
 export function appendTurlRule(newRule) {
   const { rules } = readTurlRules();
   const formattedNew = formatRule(newRule);
-  if (!formattedNew) return false;
+  if (!formattedNew || !isValidRule(formattedNew)) return false;
 
   const normalizedNew = normalizeForComparison(formattedNew);
   const isDuplicate = rules.some(

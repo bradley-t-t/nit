@@ -365,11 +365,22 @@ IDENTIFY RULES ONLY IF the diff shows:
 5. A CONSISTENCY FIX - Was something made consistent that should stay consistent?
 
 RULE QUALITY CRITERIA:
-- Specific and actionable (not vague best practices)
+- Rules MUST be generic behavioral guidelines, NOT tied to specific files, functions, or variable names
+- Describe the PATTERN or PRINCIPLE, not the specific implementation detail
 - Relevant to this specific codebase and tech stack
-- Would help an AI (like Copilot) generate better code
+- Would help an AI (like Copilot) generate better code in any similar situation
 - Not already covered by existing rules (even partially)
 - Based on actual changes in the diff, not assumptions
+
+BAD RULE EXAMPLES (too file-specific - NEVER generate rules like these):
+- "Update the runBuild function in src/git.js to capture stderr" (references specific file/function)
+- "Add a newline before status messages in src/ui.js" (references specific file)
+- "Use BOX_WIDTH - 14 for padding in CLI output" (references specific implementation detail)
+
+GOOD RULE EXAMPLES (generic behavioral patterns):
+- "Capture both stdout and stderr when executing subprocesses to provide detailed error diagnostics"
+- "Add visual separation before important status messages to improve readability"
+- "Account for all visual elements when calculating padding in formatted output"
 
 DO NOT create rules for:
 - General programming best practices (Copilot already knows these)
@@ -377,6 +388,7 @@ DO NOT create rules for:
 - Code formatting (handled by formatters)
 - Things that are just "good to do" but not project-specific
 - Anything speculative or not clearly evidenced in the diff
+- Anything referencing specific filenames, function names, variable names, or line numbers
 
 If no meaningful, non-duplicate rules can be extracted, respond: NO_NEW_RULES
 
