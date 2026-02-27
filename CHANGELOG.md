@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.5] - 2026-02-27
+
+- Simplified the UI header logic by removing the `headerPrinted` flag and consolidating the `printHeader` method into `printHeaderWithStatus` for more direct control over when the header is displayed.
+- Added a small formatting update to the Copilot instructions file with an extra blank line for better readability in the project rules section.
+
 ## [4.4] - 2026-02-27
 
 - Improved version detection by dynamically fetching the installed version from package.json instead of relying on a static constant, ensuring accurate version comparison during update checks.

@@ -1,7 +1,5 @@
 import { COLORS, SYMBOLS, PACKAGE_VERSION } from "./constants.js";
 
-let headerPrinted = false;
-
 export const ui = {
   clear: () => process.stdout.write("\x1b[2J\x1b[H"),
   showCursor: () => process.stdout.write("\x1b[?25h"),
@@ -24,15 +22,9 @@ export const ui = {
     ].join("\n");
   },
 
-  printHeader: () => {
-    if (headerPrinted) return;
+  printHeaderWithStatus: (statusMessage) => {
     ui.clear();
     process.stdout.write(ui.header());
-    headerPrinted = true;
-  },
-
-  printHeaderWithStatus: (statusMessage) => {
-    ui.printHeader();
     process.stdout.write(
       `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${statusMessage}\n`,
     );
