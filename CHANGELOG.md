@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.4] - 2026-03-02
+
+- Added a new line in the Copilot instructions file to improve formatting or clarity in the project rules section.
+
 ## [6.3] - 2026-03-02
 
 - Enhanced the release progress tracking in the TURL Tool Window by introducing a new method `activatePhaseSequentially` to better manage phase transitions and ensure accurate state updates for each phase.

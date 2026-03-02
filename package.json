@@ -1,6 +1,6 @@
 {
   "name": "turl-release",
-  "version": "6.3.0",
+  "version": "6.4.0",
   "description": "CLI tool for automated semantic versioning, cleanup, changelog generation, and release commits for React projects",
   "main": "./src/index.js",
   "type": "module",
