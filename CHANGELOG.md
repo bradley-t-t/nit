@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.3] - 2026-03-02
+
+- Added a new test file `_test_rules.js` to validate rules using the `isValidRule` function from `rules.js`, ensuring robust rule content constraints with an extensive list of test cases.
+- Updated `src/rules.js` to include new functionality or modifications for rule validation and management, enhancing how rules are processed.
+- Enhanced `src/api.js` with updates to API integrations, likely improving error handling or adding new endpoints for better interaction with external systems.
+- Removed several outdated or redundant guidelines from `.github/copilot-instructions.md`, streamlining the documented rules for clarity and relevance.
+
 ## [7.2] - 2026-03-02
 
 - Updated project rules in copilot-instructions.md to streamline guidelines, removing redundant or overly specific instructions and consolidating related rules for clarity.

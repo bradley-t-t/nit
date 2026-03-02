@@ -373,6 +373,12 @@ RESPOND NO_NEW_RULES (your default) if ANY of these are true:
 - The rule would start with "When building...", "When creating...", "When designing...", "When enhancing...", "When updating...", "When implementing..." followed by a description of normal development work
 - The rule is already covered by ANY existing rule, even partially
 - You are not 100% confident this rule would prevent a REAL, SPECIFIC problem
+- The rule is about how the rules system itself works (rules about rules, rule validation, rule parsing, rule storage)
+- The rule is about auto-updating, version checking, update mechanisms, or re-executing after updates
+- The rule is about commit message formatting, prefixes, or version numbering in commits
+- The rule is about changelog formatting or generation
+- The rule is about version incrementing or version file syncing
+- The rule describes internal tooling behavior that is already enforced by code (not by rules)
 
 EXAMPLES OF BAD RULES (NEVER generate rules like these):
 - "Use consistent color schemes across light and dark themes" (generic UI advice)
@@ -433,9 +439,17 @@ YOUR TASK (in order of priority):
    - Anything that just describes a normal UI/UX design practice
    - Anything that starts with "When building/creating/designing/enhancing/updating..." and just describes standard development work
 
-2. MERGE rules that cover the same concept into ONE concise rule
+2. DELETE rules that describe the tool's own internal behavior — these belong in code, not rules:
+   - Rules about how the rules system works (rule parsing, validation, storage, enforcement)
+   - Rules about auto-updating, version checking, or re-executing after updates
+   - Rules about commit message formatting, prefixes, or version numbers in commits
+   - Rules about changelog generation or formatting
+   - Rules about version incrementing, version syncing, or version file management
+   - Rules about how to detect global vs local npm installations
 
-3. KEEP only rules that capture:
+3. MERGE rules that cover the same concept into ONE concise rule
+
+4. KEEP only rules that capture:
    - Project-specific gotchas that would cause real bugs if ignored
    - Non-obvious conventions specific to THIS project
    - Hard-won lessons from past bugs or mistakes

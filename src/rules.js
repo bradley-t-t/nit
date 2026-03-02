@@ -94,7 +94,7 @@ const FILE_SPECIFIC_PATTERNS = [
 ];
 
 const GENERIC_PLATITUDE_PATTERNS = [
-  /^when (?:building|creating|designing|enhancing|updating|implementing|refining|adjusting|developing|redesigning)\b/i,
+  /^when (?:building|creating|designing|enhancing|updating|implementing|refining|adjusting|developing|redesigning|introducing|restructuring|simplifying|managing|consolidating|defining|adding|relocating)\b/i,
   /\b(?:ensure|maintain|use) (?:a )?consistent (?:color|theme|styling|visual|UI)/i,
   /\bvisual (?:feedback|clarity|hierarchy|indicator)/i,
   /\bprogress bar/i,
@@ -107,6 +107,44 @@ const GENERIC_PLATITUDE_PATTERNS = [
   /\bimprove (?:readability|maintainability|usability)\b$/i,
   /\bfor (?:improved|better) (?:user )?(?:navigation|clarity|readability)\b$/i,
   /\benhancing (?:the )?(?:visual feedback|user experience)/i,
+  /\bdynamic(?:ally)? (?:animations?|fetch)/i,
+  /\bspacing and (?:insets|formatting)\b/i,
+  /\bbutton (?:labels|styles)\b.*\b(?:symbolic|prefix|hierarchy)\b/i,
+  /\bstatic (?:icons?|visual placeholder)\b/i,
+  /\bspinner|loading animation/i,
+  /\bterminology.*\bconsisten/i,
+  /\bstatus (?:messages?|indicators?|messaging)\b.*\b(?:all possible|outcomes?|concise)\b/i,
+];
+
+const SELF_REFERENTIAL_PATTERNS = [
+  /\brules?\b.*\b(?:validation|guideline|enforcement|violation|flag|parsing|generation)/i,
+  /\bproject (?:rules|guidelines)\b/i,
+  /\bcopilot.?instructions/i,
+  /\bsection markers?\b/i,
+  /\bgeneric behavioral pattern/i,
+  /\bauto.?updat(?:e|ing)\b/i,
+  /\bupdate (?:check|mechanism|functionality)\b/i,
+  /\bre-?execut(?:e|ing)\b.*\bafter.*\bupdate/i,
+  /\bprefix commit message/i,
+  /\bcommit message.*\b(?:format|prefix|version number)\b/i,
+  /\b(?:format|prefix).*\bcommit message/i,
+  /\bincrement version/i,
+  /\bversion.*\b(?:sequential|progression)\b/i,
+  /\bchangelog.*\b(?:format|entry|update)\b/i,
+  /\bupdate.*\b(?:help menu|documentation|changelog)\b.*\bsame commit/i,
+  /\bparsing rules\b/i,
+  /\bvalidation function for rules\b/i,
+  /\blearning.*\brule/i,
+  /\brule generation\b/i,
+  /\bstore.*rules.*\b\.github\b/i,
+  /\bglobal or local\b.*\bnpm/i,
+  /\bdetect.*\binstallation.*\bglobal\b/i,
+  /\bversion (?:number|checking)\b.*\bcommit/i,
+  /\bcommit.*\bversion (?:number|release)\b/i,
+  /\bviolation feedback\b/i,
+  /\buse (?:the )?established\b.*\bconstants?\b/i,
+  /\bcommand.specific flags\b/i,
+  /\bautomatically create (?:necessary )?director/i,
 ];
 
 function isFileSpecificRule(rule) {
@@ -117,13 +155,18 @@ function isGenericPlatitude(rule) {
   return GENERIC_PLATITUDE_PATTERNS.some((pattern) => pattern.test(rule));
 }
 
+function isToolInternalRule(rule) {
+  return SELF_REFERENTIAL_PATTERNS.some((pattern) => pattern.test(rule));
+}
+
 export function isValidRule(rule) {
   if (!rule || typeof rule !== "string") return false;
   if (rule.includes("<!--") || rule.includes("-->")) return false;
   if (rule.includes("TURL-RULES-")) return false;
   if (rule.length < 10 || rule.length > 500) return false;
   if (isFileSpecificRule(rule)) return false;
-  return !isGenericPlatitude(rule);
+  if (isGenericPlatitude(rule)) return false;
+  return !isToolInternalRule(rule);
 }
 
 export function writeTurlRules(rules) {

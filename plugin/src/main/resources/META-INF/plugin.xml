@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.turl.release</id>
     <name>TURL Release</name>
-    <version>7.2.0</version>
+    <version>7.3.0</version>
     <vendor>Trent</vendor>
 
     <description><![CDATA[
