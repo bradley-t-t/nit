@@ -1125,6 +1125,13 @@ private class SpinnerIcon : JPanel() {
             g2.drawArc(cx - r, cy - r, r * 2, r * 2, 0, 360)
             g2.color = ACCENT
             g2.drawArc(cx - r, cy - r, r * 2, r * 2, angle, 280)
+        } else {
+            val cx = width / 2
+            val cy = height / 2
+            val r = spinSize / 2 - 1
+            g2.stroke = BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+            g2.color = TIMELINE_LINE
+            g2.drawOval(cx - r, cy - r, r * 2, r * 2)
         }
 
         g2.dispose()

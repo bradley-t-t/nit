@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.7] - 2026-03-02
+
+- Added a static circular outline to the SpinnerIcon component in the TurlToolWindowFactory when the spinner is not animating, providing a visual placeholder with a consistent style.
+- Updated the Copilot instructions file with a minor formatting change to improve readability by adding an extra blank line before the project rules section.
+
 ## [6.6] - 2026-03-02
 
 - Enhanced the UI of the Control Panel Tab in the TURL Release Tool with updated button labels for better clarity: "Release" now displays as "▶ Release", "Dry Run" as "○ Preview", and "Cancel" as "✕ Cancel".
