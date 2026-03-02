@@ -81,4 +81,6 @@ Do not edit this section manually - it will be overwritten.
 - When restructuring or modularizing UI components in a plugin or tool, organize related functionality into separate, dedicated files or classes (e.g., tabs for different features) to improve maintainability and clarity of the codebase.
 - When enhancing process execution in a plugin or tool, improve output handling mechanisms (such as processing ANSI color codes) to ensure compatibility with terminal outputs and provide a better user experience.
 - When updating action classes or UI triggering logic in a plugin, simplify interactions with tool windows or UI elements by reducing unnecessary complexity (e.g., removing obsolete flags or redundant activation logic) to streamline functionality.
+- When introducing AI-assisted features for content generation or consolidation, ensure the prompts provided to the AI are detailed with clear tasks, quality criteria, and examples to guide the output effectively.
+- When managing large sets of data like project rules or guidelines, implement features to automatically reduce redundancy and organize content by relevance or category to maintain clarity and usability.
 <!-- TURL-RULES-END -->

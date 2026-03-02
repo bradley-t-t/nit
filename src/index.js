@@ -101,7 +101,6 @@ async function main() {
 
   ui.printHeaderWithStatus("Initializing...");
   ensureGitHooksInstalled();
-  cleanupRulesFile();
 
   let interactiveOptions = {};
   if (cliOptions.interactive) {
@@ -143,6 +142,9 @@ async function main() {
     ui.printHeaderWithStatus(`Environment error: ${err.message}`);
     process.exit(1);
   }
+
+  ui.printHeaderWithStatus("Consolidating project rules...");
+  await cleanupRulesFile(apiKey);
 
   ui.printHeaderWithStatus("Reading project config...");
   let turlConfig;
@@ -294,6 +296,7 @@ async function main() {
       for (const rule of newRules) {
         appendTurlRule(rule);
       }
+      await cleanupRulesFile(apiKey);
     }
   } catch {}
 

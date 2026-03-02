@@ -413,3 +413,57 @@ NO_NEW_RULES`;
 
   return newRules;
 }
+
+export async function consolidateRules(apiKey, rules) {
+  if (rules.length <= 3) return rules;
+
+  const rulesText = rules.map((r, i) => `${i + 1}. ${r}`).join("\n");
+
+  const prompt = `You are organizing and consolidating a list of project guidelines for AI-assisted code generation.
+
+CURRENT RULES:
+${rulesText}
+
+YOUR TASK:
+1. MERGE rules that cover the same concept or overlap significantly into a single, comprehensive rule
+2. REMOVE rules that are redundant (already covered by another rule)
+3. COMBINE closely related rules into broader, more useful guidelines
+4. ORGANIZE the final list by topic/category (group related rules together)
+5. Keep rules that are unique and valuable as-is
+6. Ensure every rule is a generic behavioral pattern (not file-specific or implementation-specific)
+7. Preserve the intent and meaning of all original rules — do not lose any unique guidance
+
+CONSOLIDATION EXAMPLES:
+- If 5 rules all say variations of "use consistent UI colors in IDE plugins", merge into ONE rule about consistent theming
+- If 3 rules talk about commit message formatting, merge into ONE comprehensive commit message rule
+- If rules about "state management" and "visual indicators for states" overlap, combine them
+
+QUALITY CRITERIA FOR FINAL RULES:
+- Each rule should be a clear, actionable, generic behavioral guideline
+- No two rules should cover the same concept
+- Rules should be concise but complete
+- Use natural, professional language
+- Do NOT use emojis
+- Each rule must end with a period
+
+TARGET: Reduce the total count by merging overlapping rules. Aim for the minimum number of rules that still captures ALL unique guidance.
+
+Output format (one rule per line, no numbering):
+RULE: [Consolidated rule text]
+
+Output ALL rules, including ones that didn't need merging (output them unchanged as RULE: lines).`;
+
+  const response = await callGrokApi(apiKey, prompt);
+  if (!response) return rules;
+
+  const consolidated = [];
+  for (const line of response.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("RULE:")) {
+      const rule = trimmed.replace("RULE:", "").trim();
+      if (rule) consolidated.push(rule);
+    }
+  }
+
+  return consolidated.length >= 3 ? consolidated : rules;
+}

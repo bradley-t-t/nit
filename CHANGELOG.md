@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.0] - 2026-03-02
+
+- Added a new feature to consolidate project rules using AI assistance. The `consolidateRules` function merges overlapping rules, removes redundancies, and organizes guidelines by topic to create a more concise and actionable set of rules.
+- Updated the rules cleanup process in the main workflow to integrate the new consolidation feature. The `cleanupRulesFile` function is now called with an API key at key points during execution to ensure rules are consolidated effectively.
+
 ## [6.9] - 2026-03-02
 
 - Revamped the TURL Release tool window by restructuring and adding new components, including dedicated tabs for Control Panel, Rules, and Settings for a more organized user interface.
