@@ -53,4 +53,10 @@ Do not edit this section manually - it will be overwritten.
 - When enhancing UI elements in a tool window or plugin, incorporate visual feedback mechanisms like progress bars to clearly indicate the status of ongoing operations to users.
 - When redesigning UI components in an IDE plugin, prioritize readability by using distinct styling for primary elements (e.g., bold labels) and secondary elements (e.g., dimmed subtitles) to establish a clear visual hierarchy.
 - When updating interactive elements in a UI for an IDE plugin, ensure that buttons or controls adapt dynamically to the context (e.g., showing or hiding based on relevance) and use distinct visual cues (e.g., color or style) to emphasize critical actions like cancellation.
+- When updating UI color schemes in an IDE plugin or tool window, ensure the new color values are chosen to maintain visual clarity and consistency across both light and dark themes, using tools like JBColor to handle theme-specific color adjustments.
+- When enhancing process visualization in a UI for an IDE plugin, define clear phases or steps with associated labels and keywords to guide users through the workflow, ensuring each phase is visually distinct and informative.
+- When implementing state management for processes in an IDE plugin, include visual indicators for different states (e.g., pending, active, done, error) to provide immediate feedback on the progress and outcome of operations.
+- When adjusting UI elements like progress bars in an IDE plugin, prioritize visibility by fine-tuning dimensions or styling to ensure they are easily noticeable without overwhelming the interface.
+- When updating interactive UI components like buttons in an IDE plugin, use distinct button styles (e.g., primary and secondary) to create a clear visual hierarchy and guide user actions effectively.
+- When refining user guidance in a UI for an IDE plugin, ensure status messages or prompts are concise and action-oriented to clearly communicate the next steps to the user.
 <!-- TURL-RULES-END -->

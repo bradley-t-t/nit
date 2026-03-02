@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.4] - 2026-03-02
+
+- Updated the UI color scheme in the Turl Tool Window with new color values for background, text, accents, and various states to improve visual clarity and consistency across light and dark themes.
+- Introduced a new phase tracking system in the Turl Tool Window with defined release phases like Update, Preflight, Environment, and others, each with specific labels and associated keywords for better process visualization.
+- Added dynamic phase state management with visual indicators for Pending, Active, Done, and Error states in the Turl Tool Window to provide clearer feedback during the release process.
+- Enhanced the progress bar in the Turl Tool Window by adjusting its height from 3 to 4 pixels for better visibility.
+- Revamped the button styles in the Turl Tool Window by replacing ActionButton with PrimaryButton for "Release" and SecondaryButton for "Dry Run" to improve the user interface.
+- Updated status messaging in the Turl Tool Window, changing the subtitle text from "Select a release mode to begin" to "Press Release or Dry Run to begin" for clearer user guidance.
+
 ## [5.3] - 2026-03-02
 
 - Updated the UI color scheme in the Turl Tool Window with a refreshed set of colors for background, text, accents, and status indicators to improve visual clarity and consistency.
