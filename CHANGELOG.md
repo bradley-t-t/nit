@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.1] - 2026-03-02
+
+- Added a new line in the copilot-instructions.md file to improve formatting or readability in the project rules section.
+
 ## [6.0] - 2026-03-02
 
 - Changed the default behavior of the TURL plugin to no longer skip updates on run by setting `skipUpdateOnRun` to `false` in `TurlSettings.kt`.
