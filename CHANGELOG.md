@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.1] - 2026-03-02
+
+- Added a new line in the Copilot instructions file to improve formatting or clarity in the project rules section.
+
 ## [7.0] - 2026-03-02
 
 - Added a new feature to consolidate project rules using AI assistance. The `consolidateRules` function merges overlapping rules, removes redundancies, and organizes guidelines by topic to create a more concise and actionable set of rules.
