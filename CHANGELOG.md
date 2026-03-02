@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.9] - 2026-03-02
+
+- Added a new line in the GitHub Copilot instructions file to improve formatting or clarity in the project rules section.
+
 ## [5.8] - 2026-03-02
 
 - Added dynamic version resolution for the plugin by reading the version from package.json if available, otherwise falling back to the Gradle property.

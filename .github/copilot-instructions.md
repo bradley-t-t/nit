@@ -65,4 +65,5 @@ Do not edit this section manually - it will be overwritten.
 - When implementing dynamic version resolution in a plugin or tool, prioritize reading version information from a primary source like package.json over static configuration values to ensure consistency across the project.
 - When enhancing UI components in a tool window or plugin, introduce new visual states (like "Skipped") with distinct color coding to clearly communicate status changes to users.
 - When redesigning process visualization in a UI, consider replacing static card-based layouts with dynamic timeline views to better represent sequential workflows and improve user comprehension.
+- When updating documentation files for formatting or clarity, ensure that changes like adding new lines or spacing are applied consistently across similar sections to maintain a uniform appearance.
 <!-- TURL-RULES-END -->
