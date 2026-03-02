@@ -3,6 +3,7 @@
 This file provides context to GitHub Copilot for this project.
 
 <!-- TURL-RULES-START -->
+
 ## Project Rules (Auto-managed by TURL)
 
 These rules are automatically learned from project commits and enforced during releases.

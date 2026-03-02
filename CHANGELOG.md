@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.2] - 2026-03-02
+
+- Added a blank line in the Copilot instructions file to improve readability of the project rules section.
+
 ## [5.1] - 2026-03-02
 
 - Simplified the BaseTurlAction class by removing console view extraction logic and process execution from the action trigger, focusing solely on showing the TURL Release tool window.
