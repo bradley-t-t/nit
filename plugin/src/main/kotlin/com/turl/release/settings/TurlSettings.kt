@@ -12,7 +12,7 @@ class TurlSettings : PersistentStateComponent<TurlSettings.State> {
         var grokApiKey: String = "",
         var nodePath: String = "",
         var defaultBranch: String = "",
-        var skipUpdateOnRun: Boolean = true
+        var skipUpdateOnRun: Boolean = false
     )
 
     private var myState = State()

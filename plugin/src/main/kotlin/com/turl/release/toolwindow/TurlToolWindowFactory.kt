@@ -60,7 +60,7 @@ private val RELEASE_PHASES = listOf(
     PhaseInfo(PhaseId.UPDATE, "Checking for updates", listOf("Checking for updates", "Update available", "Auto-updating", "Updated to", "Update failed")),
     PhaseInfo(PhaseId.PREFLIGHT, "Pre-flight checks", listOf("Initializing", "Running pre-flight", "Pre-flight failed")),
     PhaseInfo(PhaseId.ENVIRONMENT, "Loading environment", listOf("Loading environment", "Reading project config", "Environment error", "Config error")),
-    PhaseInfo(PhaseId.CODE_PREP, "Preparing code", listOf("Running code cleanup", "Running code formatter", "Checking for changes", "No changes detected", "Checking project rules", "Release aborted")),
+    PhaseInfo(PhaseId.CODE_PREP, "Preparing code", listOf("Running code cleanup", "Running code formatter", "Checking for changes", "No changes detected", "Checking project rules", "Release aborted", "Release skipped")),
     PhaseInfo(PhaseId.VERSIONING, "Updating version", listOf("Preparing release", "Updating version files", "Version update failed", "DRY RUN MODE")),
     PhaseInfo(PhaseId.CHANGELOG, "Generating changelog", listOf("Generating changelog", "Updating CHANGELOG", "Changelog generation failed", "Changelog update failed")),
     PhaseInfo(PhaseId.BUILD, "Building project", listOf("Running production build", "Build failed")),
@@ -114,6 +114,7 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
 
     private val changelogLines = mutableListOf<String>()
     private var capturingChangelog = false
+    private var changelogComplete = false
 
     private val changelogCard = ShadowCard().apply {
         layout = BorderLayout()
@@ -215,6 +216,7 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
         releaseSkipped = false
         changelogLines.clear()
         capturingChangelog = false
+        changelogComplete = false
         changelogCard.isVisible = false
 
         RELEASE_PHASES.forEachIndexed { index, phase ->
@@ -286,33 +288,27 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
 
     override fun onOutputLine(cleanLine: String) {
         ApplicationManager.getApplication().invokeLater {
-            if (capturingChangelog) {
-                if (cleanLine.trimStart().startsWith("- ")) {
-                    changelogLines.add(cleanLine.trim())
+            val trimmed = cleanLine.trim()
+
+            if (capturingChangelog && !changelogComplete) {
+                if (trimmed.startsWith("- ") || trimmed.startsWith("## [")) {
+                    changelogLines.add(trimmed)
                     return@invokeLater
-                } else {
+                } else if (trimmed.isNotEmpty()) {
                     capturingChangelog = false
+                    changelogComplete = true
                 }
             }
 
-            if (cleanLine.trimStart().startsWith("## [")) {
+            if (!changelogComplete && trimmed.startsWith("## [")) {
                 capturingChangelog = true
-                changelogLines.add(cleanLine.trim())
+                changelogLines.add(trimmed)
                 return@invokeLater
             }
 
             val phase = findPhaseForLine(cleanLine) ?: return@invokeLater
 
             when {
-                isErrorLine(cleanLine) -> {
-                    phaseSteps.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.DONE) }
-                    setPhaseState(phase.id, PhaseState.ERROR)
-                    statusIcon.icon = AllIcons.General.Error
-                    statusLabel.text = "Error"
-                    statusLabel.foreground = RED
-                    subtitleLabel.text = cleanLine
-                    progressBar.accentColor = RED
-                }
                 isSkippedLine(cleanLine) -> {
                     releaseSkipped = true
                     val reachedPhase = RELEASE_PHASES.indexOfFirst { it.id == phase.id }
@@ -330,6 +326,15 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
                     progressBar.setIndeterminate(false)
                     progressBar.progress = 100
                     progressBar.accentColor = AMBER
+                }
+                isErrorLine(cleanLine) -> {
+                    phaseSteps.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.DONE) }
+                    setPhaseState(phase.id, PhaseState.ERROR)
+                    statusIcon.icon = AllIcons.General.Error
+                    statusLabel.text = "Error"
+                    statusLabel.foreground = RED
+                    subtitleLabel.text = cleanLine
+                    progressBar.accentColor = RED
                 }
                 else -> {
                     phaseSteps.values.filter { it.currentState == PhaseState.ACTIVE }.forEach {

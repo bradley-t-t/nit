@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.0] - 2026-03-02
+
+- Changed the default behavior of the TURL plugin to no longer skip updates on run by setting `skipUpdateOnRun` to `false` in `TurlSettings.kt`.
+- Enhanced the release process in `TurlToolWindowFactory.kt` by adding a new status message "Release skipped" to the `CODE_PREP` phase, allowing better visibility of skipped releases.
+- Improved changelog capture logic in `TurlToolWindowFactory.kt` to handle both changelog entries and section headers, ensuring complete changelog data is captured before marking it as complete.
+
 ## [5.9] - 2026-03-02
 
 - Added a new line in the GitHub Copilot instructions file to improve formatting or clarity in the project rules section.

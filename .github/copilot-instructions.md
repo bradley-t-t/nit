@@ -66,4 +66,6 @@ Do not edit this section manually - it will be overwritten.
 - When enhancing UI components in a tool window or plugin, introduce new visual states (like "Skipped") with distinct color coding to clearly communicate status changes to users.
 - When redesigning process visualization in a UI, consider replacing static card-based layouts with dynamic timeline views to better represent sequential workflows and improve user comprehension.
 - When updating documentation files for formatting or clarity, ensure that changes like adding new lines or spacing are applied consistently across similar sections to maintain a uniform appearance.
+- When updating the behavior of a plugin or tool regarding automatic updates, ensure the default settings reflect the intended user experience, such as enabling or disabling update checks on run, to align with user expectations and workflow efficiency.
+- When enhancing status messaging in a tool or plugin, include specific messages for all possible outcomes of a process phase (e.g., skipped, aborted, or completed) to provide clear and comprehensive feedback to users.
 <!-- TURL-RULES-END -->

@@ -254,6 +254,8 @@ async function main() {
     exitWithRollback(1);
   }
 
+  process.stdout.write(`\n${changelogEntry}\n`);
+
   ui.printHeaderWithStatus("Updating CHANGELOG.md...");
   try {
     if (!cliOptions.dryRun) updateChangelog(changelogEntry);
