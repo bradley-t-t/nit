@@ -4,7 +4,7 @@ import { execSync } from "child_process";
 import { TURL_SECTION_START, TURL_SECTION_END } from "./constants.js";
 import { safeReadFile } from "./file-utils.js";
 import { loadEnv, getApiKey } from "./env.js";
-import { generateNewRules } from "./api.js";
+import { generateNewRules, consolidateRules } from "./api.js";
 
 const PROJECT_ROOT = process.cwd();
 const COPILOT_INSTRUCTIONS_PATH = path.join(
@@ -93,8 +93,28 @@ const FILE_SPECIFIC_PATTERNS = [
   /\b\w+\(\)\s+in\s+\S+\.\w+/i,
 ];
 
+const GENERIC_PLATITUDE_PATTERNS = [
+  /^when (?:building|creating|designing|enhancing|updating|implementing|refining|adjusting|developing|redesigning)\b/i,
+  /\b(?:ensure|maintain|use) (?:a )?consistent (?:color|theme|styling|visual|UI)/i,
+  /\bvisual (?:feedback|clarity|hierarchy|indicator)/i,
+  /\bprogress bar/i,
+  /\bseparat(?:e|ion) (?:of )?concern/i,
+  /\bmodular component/i,
+  /\buser experience\b.*\b(?:transparency|clarity)\b/i,
+  /\bclear visual (?:hierarchy|separation|cue)/i,
+  /\bdistinct (?:styling|button style|visual cue)/i,
+  /\bconcise and action-oriented/i,
+  /\bimprove (?:readability|maintainability|usability)\b$/i,
+  /\bfor (?:improved|better) (?:user )?(?:navigation|clarity|readability)\b$/i,
+  /\benhancing (?:the )?(?:visual feedback|user experience)/i,
+];
+
 function isFileSpecificRule(rule) {
   return FILE_SPECIFIC_PATTERNS.some((pattern) => pattern.test(rule));
+}
+
+function isGenericPlatitude(rule) {
+  return GENERIC_PLATITUDE_PATTERNS.some((pattern) => pattern.test(rule));
 }
 
 export function isValidRule(rule) {
@@ -102,7 +122,8 @@ export function isValidRule(rule) {
   if (rule.includes("<!--") || rule.includes("-->")) return false;
   if (rule.includes("TURL-RULES-")) return false;
   if (rule.length < 10 || rule.length > 500) return false;
-  return !isFileSpecificRule(rule);
+  if (isFileSpecificRule(rule)) return false;
+  return !isGenericPlatitude(rule);
 }
 
 export function writeTurlRules(rules) {
@@ -172,26 +193,33 @@ export function appendTurlRule(newRule) {
   return false;
 }
 
-export function syncRulesToCopilotInstructions() {
+export async function cleanupRulesFile(apiKey) {
   const { rules } = readTurlRules();
-  writeTurlRules(rules);
-  return { rulesCount: rules.length, path: COPILOT_INSTRUCTIONS_PATH };
-}
+  if (rules.length === 0) return { cleaned: false, before: 0, after: 0 };
 
-export function cleanupRulesFile() {
-  const { rules } = readTurlRules();
-  if (rules.length === 0) return { cleaned: false };
-
-  const cleanedRules = rules
+  let cleanedRules = rules
     .map(formatRule)
     .filter((rule) => rule && isValidRule(rule));
-  const dedupedRules = deduplicateRules(cleanedRules);
+  cleanedRules = deduplicateRules(cleanedRules);
 
-  if (dedupedRules.length !== rules.length) {
-    writeTurlRules(dedupedRules);
-    return { cleaned: true, before: rules.length, after: dedupedRules.length };
+  if (apiKey && cleanedRules.length > 3) {
+    try {
+      const consolidated = await consolidateRules(apiKey, cleanedRules);
+      const validConsolidated = consolidated
+        .map(formatRule)
+        .filter((rule) => rule && isValidRule(rule));
+      cleanedRules = deduplicateRules(validConsolidated);
+    } catch {}
   }
-  return { cleaned: false };
+
+  if (
+    cleanedRules.length !== rules.length ||
+    cleanedRules.some((r, i) => r !== rules[i])
+  ) {
+    writeTurlRules(cleanedRules);
+    return { cleaned: true, before: rules.length, after: cleanedRules.length };
+  }
+  return { cleaned: false, before: rules.length, after: rules.length };
 }
 
 export async function handlePostCommitHook() {
@@ -231,7 +259,7 @@ export async function handlePostCommitHook() {
     );
     if (newRules.length > 0) {
       for (const rule of newRules) appendTurlRule(rule);
-      syncRulesToCopilotInstructions();
+      await cleanupRulesFile(apiKey);
     }
   } catch {}
 }

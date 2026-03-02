@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.2] - 2026-03-02
+
+- Updated project rules in copilot-instructions.md to streamline guidelines, removing redundant or overly specific instructions and consolidating related rules for clarity.
+- Revised commit message formatting rules to include both the project/tool name and specific version number for release updates, ensuring clear context and accurate version history tracking.
+- Added a rule to auto-update turl-release at the start of every release to ensure the latest features are utilized before other operations.
+- Enhanced rule parsing and file management by combining robust regex patterns for handling various bullet formats with automatic directory creation (e.g., .github/) when writing configuration files.
+
 ## [7.1] - 2026-03-02
 
 - Added a new line in the Copilot instructions file to improve formatting or clarity in the project rules section.

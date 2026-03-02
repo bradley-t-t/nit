@@ -343,11 +343,11 @@ export async function generateNewRules(
     ? existingRules.map((r, i) => `${i + 1}. ${r}`).join("\n")
     : "(No existing rules yet)";
 
-  const prompt = `Analyze these code changes to identify valuable lessons for future development.
+  const prompt = `You are an extremely strict code reviewer. Your job is to identify ONLY hard-won lessons from code changes that would prevent future bugs, architectural mistakes, or subtle gotchas.
 
-This project uses GitHub Copilot for code generation. Rules you identify will help Copilot generate better, more consistent code in the future.
+CRITICAL: Most commits teach NOTHING new. Your DEFAULT response is NO_NEW_RULES. You should respond NO_NEW_RULES approximately 90% of the time. Only generate a rule if you would bet money that ignoring this lesson WILL cause a real bug or architectural problem in the future.
 
-EXISTING PROJECT RULES (avoid duplicates):
+EXISTING PROJECT RULES (do NOT duplicate or rephrase any of these):
 ${existingRulesText}
 
 Changed files: ${changedFiles.join(", ")}
@@ -357,46 +357,42 @@ ${stat}
 Code changes:
 ${truncatedDiff}
 
-IDENTIFY RULES ONLY IF the diff shows:
-1. A BUG FIX - What pattern caused the bug? How to prevent it?
-2. A REFACTOR - What pattern was improved? What's the better approach?
-3. A NEW PATTERN - Is a new convention being established worth codifying?
-4. A SAFETY IMPROVEMENT - What edge case was handled? Should it always be handled?
-5. A CONSISTENCY FIX - Was something made consistent that should stay consistent?
+A RULE IS ONLY WORTH ADDING IF the diff shows evidence of ONE of these:
+1. A BUG FIX where someone got burned — what trap should we never fall into again?
+2. A SUBTLE GOTCHA that is non-obvious and project-specific (not general programming knowledge)
+3. A PROJECT-SPECIFIC CONVENTION that deviates from common defaults and would trip up a new contributor
 
-RULE QUALITY CRITERIA:
-- Rules MUST be generic behavioral guidelines, NOT tied to specific files, functions, or variable names
-- Describe the PATTERN or PRINCIPLE, not the specific implementation detail
-- Relevant to this specific codebase and tech stack
-- Would help an AI (like Copilot) generate better code in any similar situation
-- Not already covered by existing rules (even partially)
-- Based on actual changes in the diff, not assumptions
+RESPOND NO_NEW_RULES (your default) if ANY of these are true:
+- The change is a new feature, UI update, refactor, or adding functionality (these are NOT lessons)
+- The change is routine development work (adding files, updating configs, changing UI, etc.)
+- The "rule" would just be describing what was built (e.g., "use tabbed interfaces" or "add progress bars")
+- The rule is generic software advice ANY developer already knows (e.g., "use consistent naming", "handle errors", "separate concerns", "use state management", "provide visual feedback")
+- The rule is about UI/UX design preferences (colors, layouts, animations, button styles, spacing)
+- The rule is about documentation, changelogs, or commit messages
+- The rule is about code organization or file structure (unless a specific structure caused a real bug)
+- The rule would start with "When building...", "When creating...", "When designing...", "When enhancing...", "When updating...", "When implementing..." followed by a description of normal development work
+- The rule is already covered by ANY existing rule, even partially
+- You are not 100% confident this rule would prevent a REAL, SPECIFIC problem
 
-BAD RULE EXAMPLES (too file-specific - NEVER generate rules like these):
-- "Update the runBuild function in src/git.js to capture stderr" (references specific file/function)
-- "Add a newline before status messages in src/ui.js" (references specific file)
-- "Use BOX_WIDTH - 14 for padding in CLI output" (references specific implementation detail)
+EXAMPLES OF BAD RULES (NEVER generate rules like these):
+- "Use consistent color schemes across light and dark themes" (generic UI advice)
+- "Implement state management for processes" (obvious engineering)
+- "Structure codebase into modular components" (basic programming)
+- "Include visual feedback like progress bars" (UI design preference)
+- "Separate process execution logic from UI" (standard architecture)
+- "Use tabbed interfaces to organize functionality" (describing what was built)
+- "Ensure buttons adapt dynamically to context" (generic UX advice)
 
-GOOD RULE EXAMPLES (generic behavioral patterns):
-- "Capture both stdout and stderr when executing subprocesses to provide detailed error diagnostics"
-- "Add visual separation before important status messages to improve readability"
-- "Account for all visual elements when calculating padding in formatted output"
+EXAMPLES OF GOOD RULES (rare, specific, prevent real problems):
+- "Always pipe subprocess stdio when capturing output — using 'inherit' silently drops the output buffer"
+- "Version in turl.json and package.json must be synced in the same commit or npm publish picks up stale values"
+- "Git hooks must be re-installed after npm install because node_modules/.hooks gets wiped"
 
-DO NOT create rules for:
-- General programming best practices (Copilot already knows these)
-- Version/changelog updates (handled automatically)
-- Code formatting (handled by formatters)
-- Things that are just "good to do" but not project-specific
-- Anything speculative or not clearly evidenced in the diff
-- Anything referencing specific filenames, function names, variable names, or line numbers
+MAXIMUM: Generate at most 1-2 rules. If you cannot identify a genuine hard-won lesson, respond NO_NEW_RULES.
 
-If no meaningful, non-duplicate rules can be extracted, respond: NO_NEW_RULES
-
-Output format (only for genuinely valuable rules):
-RULE: [Specific, actionable rule that helps future development]
-
-Output format (default):
-NO_NEW_RULES`;
+Output: NO_NEW_RULES
+(or, ONLY if you found a genuine lesson)
+RULE: [The specific lesson that prevents a real problem]`;
 
   const response = await callGrokApi(apiKey, prompt);
 
@@ -419,39 +415,38 @@ export async function consolidateRules(apiKey, rules) {
 
   const rulesText = rules.map((r, i) => `${i + 1}. ${r}`).join("\n");
 
-  const prompt = `You are organizing and consolidating a list of project guidelines for AI-assisted code generation.
+  const prompt = `You are ruthlessly pruning and consolidating a list of project rules. These rules guide AI code generation. Quality matters far more than quantity.
 
 CURRENT RULES:
 ${rulesText}
 
-YOUR TASK:
-1. MERGE rules that cover the same concept or overlap significantly into a single, comprehensive rule
-2. REMOVE rules that are redundant (already covered by another rule)
-3. COMBINE closely related rules into broader, more useful guidelines
-4. ORGANIZE the final list by topic/category (group related rules together)
-5. Keep rules that are unique and valuable as-is
-6. Ensure every rule is a generic behavioral pattern (not file-specific or implementation-specific)
-7. Preserve the intent and meaning of all original rules — do not lose any unique guidance
+YOUR TASK (in order of priority):
 
-CONSOLIDATION EXAMPLES:
-- If 5 rules all say variations of "use consistent UI colors in IDE plugins", merge into ONE rule about consistent theming
-- If 3 rules talk about commit message formatting, merge into ONE comprehensive commit message rule
-- If rules about "state management" and "visual indicators for states" overlap, combine them
+1. DELETE rules that are generic software advice any developer already knows. Examples of rules to DELETE:
+   - Anything about "use consistent colors/themes/styling" (obvious)
+   - Anything about "separate concerns" or "modular components" (basic engineering)
+   - Anything about "provide visual feedback" or "use progress bars" (obvious UX)
+   - Anything about "handle errors comprehensively" (basic programming)
+   - Anything about "use state management" (obvious)
+   - Anything about button styles, layout spacing, visual hierarchy (design preferences, not rules)
+   - Anything about "update documentation when changing features" (obvious)
+   - Anything that just describes a normal UI/UX design practice
+   - Anything that starts with "When building/creating/designing/enhancing/updating..." and just describes standard development work
 
-QUALITY CRITERIA FOR FINAL RULES:
-- Each rule should be a clear, actionable, generic behavioral guideline
-- No two rules should cover the same concept
-- Rules should be concise but complete
-- Use natural, professional language
-- Do NOT use emojis
-- Each rule must end with a period
+2. MERGE rules that cover the same concept into ONE concise rule
 
-TARGET: Reduce the total count by merging overlapping rules. Aim for the minimum number of rules that still captures ALL unique guidance.
+3. KEEP only rules that capture:
+   - Project-specific gotchas that would cause real bugs if ignored
+   - Non-obvious conventions specific to THIS project
+   - Hard-won lessons from past bugs or mistakes
+   - Technical constraints or quirks that a new contributor would not guess
 
-Output format (one rule per line, no numbering):
-RULE: [Consolidated rule text]
+QUALITY TEST for each rule: "Would ignoring this rule cause a REAL BUG or REAL PROBLEM in this specific project?" If no, DELETE it.
 
-Output ALL rules, including ones that didn't need merging (output them unchanged as RULE: lines).`;
+Output format (one rule per line):
+RULE: [Rule text]
+
+If a rule should be deleted, simply do not include it. Output ONLY the rules worth keeping.`;
 
   const response = await callGrokApi(apiKey, prompt);
   if (!response) return rules;
@@ -465,5 +460,5 @@ Output ALL rules, including ones that didn't need merging (output them unchanged
     }
   }
 
-  return consolidated.length >= 3 ? consolidated : rules;
+  return consolidated.length >= 1 ? consolidated : rules;
 }
