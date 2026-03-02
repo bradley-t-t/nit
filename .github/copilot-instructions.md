@@ -3,7 +3,6 @@
 This file provides context to GitHub Copilot for this project.
 
 <!-- TURL-RULES-START -->
-
 ## Project Rules (Auto-managed by TURL)
 
 These rules are automatically learned from project commits and enforced during releases.
@@ -72,4 +71,5 @@ Do not edit this section manually - it will be overwritten.
 - When defining the sequence of phases or steps in a release workflow, prioritize learning or rule generation before committing and pushing to ensure that insights or updates are captured from the pre-release state rather than post-release.
 - When simplifying a release process in a CLI tool, avoid additional post-learning steps like amending commits or force-pushing, focusing instead on a streamlined workflow that captures necessary data before finalizing the release.
 - When managing sequential workflows in a UI, ensure that state transitions for phases or steps are handled systematically to reflect progress accurately, such as marking prior steps as complete before activating a target step, to maintain a clear and consistent user experience.
+- When implementing visual indicators for active processes in a UI, incorporate dynamic animations (such as spinning effects or moving segments) to clearly communicate ongoing activity to users, enhancing the visual feedback and user experience.
 <!-- TURL-RULES-END -->

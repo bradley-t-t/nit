@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.5] - 2026-03-02
+
+- Added a spinning animation to the active state of timeline steps in the TURL Tool Window, providing a dynamic visual indicator for ongoing processes.
+- Enhanced the progress bar with an indeterminate animation, showing a moving segment when the progress state is indeterminate, improving the user experience during undefined progress states.
+
 ## [6.4] - 2026-03-02
 
 - Added a new line in the Copilot instructions file to improve formatting or clarity in the project rules section.

@@ -799,6 +799,11 @@ private class TimelineStep(private val label: String, private val isLast: Boolea
     private val dotSize = 10
     private val textLabel = JLabel(label)
     private val statusBadge = JLabel()
+    private var spinAngle = 0
+    private val spinTimer = Timer(60) {
+        spinAngle = (spinAngle + 30) % 360
+        repaint()
+    }
 
     init {
         isOpaque = false
@@ -823,6 +828,7 @@ private class TimelineStep(private val label: String, private val isLast: Boolea
 
     fun setState(state: PhaseState) {
         currentState = state
+        if (state == PhaseState.ACTIVE) spinTimer.start() else spinTimer.stop()
         applyStyle()
         repaint()
     }
@@ -857,10 +863,15 @@ private class TimelineStep(private val label: String, private val isLast: Boolea
                 g2.drawLine(dotX + dotSize / 2 - 1, dotY + dotSize - 3, dotX + dotSize - 2, dotY + 2)
             }
             PhaseState.ACTIVE -> {
+                val cx = dotX + dotSize / 2.0
+                val cy = dotY + dotSize / 2.0
+                val radius = dotSize / 2.0
+                g2.stroke = BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+                val arcExtent = 270
+                g2.color = ACCENT.let { Color(it.red, it.green, it.blue, 60) }
+                g2.drawArc((cx - radius).toInt(), (cy - radius).toInt(), dotSize, dotSize, 0, 360)
                 g2.color = ACCENT
-                g2.fillOval(dotX, dotY, dotSize, dotSize)
-                g2.color = Color.WHITE
-                g2.fillOval(dotX + 3, dotY + 3, 4, 4)
+                g2.drawArc((cx - radius).toInt(), (cy - radius).toInt(), dotSize, dotSize, spinAngle, arcExtent)
             }
             PhaseState.ERROR -> {
                 g2.color = RED
@@ -952,6 +963,22 @@ private class RoundedProgressBar : JPanel() {
     var accentColor: Color = ACCENT
         set(value) { field = value; repaint() }
     private var indeterminate = false
+    private var indeterminateOffset = 0f
+    private var indeterminateDirection = 1
+
+    private val animationTimer = Timer(16) {
+        val segmentWidth = 0.35f
+        val speed = 0.02f
+        indeterminateOffset += speed * indeterminateDirection
+        if (indeterminateOffset + segmentWidth >= 1f) {
+            indeterminateOffset = 1f - segmentWidth
+            indeterminateDirection = -1
+        } else if (indeterminateOffset <= 0f) {
+            indeterminateOffset = 0f
+            indeterminateDirection = 1
+        }
+        repaint()
+    }
 
     init {
         isOpaque = false
@@ -962,6 +989,13 @@ private class RoundedProgressBar : JPanel() {
 
     fun setIndeterminate(value: Boolean) {
         indeterminate = value
+        if (value) {
+            indeterminateOffset = 0f
+            indeterminateDirection = 1
+            animationTimer.start()
+        } else {
+            animationTimer.stop()
+        }
         repaint()
     }
 
@@ -970,9 +1004,14 @@ private class RoundedProgressBar : JPanel() {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         g2.color = PROGRESS_TRACK
         g2.fillRoundRect(0, 0, width, height, height, height)
-        if (indeterminate || progress > 0) {
+        if (indeterminate) {
             g2.color = accentColor
-            val fillWidth = if (indeterminate) width else (width * progress / 100)
+            val segmentWidth = (width * 0.35f).toInt()
+            val x = (indeterminateOffset * width).toInt()
+            g2.fillRoundRect(x, 0, segmentWidth, height, height, height)
+        } else if (progress > 0) {
+            g2.color = accentColor
+            val fillWidth = width * progress / 100
             if (fillWidth > 0) g2.fillRoundRect(0, 0, fillWidth, height, height, height)
         }
         g2.dispose()
