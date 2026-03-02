@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.1] - 2026-03-02
+
+- Simplified the BaseTurlAction class by removing console view extraction logic and process execution from the action trigger, focusing solely on showing the TURL Release tool window.
+- Enhanced the TurlProcessRunner class with a new RunState enum to track the state of the process (IDLE, RUNNING, SUCCESS, FAILED) and introduced a TurlOutputListener interface for handling output lines and process completion events.
+- Significantly updated the TurlToolWindowFactory to improve the user interface and functionality of the TURL Release tool window, incorporating better process state management and output handling.
+
 ## [5.0] - 2026-03-02
 
 - Introduced a new IntelliJ plugin for TURL Release, enabling seamless integration with the IDE for release management tasks.

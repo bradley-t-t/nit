@@ -46,4 +46,7 @@ Do not edit this section manually - it will be overwritten.
 - When developing plugins or extensions for IDEs, structure the codebase into modular components (e.g., actions, services, settings, and UI elements) to ensure clear separation of concerns and improve maintainability.
 - When creating IDE plugins, include a dedicated settings interface to allow users to customize the tool's behavior, ensuring flexibility and a better user experience.
 - When building IDE integrations for CLI tools, provide multiple action types (e.g., dry run, interactive, and standard release) to support diverse workflows directly within the IDE environment.
+- When developing IDE plugins, separate process execution logic from UI triggering actions to maintain a clear distinction between user interface interactions and background operations, ensuring actions focus solely on UI updates or tool window visibility.
+- When building IDE plugins, implement state management for processes (e.g., idle, running, success, failed) to provide clear feedback to users about the current status of operations, enhancing user experience through transparency.
+- When creating IDE plugins, design output handling mechanisms (e.g., listeners for process output and completion events) to ensure real-time feedback and proper error reporting, improving usability and debugging capabilities.
 <!-- TURL-RULES-END -->
