@@ -90,19 +90,23 @@ private class TurlMainPanel(private val project: Project) : JPanel(BorderLayout(
 private class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), TurlOutputListener {
 
     private val runner = TurlProcessRunner(project)
-    private val statusIcon = JLabel()
+    private val statusSpinner = SpinnerIcon()
     private val statusLabel = JLabel("Ready").apply {
         font = font.deriveFont(Font.BOLD, 15f)
         foreground = TEXT_PRIMARY
     }
-    private val subtitleLabel = JLabel("Press Release or Dry Run to begin").apply {
+    private val subtitleLabel = JLabel("Start a release or preview with dry run").apply {
         font = font.deriveFont(Font.PLAIN, 11f)
         foreground = TEXT_SECONDARY
     }
     private val progressBar = RoundedProgressBar()
-    private val releaseBtn = PillButton("Release", ACCENT, Color.WHITE, true)
-    private val dryRunBtn = PillButton("Dry Run", CARD_BG, TEXT_PRIMARY, false)
-    private val cancelBtn = PillButton("Cancel", PHASE_ERROR_BG, RED, false).apply { isVisible = false }
+    private val releaseBtn = PillButton("\u25B6  Release", ACCENT, Color.WHITE, true).apply {
+        toolTipText = "Publish a new version \u2014 bumps version, generates changelog, commits, and pushes"
+    }
+    private val dryRunBtn = PillButton("\u25CB  Preview", CARD_BG, TEXT_PRIMARY, false).apply {
+        toolTipText = "Simulate the release without making any changes \u2014 useful to verify before publishing"
+    }
+    private val cancelBtn = PillButton("\u2715  Cancel", PHASE_ERROR_BG, RED, false).apply { isVisible = false }
 
     private val phaseSteps = mutableMapOf<PhaseId, TimelineStep>()
     private val timelineContainer = JPanel().apply {
@@ -153,8 +157,8 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
             fill = GridBagConstraints.HORIZONTAL
         }
 
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0; gbc.insets = Insets(0, 0, 0, 8)
-        statusCard.add(statusIcon, gbc)
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0; gbc.insets = Insets(0, 0, 0, 10)
+        statusCard.add(statusSpinner, gbc)
 
         gbc.gridx = 1; gbc.weightx = 1.0; gbc.insets = Insets(0, 0, 0, 0)
         statusCard.add(statusLabel, gbc)
@@ -228,8 +232,9 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
         timelineContainer.revalidate()
         timelineContainer.repaint()
 
-        statusIcon.icon = AllIcons.Process.Step_1
-        statusLabel.text = if (mode == "dry-run") "Dry Run" else "Releasing..."
+        statusSpinner.setRunning(true)
+        statusSpinner.setFinishedIcon(null)
+        statusLabel.text = if (mode == "dry-run") "Preview" else "Releasing..."
         statusLabel.foreground = ACCENT
         subtitleLabel.text = if (mode == "dry-run") "Simulating release (no changes)" else "Starting release pipeline"
         progressBar.setIndeterminate(true)
@@ -239,10 +244,11 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
     }
 
     private fun applyIdleState() {
-        statusIcon.icon = null
+        statusSpinner.setRunning(false)
+        statusSpinner.setFinishedIcon(null)
         statusLabel.text = "Ready"
         statusLabel.foreground = TEXT_PRIMARY
-        subtitleLabel.text = "Press Release or Dry Run to begin"
+        subtitleLabel.text = "Start a release or preview with dry run"
         progressBar.setIndeterminate(false)
         progressBar.progress = 0
         syncButtons(false)
@@ -342,7 +348,8 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
                             else -> phaseSteps[p.id]?.setState(PhaseState.SKIPPED)
                         }
                     }
-                    statusIcon.icon = AllIcons.General.Warning
+                    statusSpinner.setRunning(false)
+                    statusSpinner.setFinishedIcon(AllIcons.General.Warning)
                     statusLabel.text = "Skipped"
                     statusLabel.foreground = AMBER
                     subtitleLabel.text = "No uncommitted changes found \u2014 nothing to release"
@@ -360,7 +367,8 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
                         }
                     }
                     setPhaseState(phase.id, PhaseState.ERROR)
-                    statusIcon.icon = AllIcons.General.Error
+                    statusSpinner.setRunning(false)
+                    statusSpinner.setFinishedIcon(AllIcons.General.Error)
                     statusLabel.text = "Error"
                     statusLabel.foreground = RED
                     subtitleLabel.text = cleanLine
@@ -392,7 +400,8 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
                 phaseSteps.values.forEach { if (it.currentState != PhaseState.ERROR && it.currentState != PhaseState.SKIPPED) it.setState(PhaseState.DONE) }
                 progressBar.progress = 100
                 progressBar.accentColor = GREEN
-                statusIcon.icon = AllIcons.RunConfigurations.TestPassed
+                statusSpinner.setRunning(false)
+                statusSpinner.setFinishedIcon(AllIcons.RunConfigurations.TestPassed)
                 statusLabel.text = "Complete"
                 statusLabel.foreground = GREEN
                 subtitleLabel.text = "Release finished successfully"
@@ -400,7 +409,8 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
             } else {
                 phaseSteps.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.ERROR) }
                 progressBar.accentColor = RED
-                statusIcon.icon = AllIcons.General.Error
+                statusSpinner.setRunning(false)
+                statusSpinner.setFinishedIcon(AllIcons.General.Error)
                 statusLabel.text = "Failed"
                 statusLabel.foreground = RED
                 if (!subtitleLabel.text.contains("failed", ignoreCase = true) && !subtitleLabel.text.contains("error", ignoreCase = true)) {
@@ -769,7 +779,7 @@ private class SettingsTab : JPanel(BorderLayout()) {
         apiKeyField.text = ""
         nodePathField.text = ""
         branchField.text = ""
-        skipUpdateCheckbox.isSelected = true
+        skipUpdateCheckbox.isSelected = false
         saveSettings()
         feedbackLabel.text = "Reset to defaults"
         feedbackLabel.foreground = TEXT_SECONDARY
@@ -932,12 +942,12 @@ private class TimelineStep(private val label: String, private val isLast: Boolea
     }
 }
 
-private class PillButton(text: String, private val bgColor: Color, fg: Color, primary: Boolean) : JButton(text) {
+private class PillButton(text: String, private val bgColor: Color, private val fgColor: Color, primary: Boolean) : JButton(text) {
     init {
         isFocusPainted = false
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         font = font.deriveFont(if (primary) Font.BOLD else Font.PLAIN, 12f)
-        foreground = fg
+        foreground = fgColor
         background = bgColor
         isContentAreaFilled = false
         isBorderPainted = false
@@ -949,9 +959,7 @@ private class PillButton(text: String, private val bgColor: Color, fg: Color, pr
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         g2.color = if (!isEnabled) BORDER_SUBTLE else if (model.isRollover) bgColor.brighter() else bgColor
         g2.fillRoundRect(0, 0, width, height, height, height)
-        if (!isEnabled) {
-            foreground = TEXT_SECONDARY
-        }
+        foreground = if (isEnabled) fgColor else TEXT_SECONDARY
         g2.dispose()
         super.paintComponent(g)
     }
@@ -1061,3 +1069,65 @@ private class RoundedPasswordField : JPasswordField() {
         super.paintComponent(g)
     }
 }
+
+private class SpinnerIcon : JPanel() {
+    private var running = false
+    private var angle = 0
+    private var finishedIcon: Icon? = null
+    private val spinSize = 18
+
+    private val animTimer = Timer(40) {
+        angle = (angle + 25) % 360
+        repaint()
+    }
+
+    init {
+        isOpaque = false
+        preferredSize = Dimension(spinSize + 2, spinSize + 2)
+        minimumSize = Dimension(spinSize + 2, spinSize + 2)
+        maximumSize = Dimension(spinSize + 2, spinSize + 2)
+    }
+
+    fun setRunning(value: Boolean) {
+        running = value
+        if (value) {
+            finishedIcon = null
+            angle = 0
+            animTimer.start()
+        } else {
+            animTimer.stop()
+        }
+        repaint()
+    }
+
+    fun setFinishedIcon(icon: Icon?) {
+        finishedIcon = icon
+        running = false
+        animTimer.stop()
+        repaint()
+    }
+
+    override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
+        val g2 = g.create() as Graphics2D
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+
+        if (finishedIcon != null) {
+            val ix = (width - finishedIcon!!.iconWidth) / 2
+            val iy = (height - finishedIcon!!.iconHeight) / 2
+            finishedIcon!!.paintIcon(this, g2, ix, iy)
+        } else if (running) {
+            val cx = width / 2
+            val cy = height / 2
+            val r = spinSize / 2 - 1
+            g2.stroke = BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+            g2.color = ACCENT.let { Color(it.red, it.green, it.blue, 40) }
+            g2.drawArc(cx - r, cy - r, r * 2, r * 2, 0, 360)
+            g2.color = ACCENT
+            g2.drawArc(cx - r, cy - r, r * 2, r * 2, angle, 280)
+        }
+
+        g2.dispose()
+    }
+}
+

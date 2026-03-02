@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.6] - 2026-03-02
+
+- Enhanced the UI of the Control Panel Tab in the TURL Release Tool with updated button labels for better clarity: "Release" now displays as "▶ Release", "Dry Run" as "○ Preview", and "Cancel" as "✕ Cancel".
+- Added descriptive tooltips to the Release and Preview buttons to explain their functionality—Release for publishing a new version with version bump, changelog generation, commit, and push; Preview for simulating a release without changes.
+- Replaced the static status icon with a dynamic SpinnerIcon in the Control Panel Tab to visually indicate running states and outcomes with appropriate icons for warnings and errors.
+- Updated status text and messaging for better user guidance: changed "Dry Run" to "Preview" in status labels, and updated idle state messages to "Start a release or preview with dry run".
+- Adjusted the layout spacing in the Control Panel Tab UI by increasing the inset between the status spinner and label for improved visual alignment.
+
 ## [6.5] - 2026-03-02
 
 - Added a spinning animation to the active state of timeline steps in the TURL Tool Window, providing a dynamic visual indicator for ongoing processes.

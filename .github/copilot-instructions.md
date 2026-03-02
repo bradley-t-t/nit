@@ -72,4 +72,8 @@ Do not edit this section manually - it will be overwritten.
 - When simplifying a release process in a CLI tool, avoid additional post-learning steps like amending commits or force-pushing, focusing instead on a streamlined workflow that captures necessary data before finalizing the release.
 - When managing sequential workflows in a UI, ensure that state transitions for phases or steps are handled systematically to reflect progress accurately, such as marking prior steps as complete before activating a target step, to maintain a clear and consistent user experience.
 - When implementing visual indicators for active processes in a UI, incorporate dynamic animations (such as spinning effects or moving segments) to clearly communicate ongoing activity to users, enhancing the visual feedback and user experience.
+- When updating UI elements in a tool or plugin, enhance button labels with symbolic prefixes (e.g., icons or emojis) to improve visual clarity and user recognition of actions.
+- When designing status indicators in a UI, replace static icons with dynamic animations (e.g., spinners) to provide clear visual feedback for ongoing processes and state changes.
+- When updating UI messaging for user guidance, ensure consistency in terminology across all elements (e.g., renaming "Dry Run" to "Preview" in buttons, labels, and status messages) to avoid confusion.
+- When refining UI layouts, adjust spacing and insets between elements (e.g., between icons and text) to achieve better visual alignment and readability.
 <!-- TURL-RULES-END -->
