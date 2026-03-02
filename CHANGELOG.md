@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.6] - 2026-03-02
+
+- Updated the UI color scheme in the TURL plugin with a refreshed set of colors for better visual distinction, including new shades for primary background, text, accents, and status indicators.
+- Enhanced the UI layout by removing the header section from the main panel and adjusting tab spacing and borders for a cleaner look.
+- Refined the control panel tab with updated fonts and text colors for improved readability, and replaced the standard progress bar with a custom rounded progress bar.
+- Redesigned buttons in the control panel to use a pill-shaped style for a more modern appearance.
+- Adjusted tab names in the main interface for brevity, renaming "Control Panel" to "Control".
+
 ## [5.5] - 2026-03-02
 
 - Revamped the TURL Tool Window UI with a new tabbed interface, introducing separate tabs for "Control Panel", "Rules", and "Settings" for better organization and access to different functionalities.

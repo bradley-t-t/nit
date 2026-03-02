@@ -61,4 +61,5 @@ Do not edit this section manually - it will be overwritten.
 - When refining user guidance in a UI for an IDE plugin, ensure status messages or prompts are concise and action-oriented to clearly communicate the next steps to the user.
 - When designing or updating a tool window or UI panel in an IDE plugin, implement a tabbed interface to organize distinct functionalities (e.g., control, settings, rules) into separate, easily accessible sections for improved user navigation and clarity.
 - When enhancing the UI layout in an IDE plugin, include a prominent header with the tool or feature name to provide clear context and branding within the interface.
+- When updating the UI color scheme in an IDE plugin or tool window, ensure the new color values are chosen to maintain visual clarity and consistency across both light and dark themes, using tools like JBColor to handle theme-specific color adjustments.
 <!-- TURL-RULES-END -->
