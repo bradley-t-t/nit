@@ -3,7 +3,6 @@
 This file provides context to GitHub Copilot for this project.
 
 <!-- TURL-RULES-START -->
-
 ## Project Rules (Auto-managed by TURL)
 
 These rules are automatically learned from project commits and enforced during releases.
@@ -50,4 +49,8 @@ Do not edit this section manually - it will be overwritten.
 - When developing IDE plugins, separate process execution logic from UI triggering actions to maintain a clear distinction between user interface interactions and background operations, ensuring actions focus solely on UI updates or tool window visibility.
 - When building IDE plugins, implement state management for processes (e.g., idle, running, success, failed) to provide clear feedback to users about the current status of operations, enhancing user experience through transparency.
 - When creating IDE plugins, design output handling mechanisms (e.g., listeners for process output and completion events) to ensure real-time feedback and proper error reporting, improving usability and debugging capabilities.
+- When updating the UI design in an IDE plugin or tool window, ensure a consistent color scheme by defining a cohesive set of colors for backgrounds, text, accents, and status indicators to improve visual clarity and user experience.
+- When enhancing UI elements in a tool window or plugin, incorporate visual feedback mechanisms like progress bars to clearly indicate the status of ongoing operations to users.
+- When redesigning UI components in an IDE plugin, prioritize readability by using distinct styling for primary elements (e.g., bold labels) and secondary elements (e.g., dimmed subtitles) to establish a clear visual hierarchy.
+- When updating interactive elements in a UI for an IDE plugin, ensure that buttons or controls adapt dynamically to the context (e.g., showing or hiding based on relevance) and use distinct visual cues (e.g., color or style) to emphasize critical actions like cancellation.
 <!-- TURL-RULES-END -->

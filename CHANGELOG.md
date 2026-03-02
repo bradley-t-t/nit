@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.3] - 2026-03-02
+
+- Updated the UI color scheme in the Turl Tool Window with a refreshed set of colors for background, text, accents, and status indicators to improve visual clarity and consistency.
+- Redesigned the status display with a bold status label and a dimmed subtitle for better readability and hierarchy.
+- Added a progress bar to visually indicate the progress of operations in the tool window.
+- Replaced the interactive button with a settings button to access configuration options directly from the UI.
+- Updated button styles and visibility, including a new "Cancel" button that appears only when relevant, with distinct coloring for emphasis.
+- Refined the layout and styling of step containers for a cleaner presentation of release steps.
+
 ## [5.2] - 2026-03-02
 
 - Added a blank line in the Copilot instructions file to improve readability of the project rules section.
