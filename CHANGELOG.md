@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.5] - 2026-03-02
+
+- Revamped the TURL Tool Window UI with a new tabbed interface, introducing separate tabs for "Control Panel", "Rules", and "Settings" for better organization and access to different functionalities.
+- Updated the layout of the main panel with a header displaying "TURL Release" and improved styling for background and borders.
+- Enhanced the control panel tab with updated status and subtitle labels, adjusting font styles and colors for better readability.
+- Adjusted the progress bar in the control panel to have a slightly taller height and consistent styling with the new UI theme.
+
 ## [5.4] - 2026-03-02
 
 - Updated the UI color scheme in the Turl Tool Window with new color values for background, text, accents, and various states to improve visual clarity and consistency across light and dark themes.

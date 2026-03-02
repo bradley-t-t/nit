@@ -2,23 +2,27 @@ package com.turl.release.toolwindow
 
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.components.JBTabbedPane
+import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.content.ContentFactory
 import com.intellij.util.ui.JBUI
 import com.turl.release.services.TurlOutputListener
 import com.turl.release.services.TurlProcessRunner
+import com.turl.release.settings.TurlSettings
 import java.awt.*
+import java.io.File
 import javax.swing.*
 
 class TurlToolWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val content = ContentFactory.getInstance().createContent(TurlPanel(project), "", false)
+        val content = ContentFactory.getInstance().createContent(TurlMainPanel(project), "", false)
         toolWindow.contentManager.addContent(content)
     }
 }
@@ -35,17 +39,14 @@ private val PHASE_PENDING_BG = JBColor(Color(0xF3F4F6), Color(0x38393B))
 private val PHASE_ACTIVE_BG = JBColor(Color(0xEBF2FE), Color(0x2C3A4E))
 private val PHASE_DONE_BG = JBColor(Color(0xEEF9F0), Color(0x2A3D2E))
 private val PHASE_ERROR_BG = JBColor(Color(0xFDF0F0), Color(0x3D2A2A))
-private val CHECK_DIM = JBColor(Color(0xC0C0C0), Color(0x555555))
+private val BORDER_COLOR = JBColor(Color(0xE0E0E0), Color(0x3C3C3C))
+private val FIELD_BG = JBColor(Color(0xFFFFFF), Color(0x333538))
 
 private enum class PhaseId {
     UPDATE, PREFLIGHT, ENVIRONMENT, CODE_PREP, VERSIONING, CHANGELOG, BUILD, COMMIT, LEARN
 }
 
-private data class PhaseInfo(
-    val id: PhaseId,
-    val label: String,
-    val keywords: List<String>
-)
+private data class PhaseInfo(val id: PhaseId, val label: String, val keywords: List<String>)
 
 private val RELEASE_PHASES = listOf(
     PhaseInfo(PhaseId.UPDATE, "Checking for updates", listOf("Checking for updates", "Update available", "Auto-updating", "Updated to", "Update failed")),
@@ -61,40 +62,57 @@ private val RELEASE_PHASES = listOf(
 
 private enum class PhaseState { PENDING, ACTIVE, DONE, ERROR }
 
-private class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutputListener {
+private class TurlMainPanel(private val project: Project) : JPanel(BorderLayout()) {
+    init {
+        background = BG
+        border = JBUI.Borders.empty()
+
+        val header = JPanel(BorderLayout()).apply {
+            isOpaque = false
+            border = JBUI.Borders.empty(12, 16, 4, 16)
+            add(JLabel("TURL Release").apply {
+                font = font.deriveFont(Font.BOLD, 16f)
+                foreground = TEXT_PRIMARY
+            }, BorderLayout.WEST)
+        }
+
+        val tabs = JBTabbedPane().apply {
+            tabComponentInsets = JBUI.insets(0)
+            addTab("  Control Panel  ", AllIcons.Actions.Execute, ControlPanelTab(project))
+            addTab("  Rules  ", AllIcons.Actions.ListFiles, RulesTab(project))
+            addTab("  Settings  ", AllIcons.General.GearPlain, SettingsTab())
+        }
+
+        add(header, BorderLayout.NORTH)
+        add(tabs, BorderLayout.CENTER)
+    }
+}
+
+private class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), TurlOutputListener {
 
     private val runner = TurlProcessRunner(project)
-
     private val statusIcon = JLabel()
-    private val statusLabel = JLabel("Ready")
-    private val subtitleLabel = JLabel("Press Release or Dry Run to begin")
-
+    private val statusLabel = JLabel("Ready").apply {
+        font = font.deriveFont(Font.BOLD, 14f)
+        foreground = TEXT_PRIMARY
+    }
+    private val subtitleLabel = JLabel("Press Release or Dry Run to begin").apply {
+        font = font.deriveFont(Font.PLAIN, 11f)
+        foreground = TEXT_DIM
+    }
     private val progressBar = JProgressBar(0, 100).apply {
         isStringPainted = false
-        preferredSize = Dimension(0, 4)
-        maximumSize = Dimension(Int.MAX_VALUE, 4)
-        isIndeterminate = false
+        preferredSize = Dimension(0, 6)
+        maximumSize = Dimension(Int.MAX_VALUE, 6)
         value = 0
         foreground = ACCENT
         background = PROGRESS_TRACK
         border = null
         isOpaque = true
     }
-
-    private val releaseBtn = PrimaryButton("Release")
-    private val dryRunBtn = SecondaryButton("Dry Run")
-    private val settingsBtn = JButton(AllIcons.General.GearPlain).apply {
-        isBorderPainted = false; isContentAreaFilled = false; isFocusPainted = false
-        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        toolTipText = "Settings"
-    }
-    private val cancelBtn = JButton("Cancel").apply {
-        isFocusPainted = false; isBorderPainted = false; isContentAreaFilled = false
-        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        font = font.deriveFont(Font.BOLD, 11f)
-        foreground = RED
-        isVisible = false
-    }
+    private val releaseBtn = StyledButton("Release", ACCENT, Color.WHITE, true)
+    private val dryRunBtn = StyledButton("Dry Run", CARD_BG, TEXT_PRIMARY, false)
+    private val cancelBtn = StyledButton("Cancel", PHASE_ERROR_BG, RED, false).apply { isVisible = false }
 
     private val phaseCards = mutableMapOf<PhaseId, PhaseCard>()
     private val phasesContainer = JPanel().apply {
@@ -104,73 +122,74 @@ private class TurlPanel(private val project: Project) : JPanel(BorderLayout()), 
     private var completedPhaseCount = 0
 
     init {
-        background = BG
-        border = JBUI.Borders.empty()
-        runner.setOutputListener(this)
-        add(buildMainPanel(), BorderLayout.CENTER)
-
-        settingsBtn.addActionListener { ShowSettingsUtil.getInstance().showSettingsDialog(project, "TURL Release") }
-        releaseBtn.addActionListener { launchRelease("release") }
-        dryRunBtn.addActionListener { launchRelease("dry-run", "--dry-run") }
-        cancelBtn.addActionListener { runner.stop(); setIdle() }
-        applyIdleState()
-    }
-
-    private fun buildMainPanel(): JPanel = JPanel(BorderLayout()).apply {
         isOpaque = false
-        border = JBUI.Borders.empty(14, 16, 14, 16)
+        border = JBUI.Borders.empty(8, 12, 12, 12)
+        runner.setOutputListener(this)
 
-        val headerRow = JPanel(BorderLayout()).apply {
-            isOpaque = false
-            add(JLabel("TURL Release").apply {
-                font = font.deriveFont(Font.BOLD, 15f); foreground = TEXT_PRIMARY
-            }, BorderLayout.WEST)
-            val actions = JPanel(FlowLayout(FlowLayout.RIGHT, 2, 0)).apply {
-                isOpaque = false; add(cancelBtn); add(settingsBtn)
-            }
-            add(actions, BorderLayout.EAST)
-        }
-
-        val statusCard = RoundedPanel(10).apply {
-            background = CARD_BG
+        val statusCard = RoundedCard().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             border = JBUI.Borders.empty(14, 16, 14, 16)
 
-            val row = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
-                isOpaque = false; alignmentX = LEFT_ALIGNMENT
-                statusLabel.font = statusLabel.font.deriveFont(Font.BOLD, 14f)
-                statusLabel.foreground = TEXT_PRIMARY
-                add(statusIcon); add(statusLabel)
+            val iconTextRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+                isOpaque = false
+                alignmentX = LEFT_ALIGNMENT
+                add(statusIcon)
+                add(statusLabel)
             }
-            val sub = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
-                isOpaque = false; alignmentX = LEFT_ALIGNMENT
-                subtitleLabel.font = subtitleLabel.font.deriveFont(Font.PLAIN, 11f)
-                subtitleLabel.foreground = TEXT_DIM
+            val subRow = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+                isOpaque = false
+                alignmentX = LEFT_ALIGNMENT
                 add(subtitleLabel)
             }
-            add(row); add(Box.createVerticalStrut(4)); add(sub)
-            add(Box.createVerticalStrut(10)); progressBar.alignmentX = LEFT_ALIGNMENT; add(progressBar)
+            add(iconTextRow)
+            add(Box.createVerticalStrut(4))
+            add(subRow)
+            add(Box.createVerticalStrut(10))
+            progressBar.alignmentX = LEFT_ALIGNMENT
+            add(progressBar)
         }
 
-        val btnRow = JPanel(GridLayout(1, 2, 8, 0)).apply {
-            isOpaque = false; border = JBUI.Borders.emptyTop(10)
-            maximumSize = Dimension(Int.MAX_VALUE, 34)
-            add(releaseBtn); add(dryRunBtn)
+        val btnRow = JPanel(GridLayout(1, 3, 8, 0)).apply {
+            isOpaque = false
+            border = JBUI.Borders.emptyTop(10)
+            maximumSize = Dimension(Int.MAX_VALUE, 36)
+            add(releaseBtn)
+            add(dryRunBtn)
+            add(cancelBtn)
+        }
+
+        val pipelineLabel = JLabel("Pipeline").apply {
+            font = font.deriveFont(Font.BOLD, 11f)
+            foreground = TEXT_DIM
+            alignmentX = LEFT_ALIGNMENT
+            border = JBUI.Borders.emptyLeft(2)
         }
 
         val topSection = JPanel().apply {
-            isOpaque = false; layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            add(headerRow); add(Box.createVerticalStrut(12)); add(statusCard); add(btnRow)
+            isOpaque = false
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            add(statusCard)
+            add(btnRow)
+            add(Box.createVerticalStrut(10))
+            add(JSeparator().apply { foreground = BORDER_COLOR; maximumSize = Dimension(Int.MAX_VALUE, 1) })
+            add(Box.createVerticalStrut(6))
+            add(pipelineLabel)
+            add(Box.createVerticalStrut(6))
         }
 
         val scroll = JBScrollPane(phasesContainer).apply {
-            border = JBUI.Borders.emptyTop(12)
-            isOpaque = false; viewport.isOpaque = false
+            border = JBUI.Borders.empty()
+            isOpaque = false
+            viewport.isOpaque = false
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
         }
 
         add(topSection, BorderLayout.NORTH)
         add(scroll, BorderLayout.CENTER)
+
+        releaseBtn.addActionListener { launchRelease("release") }
+        dryRunBtn.addActionListener { launchRelease("dry-run", "--dry-run") }
+        cancelBtn.addActionListener { runner.stop(); applyIdleState() }
     }
 
     private fun launchRelease(mode: String, vararg flags: String) {
@@ -193,11 +212,9 @@ private class TurlPanel(private val project: Project) : JPanel(BorderLayout()), 
         subtitleLabel.text = if (mode == "dry-run") "Simulating release (no changes)" else "Starting release pipeline"
         progressBar.isIndeterminate = true
         progressBar.foreground = ACCENT
-        syncButtons()
+        syncButtons(true)
         runner.execute(*flags)
     }
-
-    private fun setIdle() { applyIdleState() }
 
     private fun applyIdleState() {
         statusIcon.icon = null
@@ -206,11 +223,10 @@ private class TurlPanel(private val project: Project) : JPanel(BorderLayout()), 
         subtitleLabel.text = "Press Release or Dry Run to begin"
         progressBar.isIndeterminate = false
         progressBar.value = 0
-        syncButtons()
+        syncButtons(false)
     }
 
-    private fun syncButtons() {
-        val running = runner.isRunning
+    private fun syncButtons(running: Boolean) {
         releaseBtn.isEnabled = !running
         dryRunBtn.isEnabled = !running
         cancelBtn.isVisible = running
@@ -223,16 +239,9 @@ private class TurlPanel(private val project: Project) : JPanel(BorderLayout()), 
         line.contains("failed", ignoreCase = true) || line.contains("error", ignoreCase = true) ||
                 line.contains("Release aborted", ignoreCase = true)
 
-    private fun isCompleteLine(line: String): Boolean =
-        line.contains("Release Complete", ignoreCase = true)
-
-    private fun isNoChangesLine(line: String): Boolean =
-        line.contains("No changes detected", ignoreCase = true) || line.contains("Release skipped", ignoreCase = true)
-
     private fun updateProgress() {
         progressBar.isIndeterminate = false
-        val pct = ((completedPhaseCount.toFloat() / RELEASE_PHASES.size) * 100).toInt().coerceIn(0, 100)
-        progressBar.value = pct
+        progressBar.value = ((completedPhaseCount.toFloat() / RELEASE_PHASES.size) * 100).toInt().coerceIn(0, 100)
     }
 
     private fun setPhaseState(phaseId: PhaseId, state: PhaseState) {
@@ -241,43 +250,44 @@ private class TurlPanel(private val project: Project) : JPanel(BorderLayout()), 
         updateProgress()
     }
 
-    private fun completeAllActiveAsDone() {
-        phaseCards.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.DONE) }
-    }
-
     override fun onOutputLine(cleanLine: String) {
         ApplicationManager.getApplication().invokeLater {
             val phase = findPhaseForLine(cleanLine) ?: return@invokeLater
 
-            if (isErrorLine(cleanLine)) {
-                completeAllActiveAsDone()
-                setPhaseState(phase.id, PhaseState.ERROR)
-                statusIcon.icon = AllIcons.General.Error
-                statusLabel.text = "Error"
-                statusLabel.foreground = RED
-                subtitleLabel.text = cleanLine
-                progressBar.foreground = RED
-            } else if (isNoChangesLine(cleanLine)) {
-                completeAllActiveAsDone()
-                setPhaseState(phase.id, PhaseState.DONE)
-                phaseCards.values.filter { it.currentState == PhaseState.PENDING }.forEach { it.setState(PhaseState.DONE) }
-                statusIcon.icon = AllIcons.General.Information
-                statusLabel.text = "No Changes"
-                statusLabel.foreground = TEXT_DIM
-                subtitleLabel.text = "Nothing to release"
-            } else {
-                phaseCards.values.filter { it.currentState == PhaseState.ACTIVE }.forEach {
-                    it.setState(PhaseState.DONE)
-                    completedPhaseCount++
+            when {
+                isErrorLine(cleanLine) -> {
+                    phaseCards.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.DONE) }
+                    setPhaseState(phase.id, PhaseState.ERROR)
+                    statusIcon.icon = AllIcons.General.Error
+                    statusLabel.text = "Error"
+                    statusLabel.foreground = RED
+                    subtitleLabel.text = cleanLine
+                    progressBar.foreground = RED
                 }
-                setPhaseState(phase.id, PhaseState.ACTIVE)
-                statusLabel.text = "Running..."
-                statusLabel.foreground = ACCENT
-                subtitleLabel.text = phase.label
-                updateProgress()
+                cleanLine.contains("No changes detected", ignoreCase = true) || cleanLine.contains("Release skipped", ignoreCase = true) -> {
+                    phaseCards.values.forEach { if (it.currentState != PhaseState.ERROR) it.setState(PhaseState.DONE) }
+                    statusIcon.icon = AllIcons.General.Information
+                    statusLabel.text = "No Changes"
+                    statusLabel.foreground = TEXT_DIM
+                    subtitleLabel.text = "Nothing to release"
+                }
+                else -> {
+                    phaseCards.values.filter { it.currentState == PhaseState.ACTIVE }.forEach {
+                        it.setState(PhaseState.DONE)
+                        completedPhaseCount++
+                    }
+                    setPhaseState(phase.id, PhaseState.ACTIVE)
+                    statusLabel.text = "Running..."
+                    statusLabel.foreground = ACCENT
+                    subtitleLabel.text = phase.label
+                    updateProgress()
+                }
             }
 
-            scrollToBottom()
+            SwingUtilities.invokeLater {
+                (SwingUtilities.getAncestorOfClass(JBScrollPane::class.java, phasesContainer) as? JBScrollPane)
+                    ?.verticalScrollBar?.let { it.value = it.maximum }
+            }
         }
     }
 
@@ -302,47 +312,301 @@ private class TurlPanel(private val project: Project) : JPanel(BorderLayout()), 
                     subtitleLabel.text = "Release encountered an error"
                 }
             }
-            syncButtons()
-        }
-    }
-
-    private fun scrollToBottom() {
-        SwingUtilities.invokeLater {
-            (SwingUtilities.getAncestorOfClass(JBScrollPane::class.java, phasesContainer) as? JBScrollPane)
-                ?.verticalScrollBar?.let { it.value = it.maximum }
+            syncButtons(false)
         }
     }
 }
 
-private open class RoundedPanel(private val radius: Int) : JPanel() {
-    init { isOpaque = false }
+private class RulesTab(private val project: Project) : JPanel(BorderLayout()) {
+
+    private val rulesArea = JBTextArea().apply {
+        font = Font("JetBrains Mono", Font.PLAIN, 12)
+        lineWrap = true
+        wrapStyleWord = true
+        background = FIELD_BG
+        foreground = TEXT_PRIMARY
+        caretColor = TEXT_PRIMARY
+        margin = JBUI.insets(10)
+    }
+    private val feedbackLabel = JLabel(" ").apply {
+        font = font.deriveFont(Font.PLAIN, 11f)
+        foreground = TEXT_DIM
+    }
+
+    private val rulesFilePath: String get() = "${project.basePath}/.github/copilot-instructions.md"
+
+    init {
+        isOpaque = false
+        border = JBUI.Borders.empty(8, 12, 12, 12)
+
+        val description = JPanel().apply {
+            isOpaque = false
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            add(JLabel("Project Rules").apply {
+                font = font.deriveFont(Font.BOLD, 13f)
+                foreground = TEXT_PRIMARY
+                alignmentX = LEFT_ALIGNMENT
+            })
+            add(Box.createVerticalStrut(4))
+            add(JLabel("Edit rules from .github/copilot-instructions.md").apply {
+                font = font.deriveFont(Font.PLAIN, 11f)
+                foreground = TEXT_DIM
+                alignmentX = LEFT_ALIGNMENT
+            })
+        }
+
+        val scroll = JBScrollPane(rulesArea).apply {
+            border = BorderFactory.createLineBorder(BORDER_COLOR, 1)
+            isOpaque = false
+        }
+
+        val saveBtn = StyledButton("Save Rules", ACCENT, Color.WHITE, true)
+        val reloadBtn = StyledButton("Reload", CARD_BG, TEXT_PRIMARY, false)
+
+        val btnRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+            isOpaque = false
+            border = JBUI.Borders.emptyTop(8)
+            add(saveBtn)
+            add(reloadBtn)
+            add(feedbackLabel)
+        }
+
+        val top = JPanel(BorderLayout()).apply {
+            isOpaque = false
+            border = JBUI.Borders.emptyBottom(8)
+            add(description, BorderLayout.CENTER)
+        }
+
+        add(top, BorderLayout.NORTH)
+        add(scroll, BorderLayout.CENTER)
+        add(btnRow, BorderLayout.SOUTH)
+
+        saveBtn.addActionListener { saveRules() }
+        reloadBtn.addActionListener { loadRules() }
+        loadRules()
+    }
+
+    private fun loadRules() {
+        val file = File(rulesFilePath)
+        if (!file.exists()) {
+            rulesArea.text = ""
+            feedbackLabel.text = "No rules file found"
+            feedbackLabel.foreground = TEXT_DIM
+            return
+        }
+        val rulesOnly = extractRulesSection(file.readText())
+        rulesArea.text = rulesOnly
+        feedbackLabel.text = "Loaded ${rulesOnly.lines().count { it.startsWith("- ") }} rules"
+        feedbackLabel.foreground = TEXT_DIM
+    }
+
+    private fun saveRules() {
+        val file = File(rulesFilePath)
+        file.parentFile?.mkdirs()
+
+        val newRules = rulesArea.text.trim()
+        val startMarker = "<!-- TURL-RULES-START -->"
+        val endMarker = "<!-- TURL-RULES-END -->"
+        val rulesBlock = "$startMarker\n## Project Rules (Auto-managed by TURL)\n\nThese rules are automatically learned from project commits and enforced during releases.\nDo not edit this section manually - it will be overwritten.\n\n$newRules\n$endMarker"
+
+        if (file.exists()) {
+            val existing = file.readText()
+            val startIdx = existing.indexOf(startMarker)
+            val endIdx = existing.indexOf(endMarker)
+            val updated = if (startIdx >= 0 && endIdx >= 0) {
+                existing.substring(0, startIdx) + rulesBlock + existing.substring(endIdx + endMarker.length)
+            } else {
+                "$existing\n\n$rulesBlock\n"
+            }
+            file.writeText(updated)
+        } else {
+            file.writeText("# Copilot Instructions\n\nThis file provides context to GitHub Copilot for this project.\n\n$rulesBlock\n")
+        }
+
+        LocalFileSystem.getInstance().refreshAndFindFileByPath(rulesFilePath)?.refresh(true, false)
+        feedbackLabel.text = "\u2713 Saved"
+        feedbackLabel.foreground = GREEN
+    }
+
+    private fun extractRulesSection(content: String): String {
+        val startIdx = content.indexOf("<!-- TURL-RULES-START -->")
+        val endIdx = content.indexOf("<!-- TURL-RULES-END -->")
+        if (startIdx < 0 || endIdx < 0) return ""
+        return content.substring(startIdx + "<!-- TURL-RULES-START -->".length, endIdx).trim()
+            .lines().dropWhile { !it.startsWith("- ") }.joinToString("\n").trim()
+    }
+}
+
+private class SettingsTab : JPanel(BorderLayout()) {
+
+    private val settings = TurlSettings.getInstance()
+
+    private val apiKeyField = JPasswordField().apply {
+        background = FIELD_BG
+        foreground = TEXT_PRIMARY
+        caretColor = TEXT_PRIMARY
+    }
+    private val nodePathField = JTextField().apply {
+        background = FIELD_BG
+        foreground = TEXT_PRIMARY
+        caretColor = TEXT_PRIMARY
+    }
+    private val branchField = JTextField().apply {
+        background = FIELD_BG
+        foreground = TEXT_PRIMARY
+        caretColor = TEXT_PRIMARY
+    }
+    private val skipUpdateCheckbox = JCheckBox("Skip update check before releases").apply {
+        isOpaque = false
+        foreground = TEXT_PRIMARY
+        font = font.deriveFont(Font.PLAIN, 12f)
+    }
+    private val feedbackLabel = JLabel(" ").apply {
+        font = font.deriveFont(Font.PLAIN, 11f)
+        foreground = TEXT_DIM
+    }
+
+    init {
+        isOpaque = false
+        border = JBUI.Borders.empty(8, 12, 12, 12)
+
+        val form = JPanel(GridBagLayout()).apply { isOpaque = false }
+        val gbc = GridBagConstraints().apply {
+            fill = GridBagConstraints.HORIZONTAL
+            insets = Insets(4, 0, 4, 8)
+            anchor = GridBagConstraints.WEST
+        }
+        var row = 0
+
+        fun addSection(title: String) {
+            gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2; gbc.weightx = 1.0
+            form.add(JLabel(title).apply {
+                font = font.deriveFont(Font.BOLD, 12f)
+                foreground = TEXT_PRIMARY
+                border = JBUI.Borders.emptyTop(if (row > 0) 14 else 0)
+            }, gbc)
+            row++; gbc.gridwidth = 1
+        }
+
+        fun addField(label: String, field: JComponent) {
+            gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0
+            form.add(JLabel(label).apply {
+                font = font.deriveFont(Font.PLAIN, 12f)
+                foreground = TEXT_DIM
+            }, gbc)
+            gbc.gridx = 1; gbc.weightx = 1.0
+            form.add(field, gbc)
+            row++
+        }
+
+        fun addCheckbox(cb: JCheckBox) {
+            gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2; gbc.weightx = 1.0
+            form.add(cb, gbc)
+            row++; gbc.gridwidth = 1
+        }
+
+        addSection("API")
+        addField("Grok API Key", apiKeyField)
+
+        addSection("Paths")
+        addField("Node.js Path", nodePathField)
+
+        addSection("Git")
+        addField("Default Branch", branchField)
+
+        addSection("Behavior")
+        addCheckbox(skipUpdateCheckbox)
+
+        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 2; gbc.weighty = 1.0
+        form.add(Box.createVerticalGlue(), gbc)
+
+        val scroll = JBScrollPane(form).apply {
+            border = JBUI.Borders.empty()
+            isOpaque = false
+            viewport.isOpaque = false
+        }
+
+        val saveBtn = StyledButton("Save Settings", ACCENT, Color.WHITE, true)
+        val resetBtn = StyledButton("Reset Defaults", CARD_BG, TEXT_PRIMARY, false)
+
+        val btnRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+            isOpaque = false
+            border = JBUI.Borders.emptyTop(8)
+            add(saveBtn)
+            add(resetBtn)
+            add(feedbackLabel)
+        }
+
+        add(scroll, BorderLayout.CENTER)
+        add(btnRow, BorderLayout.SOUTH)
+
+        saveBtn.addActionListener { saveSettings() }
+        resetBtn.addActionListener { resetDefaults() }
+        loadSettings()
+    }
+
+    private fun loadSettings() {
+        val state = settings.state
+        apiKeyField.text = state.grokApiKey
+        nodePathField.text = state.nodePath
+        branchField.text = state.defaultBranch
+        skipUpdateCheckbox.isSelected = state.skipUpdateOnRun
+    }
+
+    private fun saveSettings() {
+        settings.loadState(TurlSettings.State(
+            grokApiKey = String(apiKeyField.password),
+            nodePath = nodePathField.text,
+            defaultBranch = branchField.text,
+            skipUpdateOnRun = skipUpdateCheckbox.isSelected
+        ))
+        feedbackLabel.text = "\u2713 Settings saved"
+        feedbackLabel.foreground = GREEN
+    }
+
+    private fun resetDefaults() {
+        apiKeyField.text = ""
+        nodePathField.text = ""
+        branchField.text = ""
+        skipUpdateCheckbox.isSelected = true
+        saveSettings()
+        feedbackLabel.text = "Reset to defaults"
+        feedbackLabel.foreground = TEXT_DIM
+    }
+}
+
+private open class RoundedCard : JPanel() {
+    init {
+        isOpaque = false
+        background = CARD_BG
+    }
+
     override fun paintComponent(g: Graphics) {
         (g.create() as Graphics2D).apply {
             setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
             color = background
-            fillRoundRect(0, 0, width, height, radius, radius)
+            fillRoundRect(0, 0, width, height, 10, 10)
             dispose()
         }
         super.paintComponent(g)
     }
 }
 
-private class PhaseCard(private val label: String) : RoundedPanel(8) {
+private class PhaseCard(private val label: String) : RoundedCard() {
     var currentState = PhaseState.PENDING; private set
     private val icon = JLabel()
     private val textLabel = JLabel(label)
-    private val checkMark = JLabel()
 
     init {
         layout = BorderLayout()
-        border = JBUI.Borders.empty(10, 14, 10, 14)
-        maximumSize = Dimension(Int.MAX_VALUE, 40)
-
+        border = JBUI.Borders.empty(8, 12, 8, 12)
+        maximumSize = Dimension(Int.MAX_VALUE, 36)
         val left = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
-            isOpaque = false; add(icon); add(textLabel)
+            isOpaque = false
+            add(icon)
+            add(textLabel)
         }
         add(left, BorderLayout.WEST)
-        add(checkMark, BorderLayout.EAST)
         applyStyle()
     }
 
@@ -356,57 +620,33 @@ private class PhaseCard(private val label: String) : RoundedPanel(8) {
         textLabel.font = textLabel.font.deriveFont(if (currentState == PhaseState.ACTIVE) Font.BOLD else Font.PLAIN, 12f)
         when (currentState) {
             PhaseState.PENDING -> {
-                background = PHASE_PENDING_BG
-                icon.icon = null
-                textLabel.foreground = TEXT_DIM
-                checkMark.icon = null
-                checkMark.text = ""
+                background = PHASE_PENDING_BG; icon.icon = null; textLabel.foreground = TEXT_DIM
             }
             PhaseState.ACTIVE -> {
-                background = PHASE_ACTIVE_BG
-                icon.icon = AllIcons.Process.Step_1
-                textLabel.foreground = ACCENT
-                checkMark.icon = null
-                checkMark.text = ""
+                background = PHASE_ACTIVE_BG; icon.icon = AllIcons.Process.Step_1; textLabel.foreground = ACCENT
             }
             PhaseState.DONE -> {
-                background = PHASE_DONE_BG
-                icon.icon = AllIcons.RunConfigurations.TestPassed
-                textLabel.foreground = GREEN
-                checkMark.icon = null
-                checkMark.foreground = CHECK_DIM
-                checkMark.text = "\u2713"
-                checkMark.font = checkMark.font.deriveFont(Font.PLAIN, 12f)
+                background = PHASE_DONE_BG; icon.icon = AllIcons.RunConfigurations.TestPassed; textLabel.foreground = GREEN
             }
             PhaseState.ERROR -> {
-                background = PHASE_ERROR_BG
-                icon.icon = AllIcons.RunConfigurations.TestFailed
-                textLabel.foreground = RED
-                checkMark.icon = null
-                checkMark.foreground = RED
-                checkMark.text = "\u2717"
-                checkMark.font = checkMark.font.deriveFont(Font.PLAIN, 12f)
+                background = PHASE_ERROR_BG; icon.icon = AllIcons.RunConfigurations.TestFailed; textLabel.foreground = RED
             }
         }
     }
 }
 
-private class PrimaryButton(text: String) : JButton(text) {
+private class StyledButton(text: String, bg: Color, fg: Color, primary: Boolean) : JButton(text) {
     init {
         isFocusPainted = false
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        font = font.deriveFont(Font.BOLD, 12f)
-        margin = JBUI.insets(8, 16, 8, 16)
-        foreground = Color.WHITE
-        background = ACCENT
-    }
-}
-
-private class SecondaryButton(text: String) : JButton(text) {
-    init {
-        isFocusPainted = false
-        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        font = font.deriveFont(Font.PLAIN, 12f)
-        margin = JBUI.insets(8, 16, 8, 16)
+        font = font.deriveFont(if (primary) Font.BOLD else Font.PLAIN, 12f)
+        margin = JBUI.insets(6, 16, 6, 16)
+        foreground = fg
+        background = bg
+        border = if (primary) JBUI.Borders.empty(6, 16, 6, 16)
+        else BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR, 1),
+            JBUI.Borders.empty(5, 15, 5, 15)
+        )
     }
 }

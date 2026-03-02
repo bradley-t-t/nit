@@ -59,4 +59,6 @@ Do not edit this section manually - it will be overwritten.
 - When adjusting UI elements like progress bars in an IDE plugin, prioritize visibility by fine-tuning dimensions or styling to ensure they are easily noticeable without overwhelming the interface.
 - When updating interactive UI components like buttons in an IDE plugin, use distinct button styles (e.g., primary and secondary) to create a clear visual hierarchy and guide user actions effectively.
 - When refining user guidance in a UI for an IDE plugin, ensure status messages or prompts are concise and action-oriented to clearly communicate the next steps to the user.
+- When designing or updating a tool window or UI panel in an IDE plugin, implement a tabbed interface to organize distinct functionalities (e.g., control, settings, rules) into separate, easily accessible sections for improved user navigation and clarity.
+- When enhancing the UI layout in an IDE plugin, include a prominent header with the tool or feature name to provide clear context and branding within the interface.
 <!-- TURL-RULES-END -->
