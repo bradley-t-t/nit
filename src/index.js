@@ -278,6 +278,25 @@ async function main() {
     }
   }
 
+  ui.printHeaderWithStatus("Learning from this release...");
+  const preDiff = getGitDiff(true);
+  const preStat = getGitDiffStat(true);
+  const preChangedFiles = getChangedFiles(true);
+  try {
+    const newRules = await generateNewRules(
+      apiKey,
+      preDiff,
+      preStat,
+      preChangedFiles,
+      projectRules,
+    );
+    if (newRules.length > 0 && !cliOptions.dryRun) {
+      for (const rule of newRules) {
+        appendTurlRule(rule);
+      }
+    }
+  } catch {}
+
   ui.printHeaderWithStatus("Staging all changes...");
   try {
     if (!cliOptions.dryRun) execCommand("git add -A", { silent: true });
@@ -324,34 +343,6 @@ async function main() {
       exitWithRollback(1);
     }
   }
-
-  ui.printHeaderWithStatus("Learning from this release...");
-  try {
-    const newRules = await generateNewRules(
-      apiKey,
-      finalDiff,
-      finalStat,
-      finalChangedFiles,
-      projectRules,
-    );
-    if (newRules.length > 0 && !cliOptions.dryRun) {
-      for (const rule of newRules) {
-        appendTurlRule(rule);
-      }
-      execCommand("git add .github/copilot-instructions.md", {
-        silent: true,
-        ignoreError: true,
-      });
-      execCommand("git commit --amend --no-edit", {
-        silent: true,
-        ignoreError: true,
-      });
-      execCommand(`git push origin ${branch} --force-with-lease`, {
-        silent: true,
-        ignoreError: true,
-      });
-    }
-  } catch {}
 
   ui.printHeaderWithStatus(`Release Complete! v${newVersion}`);
 }

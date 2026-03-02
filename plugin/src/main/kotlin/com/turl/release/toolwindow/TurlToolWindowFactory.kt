@@ -64,8 +64,8 @@ private val RELEASE_PHASES = listOf(
     PhaseInfo(PhaseId.VERSIONING, "Updating version", listOf("Preparing release", "Updating version files", "Version update failed", "DRY RUN MODE")),
     PhaseInfo(PhaseId.CHANGELOG, "Generating changelog", listOf("Generating changelog", "Updating CHANGELOG", "Changelog generation failed", "Changelog update failed")),
     PhaseInfo(PhaseId.BUILD, "Building project", listOf("Running production build", "Build failed")),
-    PhaseInfo(PhaseId.COMMIT, "Committing and pushing", listOf("Staging all changes", "Committing and pushing", "Staging failed", "Commit message generation failed", "Commit failed", "Push failed")),
-    PhaseInfo(PhaseId.LEARN, "Learning rules", listOf("Learning from this release"))
+    PhaseInfo(PhaseId.LEARN, "Learning rules", listOf("Learning from this release")),
+    PhaseInfo(PhaseId.COMMIT, "Committing and pushing", listOf("Staging all changes", "Committing and pushing", "Staging failed", "Commit message generation failed", "Commit failed", "Push failed"))
 )
 
 private enum class PhaseState { PENDING, ACTIVE, DONE, ERROR, SKIPPED }

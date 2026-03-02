@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.2] - 2026-03-02
+
+- Reordered the release phases in the IntelliJ plugin to prioritize learning rules before committing and pushing, ensuring that the learning step is visually reflected earlier in the process.
+- Updated the CLI tool to perform the "Learning from this release" step before staging and committing changes, capturing pre-release diffs and stats for rule generation instead of post-release.
+- Removed the additional git commands for amending and force-pushing after learning new rules in the CLI tool, simplifying the release process.
+
 ## [6.1] - 2026-03-02
 
 - Added a new line in the copilot-instructions.md file to improve formatting or readability in the project rules section.

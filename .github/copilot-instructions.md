@@ -3,7 +3,6 @@
 This file provides context to GitHub Copilot for this project.
 
 <!-- TURL-RULES-START -->
-
 ## Project Rules (Auto-managed by TURL)
 
 These rules are automatically learned from project commits and enforced during releases.
@@ -69,4 +68,6 @@ Do not edit this section manually - it will be overwritten.
 - When updating documentation files for formatting or clarity, ensure that changes like adding new lines or spacing are applied consistently across similar sections to maintain a uniform appearance.
 - When updating the behavior of a plugin or tool regarding automatic updates, ensure the default settings reflect the intended user experience, such as enabling or disabling update checks on run, to align with user expectations and workflow efficiency.
 - When enhancing status messaging in a tool or plugin, include specific messages for all possible outcomes of a process phase (e.g., skipped, aborted, or completed) to provide clear and comprehensive feedback to users.
+- When defining the sequence of phases or steps in a release workflow, prioritize learning or rule generation before committing and pushing to ensure that insights or updates are captured from the pre-release state rather than post-release.
+- When simplifying a release process in a CLI tool, avoid additional post-learning steps like amending commits or force-pushing, focusing instead on a streamlined workflow that captures necessary data before finalizing the release.
 <!-- TURL-RULES-END -->
