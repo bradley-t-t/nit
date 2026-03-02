@@ -85,6 +85,12 @@ export function incrementVersion(version) {
   return `${major}.${minor}`;
 }
 
+function toSemver(version) {
+  return version.includes(".") && version.split(".").length === 2
+    ? `${version}.0`
+    : version;
+}
+
 export function updatePackageJsonVersion(newVersion) {
   const packageJsonPath = path.join(PROJECT_ROOT, "package.json");
   if (!fileExists(packageJsonPath))
@@ -93,10 +99,7 @@ export function updatePackageJsonVersion(newVersion) {
   try {
     const content = safeReadFile(packageJsonPath, "package.json");
     const packageJson = safeParseJson(content, packageJsonPath, "package.json");
-    const semverVersion =
-      newVersion.includes(".") && newVersion.split(".").length === 2
-        ? `${newVersion}.0`
-        : newVersion;
+    const semverVersion = toSemver(newVersion);
 
     if (packageJson.version === semverVersion)
       return { updated: false, reason: "version already matches" };
@@ -118,9 +121,52 @@ export function updatePackageJsonVersion(newVersion) {
   }
 }
 
+function updatePluginVersion(newVersion) {
+  const semverVersion = toSemver(newVersion);
+
+  const gradlePropsPath = path.join(
+    PROJECT_ROOT,
+    "plugin",
+    "gradle.properties",
+  );
+  if (fileExists(gradlePropsPath)) {
+    try {
+      const content = safeReadFile(gradlePropsPath, "gradle.properties");
+      const updated = content.replace(
+        /^pluginVersion\s*=\s*.+$/m,
+        `pluginVersion = ${semverVersion}`,
+      );
+      if (updated !== content)
+        safeWriteFile(gradlePropsPath, updated, "gradle.properties");
+    } catch {}
+  }
+
+  const pluginXmlPath = path.join(
+    PROJECT_ROOT,
+    "plugin",
+    "src",
+    "main",
+    "resources",
+    "META-INF",
+    "plugin.xml",
+  );
+  if (fileExists(pluginXmlPath)) {
+    try {
+      const content = safeReadFile(pluginXmlPath, "plugin.xml");
+      const updated = content.replace(
+        /<version>[^<]*<\/version>/,
+        `<version>${semverVersion}</version>`,
+      );
+      if (updated !== content)
+        safeWriteFile(pluginXmlPath, updated, "plugin.xml");
+    } catch {}
+  }
+}
+
 export function writeTurlConfig(config) {
   const turlPath = path.join(PROJECT_ROOT, "public", "turl.json");
   safeWriteFile(turlPath, JSON.stringify(config, null, 2) + "\n", "turl.json");
+  updatePluginVersion(config.version);
   return updatePackageJsonVersion(config.version);
 }
 

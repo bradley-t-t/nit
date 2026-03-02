@@ -33,6 +33,7 @@ private val TEXT_SECONDARY = JBColor(Color(0x6E7681), Color(0x8B8F96))
 private val ACCENT = JBColor(Color(0x2E6FE6), Color(0x4A8FF2))
 private val GREEN = JBColor(Color(0x1A7F37), Color(0x3FB950))
 private val RED = JBColor(Color(0xCF222E), Color(0xF85149))
+private val AMBER = JBColor(Color(0x9A6700), Color(0xD29922))
 private val CARD_BG = JBColor(Color(0xFFFFFF), Color(0x2B2D30))
 private val CARD_SHADOW = JBColor(Color(0, 0, 0, 12), Color(0, 0, 0, 30))
 private val BORDER_SUBTLE = JBColor(Color(0xE1E4E8), Color(0x373A3F))
@@ -41,10 +42,13 @@ private val PHASE_PENDING_BG = JBColor(Color(0xF3F4F6), Color(0x2B2D30))
 private val PHASE_ACTIVE_BG = JBColor(Color(0xE8F0FE), Color(0x1C3150))
 private val PHASE_DONE_BG = JBColor(Color(0xE6F6EB), Color(0x1B3228))
 private val PHASE_ERROR_BG = JBColor(Color(0xFDE8E8), Color(0x3D1F1F))
+private val PHASE_SKIPPED_BG = JBColor(Color(0xFFF8E1), Color(0x3D3520))
 private val FIELD_BG = JBColor(Color(0xFFFFFF), Color(0x2B2D30))
 private val FIELD_BORDER = JBColor(Color(0xD0D4DA), Color(0x44474C))
 private val BADGE_BG = JBColor(Color(0xE8F0FE), Color(0x1C3150))
 private val BADGE_FG = JBColor(Color(0x2E6FE6), Color(0x6CA4F7))
+private val TIMELINE_LINE = JBColor(Color(0xD0D4DA), Color(0x44474C))
+private val CHANGELOG_BG = JBColor(Color(0xF0F7FF), Color(0x1A2636))
 
 private enum class PhaseId {
     UPDATE, PREFLIGHT, ENVIRONMENT, CODE_PREP, VERSIONING, CHANGELOG, BUILD, COMMIT, LEARN
@@ -64,7 +68,7 @@ private val RELEASE_PHASES = listOf(
     PhaseInfo(PhaseId.LEARN, "Learning rules", listOf("Learning from this release"))
 )
 
-private enum class PhaseState { PENDING, ACTIVE, DONE, ERROR }
+private enum class PhaseState { PENDING, ACTIVE, DONE, ERROR, SKIPPED }
 
 private class TurlMainPanel(private val project: Project) : JPanel(BorderLayout()) {
     init {
@@ -100,12 +104,37 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
     private val dryRunBtn = PillButton("Dry Run", CARD_BG, TEXT_PRIMARY, false)
     private val cancelBtn = PillButton("Cancel", PHASE_ERROR_BG, RED, false).apply { isVisible = false }
 
-    private val phaseCards = mutableMapOf<PhaseId, PhaseCard>()
-    private val phasesContainer = JPanel().apply {
+    private val phaseSteps = mutableMapOf<PhaseId, TimelineStep>()
+    private val timelineContainer = JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
     }
     private var completedPhaseCount = 0
+    private var releaseSkipped = false
+
+    private val changelogLines = mutableListOf<String>()
+    private var capturingChangelog = false
+
+    private val changelogCard = ShadowCard().apply {
+        layout = BorderLayout()
+        border = JBUI.Borders.empty(14, 16, 14, 16)
+        isVisible = false
+        alignmentX = LEFT_ALIGNMENT
+    }
+    private val changelogContent = JBTextArea().apply {
+        font = Font("JetBrains Mono", Font.PLAIN, 11)
+        lineWrap = true
+        wrapStyleWord = true
+        isEditable = false
+        background = CHANGELOG_BG
+        foreground = TEXT_PRIMARY
+        border = JBUI.Borders.empty(10, 12, 10, 12)
+    }
+
+    private val scrollContent = JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        isOpaque = false
+    }
 
     init {
         background = BG_PRIMARY
@@ -113,39 +142,27 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
         runner.setOutputListener(this)
 
         val statusCard = ShadowCard().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            layout = GridBagLayout()
             border = JBUI.Borders.empty(16, 18, 16, 18)
-
-            val iconTextRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
-                isOpaque = false
-                alignmentX = LEFT_ALIGNMENT
-                maximumSize = Dimension(Int.MAX_VALUE, 24)
-            }
-            iconTextRow.add(statusIcon)
-            iconTextRow.add(statusLabel)
-
-            val subRow = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
-                isOpaque = false
-                alignmentX = LEFT_ALIGNMENT
-                maximumSize = Dimension(Int.MAX_VALUE, 20)
-            }
-            subRow.add(subtitleLabel)
-
-            val progressWrapper = JPanel(BorderLayout()).apply {
-                isOpaque = false
-                alignmentX = LEFT_ALIGNMENT
-                maximumSize = Dimension(Int.MAX_VALUE, 4)
-                add(progressBar, BorderLayout.CENTER)
-            }
-
-            add(iconTextRow)
-            add(Box.createVerticalStrut(4))
-            add(subRow)
-            add(Box.createVerticalStrut(12))
-            add(progressWrapper)
+            alignmentX = LEFT_ALIGNMENT
         }
 
-        statusCard.alignmentX = LEFT_ALIGNMENT
+        val gbc = GridBagConstraints().apply {
+            anchor = GridBagConstraints.WEST
+            fill = GridBagConstraints.HORIZONTAL
+        }
+
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0; gbc.insets = Insets(0, 0, 0, 8)
+        statusCard.add(statusIcon, gbc)
+
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.insets = Insets(0, 0, 0, 0)
+        statusCard.add(statusLabel, gbc)
+
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 2; gbc.weightx = 1.0; gbc.insets = Insets(4, 0, 0, 0)
+        statusCard.add(subtitleLabel, gbc)
+
+        gbc.gridy = 2; gbc.insets = Insets(12, 0, 0, 0); gbc.fill = GridBagConstraints.HORIZONTAL
+        statusCard.add(progressBar, gbc)
 
         val btnRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
             isOpaque = false
@@ -156,11 +173,23 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
             add(cancelBtn)
         }
 
-        val pipelineLabel = JLabel("PIPELINE").apply {
+        val changelogHeader = JLabel("CHANGELOG").apply {
             font = font.deriveFont(Font.BOLD, 10f)
             foreground = TEXT_SECONDARY
-            alignmentX = LEFT_ALIGNMENT
-            border = JBUI.Borders.empty(0, 2, 0, 0)
+            border = JBUI.Borders.emptyBottom(8)
+        }
+        changelogCard.add(changelogHeader, BorderLayout.NORTH)
+        changelogCard.add(changelogContent, BorderLayout.CENTER)
+
+        scrollContent.add(timelineContainer)
+        scrollContent.add(Box.createVerticalStrut(12))
+        scrollContent.add(changelogCard)
+
+        val scroll = JBScrollPane(scrollContent).apply {
+            border = JBUI.Borders.empty()
+            isOpaque = false
+            viewport.isOpaque = false
+            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
         }
 
         val topSection = JPanel().apply {
@@ -168,16 +197,7 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             add(statusCard)
             add(btnRow)
-            add(Box.createVerticalStrut(16))
-            add(pipelineLabel)
-            add(Box.createVerticalStrut(6))
-        }
-
-        val scroll = JBScrollPane(phasesContainer).apply {
-            border = JBUI.Borders.empty()
-            isOpaque = false
-            viewport.isOpaque = false
-            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            add(Box.createVerticalStrut(14))
         }
 
         add(topSection, BorderLayout.NORTH)
@@ -189,18 +209,22 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
     }
 
     private fun launchRelease(mode: String, vararg flags: String) {
-        phaseCards.clear()
-        phasesContainer.removeAll()
+        phaseSteps.clear()
+        timelineContainer.removeAll()
         completedPhaseCount = 0
+        releaseSkipped = false
+        changelogLines.clear()
+        capturingChangelog = false
+        changelogCard.isVisible = false
 
-        RELEASE_PHASES.forEach { phase ->
-            val card = PhaseCard(phase.label)
-            phaseCards[phase.id] = card
-            phasesContainer.add(card)
-            phasesContainer.add(Box.createVerticalStrut(3))
+        RELEASE_PHASES.forEachIndexed { index, phase ->
+            val isLast = index == RELEASE_PHASES.size - 1
+            val step = TimelineStep(phase.label, isLast)
+            phaseSteps[phase.id] = step
+            timelineContainer.add(step)
         }
-        phasesContainer.revalidate()
-        phasesContainer.repaint()
+        timelineContainer.revalidate()
+        timelineContainer.repaint()
 
         statusIcon.icon = AllIcons.Process.Step_1
         statusLabel.text = if (mode == "dry-run") "Dry Run" else "Releasing..."
@@ -235,24 +259,53 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
         line.contains("failed", ignoreCase = true) || line.contains("error", ignoreCase = true) ||
                 line.contains("Release aborted", ignoreCase = true)
 
+    private fun isSkippedLine(line: String): Boolean =
+        line.contains("No changes detected", ignoreCase = true) || line.contains("Release skipped", ignoreCase = true)
+
+    private fun isChangelogOutputLine(line: String): Boolean =
+        line.trimStart().startsWith("## [") || line.trimStart().startsWith("- ") || capturingChangelog
+
     private fun updateProgress() {
         progressBar.setIndeterminate(false)
         progressBar.progress = ((completedPhaseCount.toFloat() / RELEASE_PHASES.size) * 100).toInt().coerceIn(0, 100)
     }
 
     private fun setPhaseState(phaseId: PhaseId, state: PhaseState) {
-        phaseCards[phaseId]?.setState(state)
+        phaseSteps[phaseId]?.setState(state)
         if (state == PhaseState.DONE) completedPhaseCount++
         updateProgress()
     }
 
+    private fun showChangelogCard() {
+        if (changelogLines.isEmpty()) return
+        changelogContent.text = changelogLines.joinToString("\n")
+        changelogCard.isVisible = true
+        scrollContent.revalidate()
+        scrollContent.repaint()
+    }
+
     override fun onOutputLine(cleanLine: String) {
         ApplicationManager.getApplication().invokeLater {
+            if (capturingChangelog) {
+                if (cleanLine.trimStart().startsWith("- ")) {
+                    changelogLines.add(cleanLine.trim())
+                    return@invokeLater
+                } else {
+                    capturingChangelog = false
+                }
+            }
+
+            if (cleanLine.trimStart().startsWith("## [")) {
+                capturingChangelog = true
+                changelogLines.add(cleanLine.trim())
+                return@invokeLater
+            }
+
             val phase = findPhaseForLine(cleanLine) ?: return@invokeLater
 
             when {
                 isErrorLine(cleanLine) -> {
-                    phaseCards.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.DONE) }
+                    phaseSteps.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.DONE) }
                     setPhaseState(phase.id, PhaseState.ERROR)
                     statusIcon.icon = AllIcons.General.Error
                     statusLabel.text = "Error"
@@ -260,15 +313,26 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
                     subtitleLabel.text = cleanLine
                     progressBar.accentColor = RED
                 }
-                cleanLine.contains("No changes detected", ignoreCase = true) || cleanLine.contains("Release skipped", ignoreCase = true) -> {
-                    phaseCards.values.forEach { if (it.currentState != PhaseState.ERROR) it.setState(PhaseState.DONE) }
-                    statusIcon.icon = AllIcons.General.Information
-                    statusLabel.text = "No Changes"
-                    statusLabel.foreground = TEXT_SECONDARY
-                    subtitleLabel.text = "Nothing to release"
+                isSkippedLine(cleanLine) -> {
+                    releaseSkipped = true
+                    val reachedPhase = RELEASE_PHASES.indexOfFirst { it.id == phase.id }
+                    RELEASE_PHASES.forEachIndexed { index, p ->
+                        when {
+                            index < reachedPhase -> phaseSteps[p.id]?.let { if (it.currentState != PhaseState.DONE) it.setState(PhaseState.DONE) }
+                            index == reachedPhase -> setPhaseState(p.id, PhaseState.SKIPPED)
+                            else -> phaseSteps[p.id]?.setState(PhaseState.SKIPPED)
+                        }
+                    }
+                    statusIcon.icon = AllIcons.General.Warning
+                    statusLabel.text = "Skipped"
+                    statusLabel.foreground = AMBER
+                    subtitleLabel.text = "No uncommitted changes found \u2014 nothing to release"
+                    progressBar.setIndeterminate(false)
+                    progressBar.progress = 100
+                    progressBar.accentColor = AMBER
                 }
                 else -> {
-                    phaseCards.values.filter { it.currentState == PhaseState.ACTIVE }.forEach {
+                    phaseSteps.values.filter { it.currentState == PhaseState.ACTIVE }.forEach {
                         it.setState(PhaseState.DONE)
                         completedPhaseCount++
                     }
@@ -281,7 +345,7 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
             }
 
             SwingUtilities.invokeLater {
-                (SwingUtilities.getAncestorOfClass(JBScrollPane::class.java, phasesContainer) as? JBScrollPane)
+                (SwingUtilities.getAncestorOfClass(JBScrollPane::class.java, scrollContent) as? JBScrollPane)
                     ?.verticalScrollBar?.let { it.value = it.maximum }
             }
         }
@@ -290,16 +354,21 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
     override fun onProcessFinished(exitCode: Int) {
         ApplicationManager.getApplication().invokeLater {
             progressBar.setIndeterminate(false)
+            if (releaseSkipped) {
+                syncButtons(false)
+                return@invokeLater
+            }
             if (exitCode == 0) {
-                phaseCards.values.forEach { if (it.currentState != PhaseState.ERROR) it.setState(PhaseState.DONE) }
+                phaseSteps.values.forEach { if (it.currentState != PhaseState.ERROR && it.currentState != PhaseState.SKIPPED) it.setState(PhaseState.DONE) }
                 progressBar.progress = 100
                 progressBar.accentColor = GREEN
                 statusIcon.icon = AllIcons.RunConfigurations.TestPassed
                 statusLabel.text = "Complete"
                 statusLabel.foreground = GREEN
                 subtitleLabel.text = "Release finished successfully"
+                showChangelogCard()
             } else {
-                phaseCards.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.ERROR) }
+                phaseSteps.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.ERROR) }
                 progressBar.accentColor = RED
                 statusIcon.icon = AllIcons.General.Error
                 statusLabel.text = "Failed"
@@ -631,7 +700,7 @@ private class SettingsTab : JPanel(BorderLayout()) {
                 alignmentX = LEFT_ALIGNMENT
                 border = JBUI.Borders.emptyBottom(4)
             })
-            (field as JComponent).apply {
+            field.apply {
                 maximumSize = Dimension(Int.MAX_VALUE, 32)
                 alignmentX = LEFT_ALIGNMENT
             }
@@ -695,23 +764,31 @@ private open class ShadowCard : JPanel() {
     }
 }
 
-private class PhaseCard(private val label: String) : JPanel() {
+private class TimelineStep(private val label: String, private val isLast: Boolean) : JPanel() {
     var currentState = PhaseState.PENDING; private set
-    private val icon = JLabel()
+    private val dotSize = 10
     private val textLabel = JLabel(label)
+    private val statusBadge = JLabel()
 
     init {
         isOpaque = false
         layout = BorderLayout()
-        border = JBUI.Borders.empty(6, 10, 6, 10)
-        maximumSize = Dimension(Int.MAX_VALUE, 32)
-        val left = JPanel(FlowLayout(FlowLayout.LEFT, 6, 0)).apply {
-            isOpaque = false
-            add(icon)
-            add(textLabel)
-        }
-        add(left, BorderLayout.WEST)
-        applyStyle()
+        border = JBUI.Borders.empty(0, 0, 0, 0)
+        maximumSize = Dimension(Int.MAX_VALUE, if (isLast) 28 else 34)
+        preferredSize = Dimension(0, if (isLast) 28 else 34)
+        minimumSize = Dimension(0, if (isLast) 28 else 34)
+
+        textLabel.font = textLabel.font.deriveFont(Font.PLAIN, 12f)
+        textLabel.foreground = TEXT_SECONDARY
+        textLabel.border = JBUI.Borders.emptyLeft(22)
+
+        statusBadge.font = statusBadge.font.deriveFont(Font.PLAIN, 9f)
+        statusBadge.foreground = TEXT_SECONDARY
+
+        val right = JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply { isOpaque = false; add(statusBadge) }
+
+        add(textLabel, BorderLayout.CENTER)
+        add(right, BorderLayout.EAST)
     }
 
     fun setState(state: PhaseState) {
@@ -721,28 +798,94 @@ private class PhaseCard(private val label: String) : JPanel() {
     }
 
     override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
         val g2 = g.create() as Graphics2D
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        g2.color = background
-        g2.fillRoundRect(0, 0, width, height, 8, 8)
+
+        val dotX = 2
+        val dotY = (28 - dotSize) / 2
+
+        if (!isLast) {
+            g2.color = when (currentState) {
+                PhaseState.DONE -> GREEN
+                PhaseState.ACTIVE -> ACCENT
+                PhaseState.ERROR -> RED
+                PhaseState.SKIPPED -> AMBER
+                else -> TIMELINE_LINE
+            }
+            g2.stroke = BasicStroke(1.5f)
+            g2.drawLine(dotX + dotSize / 2, dotY + dotSize + 2, dotX + dotSize / 2, height)
+        }
+
+        when (currentState) {
+            PhaseState.DONE -> {
+                g2.color = GREEN
+                g2.fillOval(dotX, dotY, dotSize, dotSize)
+                g2.color = Color.WHITE
+                g2.stroke = BasicStroke(1.5f)
+                g2.drawLine(dotX + 3, dotY + dotSize / 2, dotX + dotSize / 2 - 1, dotY + dotSize - 3)
+                g2.drawLine(dotX + dotSize / 2 - 1, dotY + dotSize - 3, dotX + dotSize - 2, dotY + 2)
+            }
+            PhaseState.ACTIVE -> {
+                g2.color = ACCENT
+                g2.fillOval(dotX, dotY, dotSize, dotSize)
+                g2.color = Color.WHITE
+                g2.fillOval(dotX + 3, dotY + 3, 4, 4)
+            }
+            PhaseState.ERROR -> {
+                g2.color = RED
+                g2.fillOval(dotX, dotY, dotSize, dotSize)
+                g2.color = Color.WHITE
+                g2.stroke = BasicStroke(1.5f)
+                g2.drawLine(dotX + 3, dotY + 3, dotX + dotSize - 3, dotY + dotSize - 3)
+                g2.drawLine(dotX + dotSize - 3, dotY + 3, dotX + 3, dotY + dotSize - 3)
+            }
+            PhaseState.SKIPPED -> {
+                g2.color = AMBER
+                g2.fillOval(dotX, dotY, dotSize, dotSize)
+                g2.color = Color.WHITE
+                g2.stroke = BasicStroke(1.5f)
+                g2.drawLine(dotX + 3, dotY + dotSize / 2, dotX + dotSize - 3, dotY + dotSize / 2)
+            }
+            PhaseState.PENDING -> {
+                g2.color = TIMELINE_LINE
+                g2.stroke = BasicStroke(1.5f)
+                g2.drawOval(dotX, dotY, dotSize, dotSize)
+            }
+        }
+
         g2.dispose()
-        super.paintComponent(g)
     }
 
     private fun applyStyle() {
-        textLabel.font = textLabel.font.deriveFont(if (currentState == PhaseState.ACTIVE) Font.BOLD else Font.PLAIN, 12f)
         when (currentState) {
             PhaseState.PENDING -> {
-                background = PHASE_PENDING_BG; icon.icon = null; textLabel.foreground = TEXT_SECONDARY
+                textLabel.font = textLabel.font.deriveFont(Font.PLAIN, 12f)
+                textLabel.foreground = TEXT_SECONDARY
+                statusBadge.text = ""
             }
             PhaseState.ACTIVE -> {
-                background = PHASE_ACTIVE_BG; icon.icon = AllIcons.Process.Step_1; textLabel.foreground = ACCENT
+                textLabel.font = textLabel.font.deriveFont(Font.BOLD, 12f)
+                textLabel.foreground = ACCENT
+                statusBadge.text = "running"
+                statusBadge.foreground = ACCENT
             }
             PhaseState.DONE -> {
-                background = PHASE_DONE_BG; icon.icon = AllIcons.RunConfigurations.TestPassed; textLabel.foreground = GREEN
+                textLabel.font = textLabel.font.deriveFont(Font.PLAIN, 12f)
+                textLabel.foreground = GREEN
+                statusBadge.text = ""
             }
             PhaseState.ERROR -> {
-                background = PHASE_ERROR_BG; icon.icon = AllIcons.RunConfigurations.TestFailed; textLabel.foreground = RED
+                textLabel.font = textLabel.font.deriveFont(Font.BOLD, 12f)
+                textLabel.foreground = RED
+                statusBadge.text = "failed"
+                statusBadge.foreground = RED
+            }
+            PhaseState.SKIPPED -> {
+                textLabel.font = textLabel.font.deriveFont(Font.PLAIN, 12f)
+                textLabel.foreground = AMBER
+                statusBadge.text = "skipped"
+                statusBadge.foreground = AMBER
             }
         }
     }

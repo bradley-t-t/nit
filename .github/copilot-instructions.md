@@ -3,7 +3,6 @@
 This file provides context to GitHub Copilot for this project.
 
 <!-- TURL-RULES-START -->
-
 ## Project Rules (Auto-managed by TURL)
 
 These rules are automatically learned from project commits and enforced during releases.
@@ -63,4 +62,7 @@ Do not edit this section manually - it will be overwritten.
 - When designing or updating a tool window or UI panel in an IDE plugin, implement a tabbed interface to organize distinct functionalities (e.g., control, settings, rules) into separate, easily accessible sections for improved user navigation and clarity.
 - When enhancing the UI layout in an IDE plugin, include a prominent header with the tool or feature name to provide clear context and branding within the interface.
 - When updating the UI color scheme in an IDE plugin or tool window, ensure the new color values are chosen to maintain visual clarity and consistency across both light and dark themes, using tools like JBColor to handle theme-specific color adjustments.
+- When implementing dynamic version resolution in a plugin or tool, prioritize reading version information from a primary source like package.json over static configuration values to ensure consistency across the project.
+- When enhancing UI components in a tool window or plugin, introduce new visual states (like "Skipped") with distinct color coding to clearly communicate status changes to users.
+- When redesigning process visualization in a UI, consider replacing static card-based layouts with dynamic timeline views to better represent sequential workflows and improve user comprehension.
 <!-- TURL-RULES-END -->

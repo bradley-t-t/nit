@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.8] - 2026-03-02
+
+- Added dynamic version resolution for the plugin by reading the version from package.json if available, otherwise falling back to the Gradle property.
+- Enhanced the TURL Release Tool UI with a new "Skipped" state for release phases, visually represented with a distinct amber color and background.
+- Introduced a timeline view in the control panel, replacing the previous phase cards with timeline steps for better visualization of the release process.
+- Added a changelog display feature in the UI, capturing and showing changelog content in a dedicated card with a custom background and text area.
+- Implemented new UI elements like timeline lines and changelog background colors to improve the visual hierarchy and user experience in the tool window.
+
 ## [5.7] - 2026-03-02
 
 - Added a blank line in the Copilot instructions markdown file to improve readability of the project rules section.

@@ -1,3 +1,15 @@
+import groovy.json.JsonSlurper
+
+fun resolveVersion(): String {
+    val packageJsonFile = rootProject.file("../package.json")
+    if (packageJsonFile.exists()) {
+        val parsed = JsonSlurper().parseText(packageJsonFile.readText()) as Map<*, *>
+        val ver = parsed["version"]?.toString()
+        if (!ver.isNullOrBlank()) return ver
+    }
+    return providers.gradleProperty("pluginVersion").get()
+}
+
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "1.9.25"
@@ -5,7 +17,7 @@ plugins {
 }
 
 group = providers.gradleProperty("pluginGroup").get()
-version = providers.gradleProperty("pluginVersion").get()
+version = resolveVersion()
 
 repositories {
     mavenCentral()
@@ -23,6 +35,7 @@ intellij {
 
 tasks {
     patchPluginXml {
+        version.set(resolveVersion())
         sinceBuild.set(providers.gradleProperty("pluginSinceBuild"))
         untilBuild.set(providers.gradleProperty("pluginUntilBuild"))
     }
