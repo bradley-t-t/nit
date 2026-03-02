@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.9] - 2026-03-02
+
+- Revamped the TURL Release tool window by restructuring and adding new components, including dedicated tabs for Control Panel, Rules, and Settings for a more organized user interface.
+- Introduced new UI elements with custom colors and reusable components in the tool window to enhance visual consistency and user experience.
+- Enhanced the TurlProcessRunner to improve process execution and output handling, including better ANSI color code processing for terminal output.
+- Updated BaseTurlAction to simplify the tool window activation logic for a smoother interaction.
+- Removed obsolete flags and update logic from various action classes like TurlDryRunAction, TurlInteractiveAction, TurlReleaseAction, and TurlOpenSettingsAction to streamline their functionality.
+- Improved the settings configuration UI in TurlSettingsConfigurable for better usability and clarity.
+
 ## [6.8] - 2026-03-02
 
 - Removed the status spinner icon from the Control Panel Tab in the Turl Tool Window, simplifying the UI by eliminating the animated spinner and associated state changes for running, idle, and completion states.

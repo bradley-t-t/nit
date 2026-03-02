@@ -8,7 +8,4 @@ class TurlReleaseAction : BaseTurlAction() {
         templatePresentation.description = "Run a full turl-release"
         templatePresentation.icon = AllIcons.Actions.Execute
     }
-
-    override fun getFlags(): Array<String> = emptyArray()
 }
-

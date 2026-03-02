@@ -8,7 +8,4 @@ class TurlInteractiveAction : BaseTurlAction() {
         templatePresentation.description = "Run release in interactive mode"
         templatePresentation.icon = AllIcons.Actions.RunAll
     }
-
-    override fun getFlags(): Array<String> = arrayOf("--interactive")
 }
-

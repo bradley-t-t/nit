@@ -9,9 +9,4 @@ class TurlOpenSettingsAction : AnAction(), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
         ShowSettingsUtil.getInstance().showSettingsDialog(e.project, "TURL Release")
     }
-
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabledAndVisible = true
-    }
 }
-

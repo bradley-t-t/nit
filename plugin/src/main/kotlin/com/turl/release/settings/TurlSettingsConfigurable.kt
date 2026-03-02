@@ -1,10 +1,10 @@
 package com.turl.release.settings
 
 import com.intellij.openapi.options.Configurable
-import javax.swing.*
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
+import javax.swing.*
 
 class TurlSettingsConfigurable : Configurable {
 
@@ -17,69 +17,63 @@ class TurlSettingsConfigurable : Configurable {
     override fun getDisplayName(): String = "TURL Release"
 
     override fun createComponent(): JComponent {
-        val settings = TurlSettings.getInstance().state
-
+        val state = TurlSettings.getInstance().state
         panel = JPanel(GridBagLayout())
+
         val gbc = GridBagConstraints().apply {
             fill = GridBagConstraints.HORIZONTAL
             insets = Insets(5, 5, 5, 5)
             anchor = GridBagConstraints.WEST
         }
 
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0
-        panel!!.add(JLabel("Grok API Key:"), gbc)
-        gbc.gridx = 1; gbc.weightx = 1.0
-        apiKeyField = JPasswordField(settings.grokApiKey, 30)
-        panel!!.add(apiKeyField, gbc)
+        apiKeyField = JPasswordField(state.grokApiKey, 30)
+        nodePathField = JTextField(state.nodePath, 30)
+        defaultBranchField = JTextField(state.defaultBranch, 30)
+        skipUpdateCheckbox = JCheckBox("Skip turl-release update check on run", state.skipUpdateOnRun)
 
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.0
-        panel!!.add(JLabel("Node.js Path (blank = auto-detect):"), gbc)
-        gbc.gridx = 1; gbc.weightx = 1.0
-        nodePathField = JTextField(settings.nodePath, 30)
-        panel!!.add(nodePathField, gbc)
+        addLabeledField(gbc, 0, "Grok API Key:", apiKeyField!!)
+        addLabeledField(gbc, 1, "Node.js Path (blank = auto-detect):", nodePathField!!)
+        addLabeledField(gbc, 2, "Default Branch Override:", defaultBranchField!!)
 
-        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.0
-        panel!!.add(JLabel("Default Branch Override:"), gbc)
-        gbc.gridx = 1; gbc.weightx = 1.0
-        defaultBranchField = JTextField(settings.defaultBranch, 30)
-        panel!!.add(defaultBranchField, gbc)
-
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2
-        skipUpdateCheckbox = JCheckBox("Skip turl-release update check on run", settings.skipUpdateOnRun)
+        gbc.apply { gridx = 0; gridy = 3; gridwidth = 2 }
         panel!!.add(skipUpdateCheckbox, gbc)
 
-        gbc.gridy = 4; gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH
+        gbc.apply { gridy = 4; weighty = 1.0; fill = GridBagConstraints.BOTH }
         panel!!.add(JPanel(), gbc)
 
         return panel!!
     }
 
+    private fun addLabeledField(gbc: GridBagConstraints, row: Int, label: String, field: JComponent) {
+        gbc.apply { gridx = 0; gridy = row; weightx = 0.0; gridwidth = 1 }
+        panel!!.add(JLabel(label), gbc)
+        gbc.apply { gridx = 1; weightx = 1.0 }
+        panel!!.add(field, gbc)
+    }
+
     override fun isModified(): Boolean {
-        val settings = TurlSettings.getInstance().state
-        return String(apiKeyField?.password ?: charArrayOf()) != settings.grokApiKey ||
-                nodePathField?.text != settings.nodePath ||
-                defaultBranchField?.text != settings.defaultBranch ||
-                skipUpdateCheckbox?.isSelected != settings.skipUpdateOnRun
+        val state = TurlSettings.getInstance().state
+        return currentApiKey() != state.grokApiKey ||
+               nodePathField?.text != state.nodePath ||
+               defaultBranchField?.text != state.defaultBranch ||
+               skipUpdateCheckbox?.isSelected != state.skipUpdateOnRun
     }
 
     override fun apply() {
-        val settings = TurlSettings.getInstance()
-        settings.loadState(
-            TurlSettings.State(
-                grokApiKey = String(apiKeyField?.password ?: charArrayOf()),
-                nodePath = nodePathField?.text ?: "",
-                defaultBranch = defaultBranchField?.text ?: "",
-                skipUpdateOnRun = skipUpdateCheckbox?.isSelected ?: true
-            )
-        )
+        TurlSettings.getInstance().loadState(TurlSettings.State(
+            grokApiKey = currentApiKey(),
+            nodePath = nodePathField?.text.orEmpty(),
+            defaultBranch = defaultBranchField?.text.orEmpty(),
+            skipUpdateOnRun = skipUpdateCheckbox?.isSelected ?: true
+        ))
     }
 
     override fun reset() {
-        val settings = TurlSettings.getInstance().state
-        apiKeyField?.text = settings.grokApiKey
-        nodePathField?.text = settings.nodePath
-        defaultBranchField?.text = settings.defaultBranch
-        skipUpdateCheckbox?.isSelected = settings.skipUpdateOnRun
+        val state = TurlSettings.getInstance().state
+        apiKeyField?.text = state.grokApiKey
+        nodePathField?.text = state.nodePath
+        defaultBranchField?.text = state.defaultBranch
+        skipUpdateCheckbox?.isSelected = state.skipUpdateOnRun
     }
 
     override fun disposeUIResources() {
@@ -89,5 +83,6 @@ class TurlSettingsConfigurable : Configurable {
         defaultBranchField = null
         skipUpdateCheckbox = null
     }
-}
 
+    private fun currentApiKey(): String = String(apiKeyField?.password ?: charArrayOf())
+}
