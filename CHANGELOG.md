@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.3] - 2026-03-02
+
+- Enhanced the release progress tracking in the TURL Tool Window by introducing a new method `activatePhaseSequentially` to better manage phase transitions and ensure accurate state updates for each phase.
+- Improved the handling of phase completion and error states in the tool window, ensuring that completed phases are properly marked as done and incrementing the completion count for better progress visualization.
+- Refined the logic for skipping phases during the release process, updating the state management to reflect skipped phases more accurately in the UI.
+
 ## [6.2] - 2026-03-02
 
 - Reordered the release phases in the IntelliJ plugin to prioritize learning rules before committing and pushing, ensuring that the learning step is visually reflected earlier in the process.

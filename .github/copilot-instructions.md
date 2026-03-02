@@ -70,4 +70,5 @@ Do not edit this section manually - it will be overwritten.
 - When enhancing status messaging in a tool or plugin, include specific messages for all possible outcomes of a process phase (e.g., skipped, aborted, or completed) to provide clear and comprehensive feedback to users.
 - When defining the sequence of phases or steps in a release workflow, prioritize learning or rule generation before committing and pushing to ensure that insights or updates are captured from the pre-release state rather than post-release.
 - When simplifying a release process in a CLI tool, avoid additional post-learning steps like amending commits or force-pushing, focusing instead on a streamlined workflow that captures necessary data before finalizing the release.
+- When managing sequential workflows in a UI, ensure that state transitions for phases or steps are handled systematically to reflect progress accurately, such as marking prior steps as complete before activating a target step, to maintain a clear and consistent user experience.
 <!-- TURL-RULES-END -->

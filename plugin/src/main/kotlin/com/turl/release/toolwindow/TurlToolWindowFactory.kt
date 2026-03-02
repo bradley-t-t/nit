@@ -264,9 +264,6 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
     private fun isSkippedLine(line: String): Boolean =
         line.contains("No changes detected", ignoreCase = true) || line.contains("Release skipped", ignoreCase = true)
 
-    private fun isChangelogOutputLine(line: String): Boolean =
-        line.trimStart().startsWith("## [") || line.trimStart().startsWith("- ") || capturingChangelog
-
     private fun updateProgress() {
         progressBar.setIndeterminate(false)
         progressBar.progress = ((completedPhaseCount.toFloat() / RELEASE_PHASES.size) * 100).toInt().coerceIn(0, 100)
@@ -275,6 +272,25 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
     private fun setPhaseState(phaseId: PhaseId, state: PhaseState) {
         phaseSteps[phaseId]?.setState(state)
         if (state == PhaseState.DONE) completedPhaseCount++
+        updateProgress()
+    }
+
+    private fun activatePhaseSequentially(targetPhase: PhaseInfo) {
+        val targetIndex = RELEASE_PHASES.indexOfFirst { it.id == targetPhase.id }
+        if (targetIndex < 0) return
+
+        RELEASE_PHASES.forEachIndexed { index, phase ->
+            val step = phaseSteps[phase.id] ?: return@forEachIndexed
+            when {
+                index < targetIndex && step.currentState != PhaseState.DONE && step.currentState != PhaseState.ERROR && step.currentState != PhaseState.SKIPPED -> {
+                    step.setState(PhaseState.DONE)
+                    completedPhaseCount++
+                }
+                index == targetIndex && step.currentState != PhaseState.ACTIVE -> {
+                    step.setState(PhaseState.ACTIVE)
+                }
+            }
+        }
         updateProgress()
     }
 
@@ -314,8 +330,15 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
                     val reachedPhase = RELEASE_PHASES.indexOfFirst { it.id == phase.id }
                     RELEASE_PHASES.forEachIndexed { index, p ->
                         when {
-                            index < reachedPhase -> phaseSteps[p.id]?.let { if (it.currentState != PhaseState.DONE) it.setState(PhaseState.DONE) }
-                            index == reachedPhase -> setPhaseState(p.id, PhaseState.SKIPPED)
+                            index < reachedPhase -> phaseSteps[p.id]?.let {
+                                if (it.currentState != PhaseState.DONE) {
+                                    it.setState(PhaseState.DONE)
+                                    completedPhaseCount++
+                                }
+                            }
+                            index == reachedPhase -> {
+                                phaseSteps[p.id]?.setState(PhaseState.SKIPPED)
+                            }
                             else -> phaseSteps[p.id]?.setState(PhaseState.SKIPPED)
                         }
                     }
@@ -328,7 +351,14 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
                     progressBar.accentColor = AMBER
                 }
                 isErrorLine(cleanLine) -> {
-                    phaseSteps.values.filter { it.currentState == PhaseState.ACTIVE }.forEach { it.setState(PhaseState.DONE) }
+                    val targetIndex = RELEASE_PHASES.indexOfFirst { it.id == phase.id }
+                    RELEASE_PHASES.forEachIndexed { index, p ->
+                        val step = phaseSteps[p.id] ?: return@forEachIndexed
+                        if (index < targetIndex && step.currentState == PhaseState.ACTIVE) {
+                            step.setState(PhaseState.DONE)
+                            completedPhaseCount++
+                        }
+                    }
                     setPhaseState(phase.id, PhaseState.ERROR)
                     statusIcon.icon = AllIcons.General.Error
                     statusLabel.text = "Error"
@@ -337,15 +367,10 @@ private class ControlPanelTab(private val project: Project) : JPanel(BorderLayou
                     progressBar.accentColor = RED
                 }
                 else -> {
-                    phaseSteps.values.filter { it.currentState == PhaseState.ACTIVE }.forEach {
-                        it.setState(PhaseState.DONE)
-                        completedPhaseCount++
-                    }
-                    setPhaseState(phase.id, PhaseState.ACTIVE)
+                    activatePhaseSequentially(phase)
                     statusLabel.text = "Running..."
                     statusLabel.foreground = ACCENT
                     subtitleLabel.text = phase.label
-                    updateProgress()
                 }
             }
 
