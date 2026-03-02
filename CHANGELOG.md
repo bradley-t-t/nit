@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.7] - 2026-03-02
+
+- Added a blank line in the Copilot instructions markdown file to improve readability of the project rules section.
+
 ## [5.6] - 2026-03-02
 
 - Updated the UI color scheme in the TURL plugin with a refreshed set of colors for better visual distinction, including new shades for primary background, text, accents, and status indicators.
