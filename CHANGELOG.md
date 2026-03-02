@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.8] - 2026-03-02
+
+- Removed the status spinner icon from the Control Panel Tab in the Turl Tool Window, simplifying the UI by eliminating the animated spinner and associated state changes for running, idle, and completion states.
+- Updated the layout of the status card in the Control Panel Tab to adjust for the removal of the spinner, ensuring proper alignment of the status label and subtitle label.
+
 ## [6.7] - 2026-03-02
 
 - Added a static circular outline to the SpinnerIcon component in the TurlToolWindowFactory when the spinner is not animating, providing a visual placeholder with a consistent style.

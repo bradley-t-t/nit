@@ -77,4 +77,5 @@ Do not edit this section manually - it will be overwritten.
 - When updating UI messaging for user guidance, ensure consistency in terminology across all elements (e.g., renaming "Dry Run" to "Preview" in buttons, labels, and status messages) to avoid confusion.
 - When refining UI layouts, adjust spacing and insets between elements (e.g., between icons and text) to achieve better visual alignment and readability.
 - When implementing spinner or loading animations in a UI component, include a static visual placeholder for the inactive state to maintain visual consistency and provide a clear indication of the component's presence even when not animating.
+- When simplifying UI components in a tool or plugin, remove unnecessary dynamic elements like animated spinners and adjust layouts accordingly to maintain visual clarity and alignment.
 <!-- TURL-RULES-END -->
