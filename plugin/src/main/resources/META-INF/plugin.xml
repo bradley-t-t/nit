@@ -1,0 +1,64 @@
+<idea-plugin>
+    <id>com.turl.release</id>
+    <name>TURL Release</name>
+    <version>1.0.0</version>
+    <vendor>Trent</vendor>
+
+    <description><![CDATA[
+    Automated Release Management for your projects. Runs turl-release CLI directly from WebStorm
+    with a dedicated tool window, actions, and persistent settings.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="TURL Release"
+                    anchor="right"
+                    secondary="false"
+                    icon="AllIcons.Actions.Upload"
+                    factoryClass="com.turl.release.toolwindow.TurlToolWindowFactory"/>
+
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.turl.release.settings.TurlSettingsConfigurable"
+                id="com.turl.release.settings"
+                displayName="TURL Release"/>
+
+        <applicationService
+                serviceImplementation="com.turl.release.settings.TurlSettings"/>
+    </extensions>
+
+    <actions>
+        <group id="TurlRelease.Menu" text="TURL Release" popup="true"
+               icon="AllIcons.Actions.Upload">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+
+            <action id="TurlRelease.Run"
+                    class="com.turl.release.actions.TurlReleaseAction"
+                    text="Run Release"
+                    description="Run a full turl-release"
+                    icon="AllIcons.Actions.Execute"/>
+
+            <action id="TurlRelease.DryRun"
+                    class="com.turl.release.actions.TurlDryRunAction"
+                    text="Dry Run"
+                    description="Preview release without making changes"
+                    icon="AllIcons.Actions.Preview"/>
+
+            <action id="TurlRelease.Interactive"
+                    class="com.turl.release.actions.TurlInteractiveAction"
+                    text="Interactive Release"
+                    description="Run release in interactive mode"
+                    icon="AllIcons.Actions.RunAll"/>
+
+            <separator/>
+
+            <action id="TurlRelease.Settings"
+                    class="com.turl.release.actions.TurlOpenSettingsAction"
+                    text="Settings"
+                    description="Open TURL Release settings"
+                    icon="AllIcons.General.Settings"/>
+        </group>
+    </actions>
+</idea-plugin>
+

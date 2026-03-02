@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.0] - 2026-03-02
+
+- Introduced a new IntelliJ plugin for TURL Release, enabling seamless integration with the IDE for release management tasks.
+- Added core plugin functionality with actions like BaseTurlAction, TurlDryRunAction, TurlInteractiveAction, TurlOpenSettingsAction, and TurlReleaseAction to support various release workflows directly from the IDE.
+- Implemented TurlProcessRunner service to handle process execution and management within the plugin.
+- Created TurlSettings and TurlSettingsConfigurable for customizable plugin settings, allowing users to tailor the tool to their needs.
+- Developed TurlToolWindowFactory to provide a dedicated tool window in IntelliJ for interacting with TURL Release features.
+- Configured the plugin build system using Gradle with Kotlin support, setting up the necessary build scripts and properties for development and deployment.
+
 ## [4.9] - 2026-02-27
 
 - Enhanced the API module with improved rule identification logic to ensure rules are generic behavioral guidelines rather than tied to specific files or implementation details.
