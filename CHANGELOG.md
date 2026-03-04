@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.5] - 2026-03-04
+
+- Updated the UI layout of the TURL Release control panel for a more intuitive experience, featuring a wide layout with action buttons on the left, a central progress rail, and a slide-in changelog result on the right.
+- Renamed the main action button from "Release" to "Publish" for clarity, with an updated tooltip describing the full release process (bump version, generate changelog, commit, and push).
+- Changed the "Cancel" button label to "Stop" to better reflect its purpose during active processes.
+- Replaced the progress bar and phase chips with a new `TrackRail` component for visualizing release progress in a segmented subway-line style.
+- Adjusted font sizes and styling for better readability, including smaller fonts for status (from 14f to 13f) and hint labels (from 11f to 10f), and refined changelog text area padding.
+- Renamed UI elements for consistency, such as changing "subtitleLabel" to "hintLabel" with updated text "Publish or preview a release", and renaming "changelogContent" to "changelogArea".
+- Modified panel dimensions and borders for a more compact and polished look, including reduced border padding and adjusted preferred sizes for layout components.
+
 ## [7.4] - 2026-03-04
 
 - Redesigned the layout of the Control Panel Tab in the TURL Release Tool for better usability, especially for bottom tool window placement, with a single-panel wide layout.
