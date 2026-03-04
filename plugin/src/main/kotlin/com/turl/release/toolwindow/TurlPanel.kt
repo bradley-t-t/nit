@@ -2,51 +2,31 @@ package com.turl.release.toolwindow
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
-import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import com.turl.release.services.TurlOutputListener
 import com.turl.release.services.TurlProcessRunner
-import com.turl.release.toolwindow.TurlTheme.BG
-import com.turl.release.toolwindow.TurlTheme.BLUE
-import com.turl.release.toolwindow.TurlTheme.BLUE_MUTED
-import com.turl.release.toolwindow.TurlTheme.BORDER
-import com.turl.release.toolwindow.TurlTheme.DANGER
-import com.turl.release.toolwindow.TurlTheme.DANGER_MUTED
-import com.turl.release.toolwindow.TurlTheme.FG
-import com.turl.release.toolwindow.TurlTheme.FG_DIM
-import com.turl.release.toolwindow.TurlTheme.FG_MUTED
-import com.turl.release.toolwindow.TurlTheme.FONT_BODY
-import com.turl.release.toolwindow.TurlTheme.FONT_MONO
-import com.turl.release.toolwindow.TurlTheme.FONT_SMALL
-import com.turl.release.toolwindow.TurlTheme.SUCCESS
-import com.turl.release.toolwindow.TurlTheme.SUCCESS_MUTED
-import com.turl.release.toolwindow.TurlTheme.SURFACE
-import com.turl.release.toolwindow.TurlTheme.WARN
-import com.turl.release.toolwindow.TurlTheme.WARN_MUTED
 import java.awt.*
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.awt.geom.Ellipse2D
 import java.awt.geom.RoundRectangle2D
 import javax.swing.*
 
 /**
- * The entire TURL Release tool window UI.
+ * TURL Release tool window — completely custom-painted, wide-first layout.
  *
- * Single-panel, wide horizontal layout optimised for WebStorm's bottom bar:
- * [Actions | Step Indicators | Result/Changelog]
+ * Visual structure (all on one horizontal plane):
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │ [Publish] [Preview]  │  ● ● ● ● ● ● ● ● ●  │  status message        │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │ Result banner + changelog (only when finished)                         │
+ * └─────────────────────────────────────────────────────────────────────────┘
  */
 class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutputListener {
 
     private val runner = TurlProcessRunner(project)
-
-    private val stepTracker = StepTracker()
-    private val resultCard = ResultCard()
-
-    private val publishButton = ActionButton("Publish Release", "Run the full release pipeline: bump, changelog, commit, push", BLUE)
-    private val previewButton = ActionButton("Preview", "Simulate everything without making any changes", SURFACE)
-
-    private val statusDot = StatusDot()
-    private val statusText = JLabel("Idle").apply { font = FONT_SMALL; foreground = FG_DIM }
+    private val commandBar = CommandBar()
+    private val resultBanner = ResultBanner()
 
     private val changelogLines = mutableListOf<String>()
     private var capturingChangelog = false
@@ -55,106 +35,42 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
     private var isRunning = false
 
     init {
-        background = BG
-        border = JBUI.Borders.empty(8, 12)
+        background = TurlTheme.BG
+        border = JBUI.Borders.empty()
         runner.setOutputListener(this)
-        assembleLayout()
-        wireButtons()
-    }
 
-    private fun assembleLayout() {
-        // Left: status badge + buttons stacked vertically
-        val actionsColumn = Box.createVerticalBox().apply {
-            border = JBUI.Borders.emptyRight(16)
+        commandBar.onPublish = { launch(dryRun = false) }
+        commandBar.onPreview = { launch(dryRun = true) }
 
-            val statusRow = JPanel(FlowLayout(FlowLayout.LEFT, 6, 0)).apply {
-                isOpaque = false
-                maximumSize = Dimension(Int.MAX_VALUE, 20)
-                alignmentX = LEFT_ALIGNMENT
-                add(statusDot)
-                add(statusText)
-            }
-            add(statusRow)
-            add(Box.createVerticalStrut(8))
-
-            val buttonsRow = JPanel(FlowLayout(FlowLayout.LEFT, 6, 0)).apply {
-                isOpaque = false
-                maximumSize = Dimension(Int.MAX_VALUE, 36)
-                alignmentX = LEFT_ALIGNMENT
-                add(publishButton)
-                add(previewButton)
-            }
-            add(buttonsRow)
-            add(Box.createVerticalGlue())
-        }
-
-        // Center: horizontal step indicator strip
-        val stepsPane = JPanel(BorderLayout()).apply {
-            isOpaque = false
-            border = JBUI.Borders.empty(0, 8)
-            add(stepTracker, BorderLayout.CENTER)
-        }
-
-        // Right: result / changelog card (hidden until needed)
-        val resultPane = JPanel(BorderLayout()).apply {
-            isOpaque = false
-            border = JBUI.Borders.emptyLeft(12)
-            preferredSize = Dimension(280, 0)
-            add(resultCard, BorderLayout.CENTER)
-            isVisible = false
-        }
-
-        val main = JPanel(BorderLayout()).apply {
-            isOpaque = false
-            add(actionsColumn, BorderLayout.WEST)
-            add(stepsPane, BorderLayout.CENTER)
-            add(resultPane, BorderLayout.EAST)
-        }
-
-        add(main, BorderLayout.CENTER)
-    }
-
-    private fun wireButtons() {
-        publishButton.addActionListener { launch(dryRun = false) }
-        previewButton.addActionListener { launch(dryRun = true) }
+        add(commandBar, BorderLayout.NORTH)
+        add(resultBanner, BorderLayout.CENTER)
+        resultBanner.isVisible = false
     }
 
     private fun launch(dryRun: Boolean) {
         if (isRunning) return
         reset()
         isRunning = true
-        setStatus("Running", BLUE)
-        stepTracker.setAnimating(true)
-        publishButton.isEnabled = false
-        previewButton.isEnabled = false
-
+        commandBar.setRunning(true)
+        commandBar.statusMessage = "Starting..."
+        commandBar.statusColor = TurlTheme.BLUE
         if (dryRun) runner.execute("--dry-run") else runner.execute()
     }
 
     private fun reset() {
-        stepTracker.resetAll()
-        resultCard.clear()
-        (resultCard.parent as? JComponent)?.isVisible = false
+        commandBar.resetSteps()
+        resultBanner.isVisible = false
+        resultBanner.clear()
         changelogLines.clear()
         capturingChangelog = false
         changelogDone = false
         releaseSkipped = false
     }
 
-    private fun setStatus(text: String, color: Color) {
-        statusText.text = text
-        statusText.foreground = color
-        statusDot.color = color
-    }
-
-    private fun idle() {
+    private fun finish() {
         isRunning = false
-        publishButton.isEnabled = true
-        previewButton.isEnabled = true
-        stepTracker.setAnimating(false)
+        commandBar.setRunning(false)
     }
-
-    // --- Output parsing ---
 
     override fun onOutputLine(cleanLine: String) {
         ApplicationManager.getApplication().invokeLater {
@@ -181,18 +97,20 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
             when {
                 isSkipLine(cleanLine) -> {
                     releaseSkipped = true
-                    stepTracker.markSkippedFrom(step.id)
-                    setStatus("Skipped", WARN)
-                    showResult("No changes to release", WARN, WARN_MUTED)
-                    stepTracker.setAnimating(false)
+                    commandBar.skipFrom(step.id)
+                    commandBar.statusMessage = "No changes to release"
+                    commandBar.statusColor = TurlTheme.WARN
+                    commandBar.setRunning(false)
                 }
                 isErrorLine(cleanLine) -> {
-                    stepTracker.markFailed(step.id)
-                    setStatus("Error", DANGER)
+                    commandBar.failStep(step.id)
+                    commandBar.statusMessage = "${step.label} failed"
+                    commandBar.statusColor = TurlTheme.DANGER
                 }
                 else -> {
-                    stepTracker.advanceTo(step.id)
-                    setStatus(step.label, BLUE)
+                    commandBar.advanceTo(step.id)
+                    commandBar.statusMessage = step.label
+                    commandBar.statusColor = TurlTheme.BLUE
                 }
             }
         }
@@ -202,25 +120,25 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
         ApplicationManager.getApplication().invokeLater {
             if (!releaseSkipped) {
                 if (exitCode == 0) {
-                    stepTracker.completeAll()
-                    setStatus("Done", SUCCESS)
-                    val cl = if (changelogLines.isNotEmpty()) changelogLines.joinToString("\n") else null
-                    showResult("Release published successfully", SUCCESS, SUCCESS_MUTED, cl)
+                    commandBar.completeAll()
+                    commandBar.statusMessage = "Release published"
+                    commandBar.statusColor = TurlTheme.SUCCESS
+                    val changelog = changelogLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
+                    resultBanner.show("Release published successfully", TurlTheme.SUCCESS, changelog)
                 } else {
-                    stepTracker.failActive()
-                    setStatus("Failed", DANGER)
-                    showResult("Release failed", DANGER, DANGER_MUTED)
+                    commandBar.failRunning()
+                    commandBar.statusMessage = "Release failed"
+                    commandBar.statusColor = TurlTheme.DANGER
+                    resultBanner.show("Release failed", TurlTheme.DANGER, null)
                 }
+            } else {
+                resultBanner.show("No changes to release — skipped", TurlTheme.WARN, null)
             }
-            idle()
+            resultBanner.isVisible = true
+            revalidate()
+            repaint()
+            finish()
         }
-    }
-
-    private fun showResult(message: String, accentColor: Color, bgColor: Color, changelog: String? = null) {
-        resultCard.show(message, accentColor, bgColor, changelog)
-        (resultCard.parent as? JComponent)?.isVisible = true
-        revalidate()
-        repaint()
     }
 
     private fun matchStep(line: String): StepDef? =
@@ -234,227 +152,325 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
 }
 
 
-// ---------------------------------------------------------------------------
-// Step Tracker  — horizontal row of small step chips
-// ---------------------------------------------------------------------------
+/**
+ * The entire top bar — custom painted, no child Swing components.
+ * Contains: two pill buttons, step dots with labels, and a status message — all in one 40px row.
+ */
+private class CommandBar : JPanel() {
 
-private class StepTracker : JPanel() {
+    var onPublish: (() -> Unit)? = null
+    var onPreview: (() -> Unit)? = null
 
-    private data class Chip(val id: StepId, val label: String, var state: StepState = StepState.WAITING)
+    var statusMessage = "Ready"
+        set(value) { field = value; repaint() }
 
-    private val chips = PIPELINE_STEPS.map { Chip(it.id, it.label) }
-    private var animating = false
-    private var tick = 0f
+    var statusColor: Color = TurlTheme.FG_DIM
+        set(value) { field = value; repaint() }
 
-    private val animator = Timer(40) {
-        tick = (tick + 0.06f) % 1f
+    private data class Dot(val id: StepId, val label: String, var state: StepState = StepState.WAITING)
+
+    private val dots = PIPELINE_STEPS.map { Dot(it.id, it.label) }
+    private var running = false
+    private var pulse = 0f
+    private var buttonsEnabled = true
+
+    private var publishHit = Rectangle()
+    private var previewHit = Rectangle()
+    private var publishHover = false
+    private var previewHover = false
+
+    private val pulseTimer = Timer(45) {
+        pulse = (pulse + 0.07f) % 1f
         repaint()
     }
 
     init {
-        isOpaque = false
-        preferredSize = Dimension(0, 48)
-        minimumSize = Dimension(200, 44)
+        isOpaque = true
+        background = TurlTheme.BG
+        preferredSize = Dimension(0, 40)
+        border = JBUI.Borders.empty(0, 12)
+
+        addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+                if (!buttonsEnabled) return
+                when {
+                    publishHit.contains(e.point) -> onPublish?.invoke()
+                    previewHit.contains(e.point) -> onPreview?.invoke()
+                }
+            }
+            override fun mouseExited(e: MouseEvent) {
+                if (publishHover || previewHover) {
+                    publishHover = false
+                    previewHover = false
+                    cursor = Cursor.getDefaultCursor()
+                    repaint()
+                }
+            }
+        })
+        addMouseMotionListener(object : MouseAdapter() {
+            override fun mouseMoved(e: MouseEvent) {
+                val wasPub = publishHover
+                val wasPre = previewHover
+                publishHover = buttonsEnabled && publishHit.contains(e.point)
+                previewHover = buttonsEnabled && previewHit.contains(e.point)
+                cursor = if (publishHover || previewHover)
+                    Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                else Cursor.getDefaultCursor()
+                if (wasPub != publishHover || wasPre != previewHover) repaint()
+            }
+        })
     }
 
-    fun setAnimating(on: Boolean) {
-        animating = on
-        if (on) animator.start() else animator.stop()
+    fun setRunning(on: Boolean) {
+        running = on
+        buttonsEnabled = !on
+        if (on) pulseTimer.start() else pulseTimer.stop()
         repaint()
     }
 
-    fun resetAll() {
-        chips.forEach { it.state = StepState.WAITING }
-        animating = false
-        animator.stop()
+    fun resetSteps() {
+        dots.forEach { it.state = StepState.WAITING }
+        statusMessage = "Ready"
+        statusColor = TurlTheme.FG_DIM
         repaint()
     }
 
     fun advanceTo(target: StepId) {
-        val idx = chips.indexOfFirst { it.id == target }.takeIf { it >= 0 } ?: return
-        chips.forEachIndexed { i, c ->
-            if (c.state == StepState.FAILED || c.state == StepState.SKIPPED) return@forEachIndexed
+        val idx = dots.indexOfFirst { it.id == target }.takeIf { it >= 0 } ?: return
+        dots.forEachIndexed { i, d ->
+            if (d.state == StepState.FAILED || d.state == StepState.SKIPPED) return@forEachIndexed
             when {
-                i < idx -> c.state = StepState.DONE
-                i == idx -> c.state = StepState.RUNNING
+                i < idx -> d.state = StepState.DONE
+                i == idx -> d.state = StepState.RUNNING
             }
         }
         repaint()
     }
 
-    fun markSkippedFrom(id: StepId) {
-        val idx = chips.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: return
-        chips.forEachIndexed { i, c ->
+    fun skipFrom(id: StepId) {
+        val idx = dots.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: return
+        dots.forEachIndexed { i, d ->
             when {
-                i < idx && c.state != StepState.DONE -> c.state = StepState.DONE
-                i >= idx -> c.state = StepState.SKIPPED
+                i < idx && d.state != StepState.DONE -> d.state = StepState.DONE
+                i >= idx -> d.state = StepState.SKIPPED
             }
         }
         repaint()
     }
 
-    fun markFailed(id: StepId) {
-        val idx = chips.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: return
-        chips.forEachIndexed { i, c ->
-            if (i < idx && c.state == StepState.RUNNING) c.state = StepState.DONE
-            if (i == idx) c.state = StepState.FAILED
+    fun failStep(id: StepId) {
+        val idx = dots.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: return
+        dots.forEachIndexed { i, d ->
+            if (i < idx && d.state == StepState.RUNNING) d.state = StepState.DONE
+            if (i == idx) d.state = StepState.FAILED
         }
         repaint()
     }
 
     fun completeAll() {
-        chips.forEach { if (it.state != StepState.FAILED && it.state != StepState.SKIPPED) it.state = StepState.DONE }
+        dots.forEach { if (it.state != StepState.FAILED && it.state != StepState.SKIPPED) it.state = StepState.DONE }
         repaint()
     }
 
-    fun failActive() {
-        chips.filter { it.state == StepState.RUNNING }.forEach { it.state = StepState.FAILED }
+    fun failRunning() {
+        dots.filter { it.state == StepState.RUNNING }.forEach { it.state = StepState.FAILED }
         repaint()
     }
 
     override fun paintComponent(g: Graphics) {
         super.paintComponent(g)
-        if (chips.isEmpty()) return
         val g2 = (g.create() as Graphics2D).apply {
             setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
             setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB)
         }
 
-        val chipH = 24
-        val chipGap = 4
+        val midY = height / 2
+        var x = insets.left + 2
+
+        // --- Publish button ---
+        val (pubRect, pubEndX) = paintPill(g2, "Publish", x, midY, TurlTheme.BLUE, publishHover, buttonsEnabled, filled = true)
+        publishHit = pubRect
+        x = pubEndX + 8
+
+        // --- Preview button ---
+        val (preRect, preEndX) = paintPill(g2, "Preview", x, midY, TurlTheme.SURFACE, previewHover, buttonsEnabled, filled = false)
+        previewHit = preRect
+        x = preEndX + 20
+
+        // --- Vertical separator ---
+        g2.color = TurlTheme.BORDER
+        g2.fillRect(x, midY - 8, 1, 16)
+        x += 16
+
+        // --- Step dots with labels and connectors ---
+        val dotRadius = 4
+        val dotSpacing = 22
         val fm = g2.getFontMetrics(TurlTheme.FONT_SMALL)
-        val labelPadX = 10
-        val y = (height - chipH) / 2
 
-        // Connector lines between chips
-        var xOffset = 0
-        val chipWidths = chips.map { fm.stringWidth(it.label) + labelPadX * 2 }
-
-        for (i in chips.indices) {
-            val cw = chipWidths[i]
-            val chip = chips[i]
-
-            val bgColor = chipBg(chip.state)
-            val fgColor = chipFg(chip.state)
-
-            // Chip rounded rect
-            g2.color = bgColor
-            g2.fill(RoundRectangle2D.Float(xOffset.toFloat(), y.toFloat(), cw.toFloat(), chipH.toFloat(), 12f, 12f))
-
-            // Animated border pulse for running step
-            if (chip.state == StepState.RUNNING && animating) {
-                val alpha = (80 + 80 * kotlin.math.sin(tick * Math.PI * 2)).toInt().coerceIn(40, 160)
-                g2.color = Color(BLUE.red, BLUE.green, BLUE.blue, alpha)
-                g2.stroke = BasicStroke(1.5f)
-                g2.draw(RoundRectangle2D.Float(xOffset.toFloat(), y.toFloat(), cw.toFloat(), chipH.toFloat(), 12f, 12f))
+        for ((i, dot) in dots.withIndex()) {
+            val dotColor = when (dot.state) {
+                StepState.DONE -> TurlTheme.SUCCESS
+                StepState.RUNNING -> TurlTheme.BLUE
+                StepState.FAILED -> TurlTheme.DANGER
+                StepState.SKIPPED -> TurlTheme.WARN
+                StepState.WAITING -> TurlTheme.BORDER
             }
 
-            // Small icon for done/failed/skipped
-            val iconX = xOffset + 6
-            val iconY = y + chipH / 2
-            g2.stroke = BasicStroke(1.5f)
-            when (chip.state) {
+            val cx = x + dotRadius
+            val cy = midY
+
+            // Pulse ring for the currently running dot
+            if (dot.state == StepState.RUNNING && running) {
+                val ringAlpha = (50 + 70 * kotlin.math.sin(pulse * Math.PI * 2)).toInt().coerceIn(20, 120)
+                g2.color = Color(TurlTheme.BLUE.red, TurlTheme.BLUE.green, TurlTheme.BLUE.blue, ringAlpha)
+                val ringR = dotRadius + 4
+                g2.fill(Ellipse2D.Float((cx - ringR).toFloat(), (cy - ringR).toFloat(), (ringR * 2).toFloat(), (ringR * 2).toFloat()))
+            }
+
+            g2.color = dotColor
+            g2.fill(Ellipse2D.Float((cx - dotRadius).toFloat(), (cy - dotRadius).toFloat(), (dotRadius * 2).toFloat(), (dotRadius * 2).toFloat()))
+
+            // Micro checkmark / X inside dots for done/failed states
+            g2.stroke = BasicStroke(1.4f)
+            when (dot.state) {
                 StepState.DONE -> {
-                    g2.color = TurlTheme.SUCCESS
-                    g2.drawLine(iconX, iconY, iconX + 3, iconY + 3)
-                    g2.drawLine(iconX + 3, iconY + 3, iconX + 7, iconY - 2)
+                    g2.color = TurlTheme.SUCCESS_MUTED
+                    g2.drawLine(cx - 2, cy, cx - 1, cy + 2)
+                    g2.drawLine(cx - 1, cy + 2, cx + 2, cy - 1)
                 }
                 StepState.FAILED -> {
-                    g2.color = TurlTheme.DANGER
-                    g2.drawLine(iconX, iconY - 3, iconX + 6, iconY + 3)
-                    g2.drawLine(iconX + 6, iconY - 3, iconX, iconY + 3)
-                }
-                StepState.SKIPPED -> {
-                    g2.color = TurlTheme.WARN
-                    g2.drawLine(iconX + 1, iconY, iconX + 6, iconY)
+                    g2.color = TurlTheme.DANGER_MUTED
+                    g2.drawLine(cx - 2, cy - 2, cx + 2, cy + 2)
+                    g2.drawLine(cx + 2, cy - 2, cx - 2, cy + 2)
                 }
                 else -> {}
             }
 
-            // Label
-            g2.font = TurlTheme.FONT_SMALL
-            g2.color = fgColor
-            val textX = if (chip.state in listOf(StepState.DONE, StepState.FAILED, StepState.SKIPPED)) {
-                xOffset + 16
-            } else {
-                xOffset + labelPadX
-            }
-            g2.drawString(chip.label, textX, y + chipH / 2 + fm.ascent / 2 - 1)
+            // Tiny label below each dot
+            g2.font = Font(TurlTheme.FONT_SMALL.family, Font.PLAIN, 9)
+            g2.color = if (dot.state == StepState.WAITING) TurlTheme.FG_MUTED else dotColor
+            val labelW = g2.fontMetrics.stringWidth(dot.label)
+            g2.drawString(dot.label, cx - labelW / 2, cy + dotRadius + 11)
 
-            // Connector arrow
-            xOffset += cw + chipGap
-            if (i < chips.size - 1) {
-                g2.color = TurlTheme.BORDER
+            // Connector line to next dot
+            if (i < dots.size - 1) {
+                val lineStartX = cx + dotRadius + 1
+                val lineEndX = x + dotSpacing + dotRadius * 2 + dotRadius - 1
+                val nextDone = dots[i + 1].state in listOf(StepState.DONE, StepState.RUNNING)
+                g2.color = if (dot.state == StepState.DONE && nextDone) TurlTheme.SUCCESS else TurlTheme.BORDER
                 g2.stroke = BasicStroke(1f)
-                val arrowY = y + chipH / 2
-                g2.drawLine(xOffset - chipGap, arrowY, xOffset, arrowY)
-                xOffset += chipGap
+                g2.drawLine(lineStartX, cy, lineEndX.coerceAtLeast(lineStartX), cy)
             }
+
+            x += dotSpacing + dotRadius * 2
         }
+
+        x += 16
+
+        // --- Vertical separator ---
+        g2.color = TurlTheme.BORDER
+        g2.fillRect(x, midY - 8, 1, 16)
+        x += 16
+
+        // --- Status message ---
+        g2.font = TurlTheme.FONT_SMALL
+        g2.color = statusColor
+        g2.drawString(statusMessage, x, midY + fm.ascent / 2 - 1)
 
         g2.dispose()
     }
 
-    private fun chipBg(state: StepState): Color = when (state) {
-        StepState.DONE -> TurlTheme.SUCCESS_MUTED
-        StepState.RUNNING -> TurlTheme.BLUE_MUTED
-        StepState.FAILED -> TurlTheme.DANGER_MUTED
-        StepState.SKIPPED -> TurlTheme.WARN_MUTED
-        StepState.WAITING -> TurlTheme.SURFACE
+    /** Paints a small pill-shaped button and returns (hitRect, rightEdgeX). */
+    private fun paintPill(
+        g2: Graphics2D, text: String, x: Int, midY: Int,
+        color: Color, hovered: Boolean, enabled: Boolean, filled: Boolean
+    ): Pair<Rectangle, Int> {
+        val fm = g2.getFontMetrics(TurlTheme.FONT_SMALL)
+        val textW = fm.stringWidth(text)
+        val padX = 14
+        val h = 24
+        val w = textW + padX * 2
+        val top = midY - h / 2
+
+        val bg = when {
+            !enabled -> TurlTheme.BORDER
+            hovered -> brighten(color, 0.1f)
+            else -> color
+        }
+
+        g2.color = bg
+        g2.fill(RoundRectangle2D.Float(x.toFloat(), top.toFloat(), w.toFloat(), h.toFloat(), 8f, 8f))
+
+        if (!filled) {
+            g2.color = TurlTheme.BORDER
+            g2.stroke = BasicStroke(1f)
+            g2.draw(RoundRectangle2D.Float(x + 0.5f, top + 0.5f, w - 1f, h - 1f, 8f, 8f))
+        }
+
+        g2.font = TurlTheme.FONT_SMALL.deriveFont(Font.BOLD)
+        g2.color = when {
+            !enabled -> TurlTheme.FG_MUTED
+            filled -> Color.WHITE
+            else -> TurlTheme.FG
+        }
+        g2.drawString(text, x + padX, midY + fm.ascent / 2 - 1)
+
+        return Rectangle(x, top, w, h) to (x + w)
     }
 
-    private fun chipFg(state: StepState): Color = when (state) {
-        StepState.DONE -> TurlTheme.SUCCESS
-        StepState.RUNNING -> TurlTheme.BLUE
-        StepState.FAILED -> TurlTheme.DANGER
-        StepState.SKIPPED -> TurlTheme.WARN
-        StepState.WAITING -> TurlTheme.FG_MUTED
+    private fun brighten(c: Color, amount: Float): Color {
+        val hsb = Color.RGBtoHSB(c.red, c.green, c.blue, null)
+        hsb[2] = (hsb[2] + amount).coerceAtMost(1f)
+        return Color(Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]))
     }
 }
 
 
-// ---------------------------------------------------------------------------
-// Result Card — slide-in panel showing outcome + changelog
-// ---------------------------------------------------------------------------
-
-private class ResultCard : JPanel(BorderLayout()) {
+/**
+ * Bottom result area — only visible after a run finishes.
+ * Shows a colored banner with outcome text and optional changelog.
+ */
+private class ResultBanner : JPanel(BorderLayout()) {
 
     private val messageLabel = JLabel().apply {
         font = TurlTheme.FONT_BODY.deriveFont(Font.BOLD)
-        border = JBUI.Borders.empty(8, 10)
+        border = JBUI.Borders.empty(6, 14)
     }
 
     private val changelogArea = JTextArea().apply {
-        font = FONT_MONO
+        font = TurlTheme.FONT_MONO
+        foreground = TurlTheme.FG
+        isEditable = false
         lineWrap = true
         wrapStyleWord = true
-        isEditable = false
-        foreground = FG
-        border = JBUI.Borders.empty(6, 10)
+        border = JBUI.Borders.empty(4, 14, 8, 14)
     }
 
-    private val changelogScroll = JBScrollPane(changelogArea).apply {
-        border = BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER)
+    private val changelogScroll = JScrollPane(changelogArea).apply {
+        border = BorderFactory.createMatteBorder(1, 0, 0, 0, TurlTheme.BORDER)
+        preferredSize = Dimension(0, 100)
         isOpaque = false
         viewport.isOpaque = false
     }
 
     init {
         isOpaque = false
+        border = JBUI.Borders.empty(2, 12, 6, 12)
         add(messageLabel, BorderLayout.NORTH)
         add(changelogScroll, BorderLayout.CENTER)
         changelogScroll.isVisible = false
     }
 
-    fun show(message: String, accentColor: Color, bgColor: Color, changelog: String? = null) {
+    fun show(message: String, accent: Color, changelog: String?) {
+        val bgColor = mutedColor(accent)
+        messageLabel.text = message
+        messageLabel.foreground = accent
+        changelogArea.background = bgColor
         background = bgColor
         isOpaque = true
-        messageLabel.text = message
-        messageLabel.foreground = accentColor
 
         if (changelog != null) {
             changelogArea.text = changelog
-            changelogArea.background = bgColor
             changelogScroll.isVisible = true
         } else {
             changelogScroll.isVisible = false
@@ -471,105 +487,19 @@ private class ResultCard : JPanel(BorderLayout()) {
     }
 
     override fun paintComponent(g: Graphics) {
-        if (isOpaque) {
-            val g2 = (g.create() as Graphics2D).apply {
-                setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            }
-            g2.color = background
-            g2.fill(RoundRectangle2D.Float(0f, 0f, width.toFloat(), height.toFloat(), 10f, 10f))
-            g2.dispose()
-        }
-    }
-}
-
-
-// ---------------------------------------------------------------------------
-// Action Button — flat, rounded, clean
-// ---------------------------------------------------------------------------
-
-private class ActionButton(
-    label: String,
-    tooltip: String,
-    private val baseColor: Color
-) : JButton(label) {
-
-    private var hovered = false
-
-    init {
-        toolTipText = tooltip
-        font = TurlTheme.FONT_BODY.deriveFont(Font.BOLD)
-        foreground = if (baseColor == SURFACE) FG else Color.WHITE
-        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        isFocusPainted = false
-        isContentAreaFilled = false
-        isBorderPainted = false
-        border = JBUI.Borders.empty(6, 16)
-
-        addMouseListener(object : MouseAdapter() {
-            override fun mouseEntered(e: MouseEvent) { hovered = true; repaint() }
-            override fun mouseExited(e: MouseEvent) { hovered = false; repaint() }
-        })
-    }
-
-    override fun paintComponent(g: Graphics) {
+        if (!isOpaque) return
         val g2 = (g.create() as Graphics2D).apply {
             setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         }
-
-        val bg = when {
-            !isEnabled -> TurlTheme.BORDER
-            hovered -> brighter(baseColor, 0.15f)
-            else -> baseColor
-        }
-        g2.color = bg
-        g2.fill(RoundRectangle2D.Float(0f, 0f, width.toFloat(), height.toFloat(), 10f, 10f))
-
-        // Subtle border for secondary (surface-colored) buttons
-        if (baseColor == SURFACE) {
-            g2.color = TurlTheme.BORDER
-            g2.stroke = BasicStroke(1f)
-            g2.draw(RoundRectangle2D.Float(0.5f, 0.5f, width - 1f, height - 1f, 10f, 10f))
-        }
-
-        foreground = when {
-            !isEnabled -> FG_MUTED
-            baseColor == SURFACE -> FG
-            else -> Color.WHITE
-        }
-        g2.dispose()
-        super.paintComponent(g)
-    }
-
-    private fun brighter(c: Color, amount: Float): Color {
-        val hsb = Color.RGBtoHSB(c.red, c.green, c.blue, null)
-        hsb[2] = (hsb[2] + amount).coerceAtMost(1f)
-        val rgb = Color.HSBtoRGB(hsb[0], hsb[1], hsb[2])
-        return Color(rgb)
-    }
-}
-
-
-// ---------------------------------------------------------------------------
-// Status Dot — small colored circle next to status text
-// ---------------------------------------------------------------------------
-
-private class StatusDot : JComponent() {
-    var color: Color = FG_MUTED
-        set(value) { field = value; repaint() }
-
-    init {
-        preferredSize = Dimension(8, 8)
-        minimumSize = Dimension(8, 8)
-        maximumSize = Dimension(8, 8)
-    }
-
-    override fun paintComponent(g: Graphics) {
-        val g2 = (g.create() as Graphics2D).apply {
-            setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        }
-        g2.color = color
-        g2.fillOval(0, 0, 8, 8)
+        g2.color = background
+        g2.fill(RoundRectangle2D.Float(0f, 0f, width.toFloat(), height.toFloat(), 8f, 8f))
         g2.dispose()
     }
-}
 
+    private fun mutedColor(accent: Color): Color = when (accent) {
+        TurlTheme.SUCCESS -> TurlTheme.SUCCESS_MUTED
+        TurlTheme.DANGER -> TurlTheme.DANGER_MUTED
+        TurlTheme.WARN -> TurlTheme.WARN_MUTED
+        else -> TurlTheme.BLUE_MUTED
+    }
+}

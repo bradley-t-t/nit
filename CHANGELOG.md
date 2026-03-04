@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7] - 2026-03-04
+
+- Redesigned the TURL Release tool window UI with a completely custom-painted, wide-first horizontal layout optimized for WebStorm's bottom bar.
+- Replaced the previous multi-panel structure with a single-plane layout featuring a command bar, step indicators, status message, and result banner with changelog display.
+- Removed the old theme color and font constants from direct use in the UI code, simplifying the visual styling approach.
+- Updated the UI initialization to use a cleaner structure with new components like CommandBar and ResultBanner for better organization.
+
 ## [7.6] - 2026-03-04
 
 - Completely revamped the UI structure by introducing a new `TurlPanel.kt` file, consolidating the functionality previously spread across multiple files like `ControlPanelTab.kt`, `RulesTab.kt`, and `SettingsTab.kt` into a single, unified panel for better organization and maintainability.
