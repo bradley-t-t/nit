@@ -27,6 +27,7 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
     private val resultBanner = ResultBanner()
 
     private val changelogLines = mutableListOf<String>()
+    private val errorLines = mutableListOf<String>()
     private var capturingChangelog = false
     private var changelogDone = false
     private var releaseSkipped = false
@@ -58,6 +59,7 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
         resultBanner.isVisible = false
         resultBanner.clear()
         changelogLines.clear()
+        errorLines.clear()
         capturingChangelog = false
         changelogDone = false
         releaseSkipped = false
@@ -72,7 +74,8 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
         ApplicationManager.getApplication().invokeLater {
             val trimmed = cleanLine.trim()
 
-            // Changelog capture
+            if (isErrorLine(trimmed)) errorLines.add(trimmed)
+
             if (capturingChangelog && !changelogDone) {
                 if (trimmed.startsWith("- ") || trimmed.startsWith("## [")) {
                     changelogLines.add(trimmed)
@@ -118,9 +121,12 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
                     val changelog = changelogLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
                     resultBanner.show("Release published successfully", TurlTheme.SUCCESS, changelog)
                 } else {
-                    commandBar.statusMessage = "Release failed"
+                    val errorDetail = errorLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
+                    val lastError = errorLines.lastOrNull()
+                    val statusText = lastError ?: "Release failed"
+                    commandBar.statusMessage = statusText
                     commandBar.statusColor = TurlTheme.DANGER
-                    resultBanner.show("Release failed", TurlTheme.DANGER, null)
+                    resultBanner.show("Release failed", TurlTheme.DANGER, errorDetail)
                 }
             } else {
                 resultBanner.show("No changes to release — skipped", TurlTheme.WARN, null)
@@ -135,8 +141,17 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
     private fun matchStep(line: String): StepDef? =
         PIPELINE_STEPS.find { step -> step.triggers.any { line.contains(it, ignoreCase = true) } }
 
-    private fun isErrorLine(line: String) =
-        line.contains("failed", true) || line.contains("error", true) || line.contains("Release aborted", true)
+    private fun isErrorLine(line: String): Boolean {
+        val lower = line.lowercase()
+        // "unavailable, using fallback" is a warning, not a fatal error
+        if (lower.contains("unavailable") && lower.contains("fallback")) return false
+        val ERROR_KEYWORDS = listOf(
+            "failed", "error", "Release aborted", "Release Failed",
+            "not a git repository", "could not find", "ENOENT",
+            "permission denied", "EACCES", "timeout", "ETIMEDOUT"
+        )
+        return ERROR_KEYWORDS.any { line.contains(it, ignoreCase = true) }
+    }
 
     private fun isSkipLine(line: String) =
         line.contains("No changes detected", true) || line.contains("Release skipped", true)

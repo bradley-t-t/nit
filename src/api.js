@@ -1,87 +1,113 @@
 import { ErrorCodes } from "./constants.js";
 import { TurlError, isNetworkError, parseApiError } from "./errors.js";
 
-export async function callGrokApi(apiKey, prompt) {
-  let response;
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 2000;
 
-  try {
-    response = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "grok-3-latest",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a precise technical assistant that generates changelog entries and commit messages. You ONLY describe changes that are explicitly visible in the provided diff. Never invent or assume changes. Be specific and accurate.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 1000,
-      }),
-    });
-  } catch (err) {
-    if (isNetworkError(err)) {
-      const messages = {
-        ENOTFOUND:
-          "Network error: Unable to reach Grok API. Check your internet connection.",
-        EAI_AGAIN:
-          "Network error: Unable to reach Grok API. Check your internet connection.",
-        ETIMEDOUT:
-          "Network timeout: Grok API request timed out. Try again later.",
-        ESOCKETTIMEDOUT:
-          "Network timeout: Grok API request timed out. Try again later.",
-        ECONNREFUSED: "Connection refused: Unable to connect to Grok API.",
-      };
+/** Waits for the specified duration in milliseconds. */
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Calls the Grok API with automatic retry + exponential backoff for rate limits (429)
+ * and transient server errors (5xx).
+ */
+export async function callGrokApi(apiKey, prompt) {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let response;
+
+    try {
+      response = await fetch("https://api.x.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "grok-3-latest",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a precise technical assistant that generates changelog entries and commit messages. You ONLY describe changes that are explicitly visible in the provided diff. Never invent or assume changes. Be specific and accurate.",
+            },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.3,
+          max_tokens: 1000,
+        }),
+      });
+    } catch (err) {
+      if (isNetworkError(err)) {
+        const messages = {
+          ENOTFOUND:
+            "Network error: Unable to reach Grok API. Check your internet connection.",
+          EAI_AGAIN:
+            "Network error: Unable to reach Grok API. Check your internet connection.",
+          ETIMEDOUT:
+            "Network timeout: Grok API request timed out. Try again later.",
+          ESOCKETTIMEDOUT:
+            "Network timeout: Grok API request timed out. Try again later.",
+          ECONNREFUSED: "Connection refused: Unable to connect to Grok API.",
+        };
+        throw new TurlError(
+          messages[err.code] ||
+            `Network error calling Grok API: ${err.message}`,
+          ErrorCodes.API_NETWORK_ERROR,
+          { originalError: err.message },
+        );
+      }
       throw new TurlError(
-        messages[err.code] || `Network error calling Grok API: ${err.message}`,
+        `Network error calling Grok API: ${err.message}`,
         ErrorCodes.API_NETWORK_ERROR,
         { originalError: err.message },
       );
     }
-    throw new TurlError(
-      `Network error calling Grok API: ${err.message}`,
-      ErrorCodes.API_NETWORK_ERROR,
-      { originalError: err.message },
-    );
-  }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorData;
-    try {
-      errorData = JSON.parse(errorText);
-    } catch {
-      errorData = { error: errorText };
+    // Retry on rate-limit (429) or transient server errors (5xx)
+    const isRetryable = response.status === 429 || response.status >= 500;
+    if (!response.ok && isRetryable && attempt < MAX_RETRIES) {
+      const retryAfterHeader = response.headers.get("retry-after");
+      const waitMs = retryAfterHeader
+        ? parseInt(retryAfterHeader, 10) * 1000
+        : BASE_DELAY_MS * 2 ** attempt;
+      await delay(waitMs);
+      continue;
     }
-    throw parseApiError(response, errorText, errorData);
-  }
 
-  let data;
-  try {
-    data = await response.json();
-  } catch (err) {
-    throw new TurlError(
-      "Invalid JSON response from Grok API",
-      ErrorCodes.API_RESPONSE_INVALID,
-      { originalError: err.message },
-    );
-  }
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText };
+      }
+      throw parseApiError(response, errorText, errorData);
+    }
 
-  if (!data.choices?.[0]?.message) {
-    throw new TurlError(
-      "Unexpected response format from Grok API",
-      ErrorCodes.API_RESPONSE_INVALID,
-      { response: data },
-    );
-  }
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new TurlError(
+        "Invalid JSON response from Grok API",
+        ErrorCodes.API_RESPONSE_INVALID,
+        { originalError: err.message },
+      );
+    }
 
-  return data.choices[0].message.content || "";
+    if (!data.choices?.[0]?.message) {
+      throw new TurlError(
+        "Unexpected response format from Grok API",
+        ErrorCodes.API_RESPONSE_INVALID,
+        { response: data },
+      );
+    }
+
+    return data.choices[0].message.content || "";
+  }
 }
 
 export async function generateChangelog(

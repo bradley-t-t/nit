@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.9] - 2026-03-04
+
+- TURL Release Tool Release v7.9
 ## [7.8] - 2026-03-04
 
 - Removed the Preview button from the TURL Release tool window, simplifying the interface to only include the Publish button.
