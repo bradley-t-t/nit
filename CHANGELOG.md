@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.6] - 2026-03-04
+
+- Completely revamped the UI structure by introducing a new `TurlPanel.kt` file, consolidating the functionality previously spread across multiple files like `ControlPanelTab.kt`, `RulesTab.kt`, and `SettingsTab.kt` into a single, unified panel for better organization and maintainability.
+- Added a new `TurlTheme.kt` file to define consistent styling and theming elements for the tool window UI, improving the visual coherence of the plugin.
+- Removed outdated UI components and logic from `ControlPanelTab.kt`, `RulesTab.kt`, `SettingsTab.kt`, `ReleasePhases.kt`, and `TurlColors.kt` as part of the refactoring to the new `TurlPanel.kt` structure.
+- Updated `PipelineSteps.kt` to align with the new UI framework, ensuring the release process visualization remains accurate in the revised tool window layout.
+- Made minor adjustments to `TurlToolWindowFactory.kt` to integrate the new `TurlPanel` as the primary content of the tool window.
+
 ## [7.5] - 2026-03-04
 
 - Updated the UI layout of the TURL Release control panel for a more intuitive experience, featuring a wide layout with action buttons on the left, a central progress rail, and a slide-in changelog result on the right.
