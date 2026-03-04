@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.8] - 2026-03-04
+
+- Removed the Preview button from the TURL Release tool window, simplifying the interface to only include the Publish button.
+- Eliminated the visual step indicators (dots) and their associated states from the CommandBar in the tool window, streamlining the UI layout.
+- Simplified the status handling in the tool window by removing step progression logic such as advancing, failing, or skipping steps, focusing only on displaying status messages and colors.
+- Updated the CommandBar description to reflect the revised layout with a single Publish button and right-aligned status message.
+
 ## [7.7] - 2026-03-04
 
 - Redesigned the TURL Release tool window UI with a completely custom-painted, wide-first horizontal layout optimized for WebStorm's bottom bar.

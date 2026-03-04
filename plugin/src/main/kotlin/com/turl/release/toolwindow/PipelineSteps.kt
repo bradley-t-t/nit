@@ -5,8 +5,6 @@ enum class StepId {
     UPDATE, PREFLIGHT, ENVIRONMENT, PREPARE, VERSION, CHANGELOG, BUILD, LEARN, COMMIT
 }
 
-/** Visual state for a pipeline step. */
-enum class StepState { WAITING, RUNNING, DONE, FAILED, SKIPPED }
 
 /** Maps a pipeline step to the CLI output keywords that trigger it. */
 data class StepDef(val id: StepId, val label: String, val triggers: List<String>)

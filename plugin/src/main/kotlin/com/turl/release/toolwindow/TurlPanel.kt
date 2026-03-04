@@ -8,16 +8,14 @@ import com.turl.release.services.TurlProcessRunner
 import java.awt.*
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import java.awt.geom.Ellipse2D
 import java.awt.geom.RoundRectangle2D
 import javax.swing.*
 
 /**
- * TURL Release tool window — completely custom-painted, wide-first layout.
+ * TURL Release tool window — custom-painted, wide-first layout.
  *
- * Visual structure (all on one horizontal plane):
  * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ [Publish] [Preview]  │  ● ● ● ● ● ● ● ● ●  │  status message        │
+ * │ [Publish]                                              status message  │
  * ├─────────────────────────────────────────────────────────────────────────┤
  * │ Result banner + changelog (only when finished)                         │
  * └─────────────────────────────────────────────────────────────────────────┘
@@ -40,7 +38,6 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
         runner.setOutputListener(this)
 
         commandBar.onPublish = { launch(dryRun = false) }
-        commandBar.onPreview = { launch(dryRun = true) }
 
         add(commandBar, BorderLayout.NORTH)
         add(resultBanner, BorderLayout.CENTER)
@@ -58,7 +55,6 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
     }
 
     private fun reset() {
-        commandBar.resetSteps()
         resultBanner.isVisible = false
         resultBanner.clear()
         changelogLines.clear()
@@ -97,18 +93,15 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
             when {
                 isSkipLine(cleanLine) -> {
                     releaseSkipped = true
-                    commandBar.skipFrom(step.id)
                     commandBar.statusMessage = "No changes to release"
                     commandBar.statusColor = TurlTheme.WARN
                     commandBar.setRunning(false)
                 }
                 isErrorLine(cleanLine) -> {
-                    commandBar.failStep(step.id)
                     commandBar.statusMessage = "${step.label} failed"
                     commandBar.statusColor = TurlTheme.DANGER
                 }
                 else -> {
-                    commandBar.advanceTo(step.id)
                     commandBar.statusMessage = step.label
                     commandBar.statusColor = TurlTheme.BLUE
                 }
@@ -120,13 +113,11 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
         ApplicationManager.getApplication().invokeLater {
             if (!releaseSkipped) {
                 if (exitCode == 0) {
-                    commandBar.completeAll()
                     commandBar.statusMessage = "Release published"
                     commandBar.statusColor = TurlTheme.SUCCESS
                     val changelog = changelogLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
                     resultBanner.show("Release published successfully", TurlTheme.SUCCESS, changelog)
                 } else {
-                    commandBar.failRunning()
                     commandBar.statusMessage = "Release failed"
                     commandBar.statusColor = TurlTheme.DANGER
                     resultBanner.show("Release failed", TurlTheme.DANGER, null)
@@ -153,13 +144,11 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
 
 
 /**
- * The entire top bar — custom painted, no child Swing components.
- * Contains: two pill buttons, step dots with labels, and a status message — all in one 40px row.
+ * Top bar — single Publish button on the left, status message right-aligned.
  */
 private class CommandBar : JPanel() {
 
     var onPublish: (() -> Unit)? = null
-    var onPreview: (() -> Unit)? = null
 
     var statusMessage = "Ready"
         set(value) { field = value; repaint() }
@@ -167,22 +156,10 @@ private class CommandBar : JPanel() {
     var statusColor: Color = TurlTheme.FG_DIM
         set(value) { field = value; repaint() }
 
-    private data class Dot(val id: StepId, val label: String, var state: StepState = StepState.WAITING)
-
-    private val dots = PIPELINE_STEPS.map { Dot(it.id, it.label) }
     private var running = false
-    private var pulse = 0f
     private var buttonsEnabled = true
-
     private var publishHit = Rectangle()
-    private var previewHit = Rectangle()
     private var publishHover = false
-    private var previewHover = false
-
-    private val pulseTimer = Timer(45) {
-        pulse = (pulse + 0.07f) % 1f
-        repaint()
-    }
 
     init {
         isOpaque = true
@@ -192,16 +169,11 @@ private class CommandBar : JPanel() {
 
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
-                if (!buttonsEnabled) return
-                when {
-                    publishHit.contains(e.point) -> onPublish?.invoke()
-                    previewHit.contains(e.point) -> onPreview?.invoke()
-                }
+                if (buttonsEnabled && publishHit.contains(e.point)) onPublish?.invoke()
             }
             override fun mouseExited(e: MouseEvent) {
-                if (publishHover || previewHover) {
+                if (publishHover) {
                     publishHover = false
-                    previewHover = false
                     cursor = Cursor.getDefaultCursor()
                     repaint()
                 }
@@ -209,14 +181,12 @@ private class CommandBar : JPanel() {
         })
         addMouseMotionListener(object : MouseAdapter() {
             override fun mouseMoved(e: MouseEvent) {
-                val wasPub = publishHover
-                val wasPre = previewHover
+                val was = publishHover
                 publishHover = buttonsEnabled && publishHit.contains(e.point)
-                previewHover = buttonsEnabled && previewHit.contains(e.point)
-                cursor = if (publishHover || previewHover)
+                cursor = if (publishHover)
                     Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
                 else Cursor.getDefaultCursor()
-                if (wasPub != publishHover || wasPre != previewHover) repaint()
+                if (was != publishHover) repaint()
             }
         })
     }
@@ -224,56 +194,6 @@ private class CommandBar : JPanel() {
     fun setRunning(on: Boolean) {
         running = on
         buttonsEnabled = !on
-        if (on) pulseTimer.start() else pulseTimer.stop()
-        repaint()
-    }
-
-    fun resetSteps() {
-        dots.forEach { it.state = StepState.WAITING }
-        statusMessage = "Ready"
-        statusColor = TurlTheme.FG_DIM
-        repaint()
-    }
-
-    fun advanceTo(target: StepId) {
-        val idx = dots.indexOfFirst { it.id == target }.takeIf { it >= 0 } ?: return
-        dots.forEachIndexed { i, d ->
-            if (d.state == StepState.FAILED || d.state == StepState.SKIPPED) return@forEachIndexed
-            when {
-                i < idx -> d.state = StepState.DONE
-                i == idx -> d.state = StepState.RUNNING
-            }
-        }
-        repaint()
-    }
-
-    fun skipFrom(id: StepId) {
-        val idx = dots.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: return
-        dots.forEachIndexed { i, d ->
-            when {
-                i < idx && d.state != StepState.DONE -> d.state = StepState.DONE
-                i >= idx -> d.state = StepState.SKIPPED
-            }
-        }
-        repaint()
-    }
-
-    fun failStep(id: StepId) {
-        val idx = dots.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: return
-        dots.forEachIndexed { i, d ->
-            if (i < idx && d.state == StepState.RUNNING) d.state = StepState.DONE
-            if (i == idx) d.state = StepState.FAILED
-        }
-        repaint()
-    }
-
-    fun completeAll() {
-        dots.forEach { if (it.state != StepState.FAILED && it.state != StepState.SKIPPED) it.state = StepState.DONE }
-        repaint()
-    }
-
-    fun failRunning() {
-        dots.filter { it.state == StepState.RUNNING }.forEach { it.state = StepState.FAILED }
         repaint()
     }
 
@@ -285,106 +205,24 @@ private class CommandBar : JPanel() {
         }
 
         val midY = height / 2
-        var x = insets.left + 2
-
-        // --- Publish button ---
-        val (pubRect, pubEndX) = paintPill(g2, "Publish", x, midY, TurlTheme.BLUE, publishHover, buttonsEnabled, filled = true)
-        publishHit = pubRect
-        x = pubEndX + 8
-
-        // --- Preview button ---
-        val (preRect, preEndX) = paintPill(g2, "Preview", x, midY, TurlTheme.SURFACE, previewHover, buttonsEnabled, filled = false)
-        previewHit = preRect
-        x = preEndX + 20
-
-        // --- Vertical separator ---
-        g2.color = TurlTheme.BORDER
-        g2.fillRect(x, midY - 8, 1, 16)
-        x += 16
-
-        // --- Step dots with labels and connectors ---
-        val dotRadius = 4
-        val dotSpacing = 22
         val fm = g2.getFontMetrics(TurlTheme.FONT_SMALL)
 
-        for ((i, dot) in dots.withIndex()) {
-            val dotColor = when (dot.state) {
-                StepState.DONE -> TurlTheme.SUCCESS
-                StepState.RUNNING -> TurlTheme.BLUE
-                StepState.FAILED -> TurlTheme.DANGER
-                StepState.SKIPPED -> TurlTheme.WARN
-                StepState.WAITING -> TurlTheme.BORDER
-            }
+        // Publish button (left)
+        publishHit = paintPill(g2, "Publish", insets.left + 2, midY, TurlTheme.BLUE, publishHover, buttonsEnabled)
 
-            val cx = x + dotRadius
-            val cy = midY
-
-            // Pulse ring for the currently running dot
-            if (dot.state == StepState.RUNNING && running) {
-                val ringAlpha = (50 + 70 * kotlin.math.sin(pulse * Math.PI * 2)).toInt().coerceIn(20, 120)
-                g2.color = Color(TurlTheme.BLUE.red, TurlTheme.BLUE.green, TurlTheme.BLUE.blue, ringAlpha)
-                val ringR = dotRadius + 4
-                g2.fill(Ellipse2D.Float((cx - ringR).toFloat(), (cy - ringR).toFloat(), (ringR * 2).toFloat(), (ringR * 2).toFloat()))
-            }
-
-            g2.color = dotColor
-            g2.fill(Ellipse2D.Float((cx - dotRadius).toFloat(), (cy - dotRadius).toFloat(), (dotRadius * 2).toFloat(), (dotRadius * 2).toFloat()))
-
-            // Micro checkmark / X inside dots for done/failed states
-            g2.stroke = BasicStroke(1.4f)
-            when (dot.state) {
-                StepState.DONE -> {
-                    g2.color = TurlTheme.SUCCESS_MUTED
-                    g2.drawLine(cx - 2, cy, cx - 1, cy + 2)
-                    g2.drawLine(cx - 1, cy + 2, cx + 2, cy - 1)
-                }
-                StepState.FAILED -> {
-                    g2.color = TurlTheme.DANGER_MUTED
-                    g2.drawLine(cx - 2, cy - 2, cx + 2, cy + 2)
-                    g2.drawLine(cx + 2, cy - 2, cx - 2, cy + 2)
-                }
-                else -> {}
-            }
-
-            // Tiny label below each dot
-            g2.font = Font(TurlTheme.FONT_SMALL.family, Font.PLAIN, 9)
-            g2.color = if (dot.state == StepState.WAITING) TurlTheme.FG_MUTED else dotColor
-            val labelW = g2.fontMetrics.stringWidth(dot.label)
-            g2.drawString(dot.label, cx - labelW / 2, cy + dotRadius + 11)
-
-            // Connector line to next dot
-            if (i < dots.size - 1) {
-                val lineStartX = cx + dotRadius + 1
-                val lineEndX = x + dotSpacing + dotRadius * 2 + dotRadius - 1
-                val nextDone = dots[i + 1].state in listOf(StepState.DONE, StepState.RUNNING)
-                g2.color = if (dot.state == StepState.DONE && nextDone) TurlTheme.SUCCESS else TurlTheme.BORDER
-                g2.stroke = BasicStroke(1f)
-                g2.drawLine(lineStartX, cy, lineEndX.coerceAtLeast(lineStartX), cy)
-            }
-
-            x += dotSpacing + dotRadius * 2
-        }
-
-        x += 16
-
-        // --- Vertical separator ---
-        g2.color = TurlTheme.BORDER
-        g2.fillRect(x, midY - 8, 1, 16)
-        x += 16
-
-        // --- Status message ---
+        // Status message (right-aligned)
         g2.font = TurlTheme.FONT_SMALL
         g2.color = statusColor
-        g2.drawString(statusMessage, x, midY + fm.ascent / 2 - 1)
+        val textWidth = fm.stringWidth(statusMessage)
+        g2.drawString(statusMessage, width - insets.right - textWidth - 4, midY + fm.ascent / 2 - 1)
 
         g2.dispose()
     }
 
-    /** Paints a small pill-shaped button and returns (hitRect, rightEdgeX). */
     private fun paintPill(
         g2: Graphics2D, text: String, x: Int, midY: Int,
-        color: Color, hovered: Boolean, enabled: Boolean, filled: Boolean
-    ): Pair<Rectangle, Int> {
+        color: Color, hovered: Boolean, enabled: Boolean
+    ): Rectangle {
         val fm = g2.getFontMetrics(TurlTheme.FONT_SMALL)
         val textW = fm.stringWidth(text)
         val padX = 14
@@ -401,21 +239,11 @@ private class CommandBar : JPanel() {
         g2.color = bg
         g2.fill(RoundRectangle2D.Float(x.toFloat(), top.toFloat(), w.toFloat(), h.toFloat(), 8f, 8f))
 
-        if (!filled) {
-            g2.color = TurlTheme.BORDER
-            g2.stroke = BasicStroke(1f)
-            g2.draw(RoundRectangle2D.Float(x + 0.5f, top + 0.5f, w - 1f, h - 1f, 8f, 8f))
-        }
-
         g2.font = TurlTheme.FONT_SMALL.deriveFont(Font.BOLD)
-        g2.color = when {
-            !enabled -> TurlTheme.FG_MUTED
-            filled -> Color.WHITE
-            else -> TurlTheme.FG
-        }
+        g2.color = if (!enabled) TurlTheme.FG_MUTED else Color.WHITE
         g2.drawString(text, x + padX, midY + fm.ascent / 2 - 1)
 
-        return Rectangle(x, top, w, h) to (x + w)
+        return Rectangle(x, top, w, h)
     }
 
     private fun brighten(c: Color, amount: Float): Color {
