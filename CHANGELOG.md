@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.4] - 2026-03-04
+
+- Redesigned the layout of the Control Panel Tab in the TURL Release Tool for better usability, especially for bottom tool window placement, with a single-panel wide layout.
+- Adjusted the status label font size from 15f to 14f for improved readability.
+- Updated the subtitle text from "Start a release or preview with dry run" to "Start a release or preview changes" for clearer messaging.
+- Replaced the timeline container with a pipeline row using a FlowLayout to display phase chips horizontally instead of vertically.
+- Introduced HorizontalPhaseChip components to represent phases in the pipeline, replacing the previous TimelineStep approach.
+- Refined the changelog display by moving it into a dedicated panel with a header and a scrollable area, improving its presentation and structure.
+- Adjusted borders and spacing throughout the UI for a more polished look, including reduced padding in various components like the main panel and changelog content.
+
 ## [7.3] - 2026-03-02
 
 - Added a new test file `_test_rules.js` to validate rules using the `isValidRule` function from `rules.js`, ensuring robust rule content constraints with an extensive list of test cases.

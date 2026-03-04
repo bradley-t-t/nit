@@ -311,3 +311,129 @@ class TimelineStep(private val label: String, private val isLast: Boolean) : JPa
         }
     }
 }
+
+/** Compact horizontal chip for wide bottom-panel pipeline display. */
+class HorizontalPhaseChip(private val label: String) : JPanel() {
+    var currentState = PhaseState.PENDING
+        private set
+
+    private val chipHeight = 28
+    private val dotSize = 8
+    private var spinAngle = 0
+
+    private val spinTimer = Timer(60) {
+        spinAngle = (spinAngle + 30) % 360
+        repaint()
+    }
+
+    private val nameLabel = JLabel(label).apply {
+        font = font.deriveFont(Font.PLAIN, 11f)
+        foreground = TEXT_SECONDARY
+    }
+
+    init {
+        isOpaque = false
+        layout = FlowLayout(FlowLayout.LEFT, 4, 0)
+        border = JBUI.Borders.empty(4, 8, 4, 8)
+        preferredSize = Dimension(preferredSize.width, chipHeight)
+
+        add(Box.createHorizontalStrut(dotSize + 4))
+        add(nameLabel)
+    }
+
+    fun setState(state: PhaseState) {
+        currentState = state
+        if (state == PhaseState.ACTIVE) spinTimer.start() else spinTimer.stop()
+
+        when (state) {
+            PhaseState.PENDING -> {
+                nameLabel.foreground = TEXT_SECONDARY
+                nameLabel.font = nameLabel.font.deriveFont(Font.PLAIN, 11f)
+            }
+            PhaseState.ACTIVE -> {
+                nameLabel.foreground = ACCENT
+                nameLabel.font = nameLabel.font.deriveFont(Font.BOLD, 11f)
+            }
+            PhaseState.DONE -> {
+                nameLabel.foreground = GREEN
+                nameLabel.font = nameLabel.font.deriveFont(Font.PLAIN, 11f)
+            }
+            PhaseState.ERROR -> {
+                nameLabel.foreground = RED
+                nameLabel.font = nameLabel.font.deriveFont(Font.BOLD, 11f)
+            }
+            PhaseState.SKIPPED -> {
+                nameLabel.foreground = AMBER
+                nameLabel.font = nameLabel.font.deriveFont(Font.PLAIN, 11f)
+            }
+        }
+        repaint()
+    }
+
+    override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
+        val g2 = g.create() as Graphics2D
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+
+        // Background pill shape based on state
+        val bgColor = when (currentState) {
+            PhaseState.PENDING -> null
+            PhaseState.ACTIVE -> PHASE_ACTIVE_BG
+            PhaseState.DONE -> PHASE_DONE_BG
+            PhaseState.ERROR -> PHASE_ERROR_BG
+            PhaseState.SKIPPED -> PHASE_SKIPPED_BG
+        }
+        bgColor?.let {
+            g2.color = it
+            g2.fillRoundRect(0, 0, width, height, height, height)
+        }
+
+        // Dot indicator
+        val dotX = 8
+        val dotY = (height - dotSize) / 2
+        drawChipDot(g2, dotX, dotY)
+
+        g2.dispose()
+    }
+
+    private fun drawChipDot(g2: Graphics2D, x: Int, y: Int) {
+        when (currentState) {
+            PhaseState.DONE -> {
+                g2.color = GREEN
+                g2.fillOval(x, y, dotSize, dotSize)
+                g2.color = Color.WHITE
+                g2.stroke = BasicStroke(1.2f)
+                g2.drawLine(x + 2, y + dotSize / 2, x + dotSize / 2 - 1, y + dotSize - 2)
+                g2.drawLine(x + dotSize / 2 - 1, y + dotSize - 2, x + dotSize - 2, y + 2)
+            }
+            PhaseState.ACTIVE -> {
+                g2.stroke = BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+                g2.color = Color(ACCENT.red, ACCENT.green, ACCENT.blue, 50)
+                g2.drawOval(x, y, dotSize, dotSize)
+                g2.color = ACCENT
+                g2.drawArc(x, y, dotSize, dotSize, spinAngle, 270)
+            }
+            PhaseState.ERROR -> {
+                g2.color = RED
+                g2.fillOval(x, y, dotSize, dotSize)
+                g2.color = Color.WHITE
+                g2.stroke = BasicStroke(1.2f)
+                g2.drawLine(x + 2, y + 2, x + dotSize - 2, y + dotSize - 2)
+                g2.drawLine(x + dotSize - 2, y + 2, x + 2, y + dotSize - 2)
+            }
+            PhaseState.SKIPPED -> {
+                g2.color = AMBER
+                g2.fillOval(x, y, dotSize, dotSize)
+                g2.color = Color.WHITE
+                g2.stroke = BasicStroke(1.2f)
+                g2.drawLine(x + 2, y + dotSize / 2, x + dotSize - 2, y + dotSize / 2)
+            }
+            PhaseState.PENDING -> {
+                g2.color = TIMELINE_LINE
+                g2.stroke = BasicStroke(1.2f)
+                g2.drawOval(x, y, dotSize, dotSize)
+            }
+        }
+    }
+}
+

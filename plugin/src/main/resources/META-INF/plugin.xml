@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.turl.release</id>
     <name>TURL Release</name>
-    <version>7.3.0</version>
+    <version>7.4.0</version>
     <vendor>Trent</vendor>
 
     <description><![CDATA[
@@ -13,7 +13,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="TURL Release"
-                    anchor="right"
+                    anchor="bottom"
                     secondary="false"
                     icon="AllIcons.Actions.Upload"
                     factoryClass="com.turl.release.toolwindow.TurlToolWindowFactory"/>

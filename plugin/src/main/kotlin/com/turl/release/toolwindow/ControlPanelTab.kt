@@ -10,16 +10,17 @@ import com.turl.release.services.TurlProcessRunner
 import java.awt.*
 import javax.swing.*
 
+/** Single-panel wide layout designed for bottom tool window placement. */
 class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), TurlOutputListener {
 
     private val runner = TurlProcessRunner(project)
 
     private val statusLabel = JLabel("Ready").apply {
-        font = font.deriveFont(Font.BOLD, 15f)
+        font = font.deriveFont(Font.BOLD, 14f)
         foreground = TEXT_PRIMARY
     }
 
-    private val subtitleLabel = JLabel("Start a release or preview with dry run").apply {
+    private val subtitleLabel = JLabel("Start a release or preview changes").apply {
         font = font.deriveFont(Font.PLAIN, 11f)
         foreground = TEXT_SECONDARY
     }
@@ -38,9 +39,8 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
         isVisible = false
     }
 
-    private val phaseSteps = mutableMapOf<PhaseId, TimelineStep>()
-    private val timelineContainer = JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+    private val phaseChips = mutableMapOf<PhaseId, HorizontalPhaseChip>()
+    private val pipelineRow = JPanel(FlowLayout(FlowLayout.LEFT, 4, 0)).apply {
         isOpaque = false
     }
 
@@ -58,88 +58,141 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
         isEditable = false
         background = CHANGELOG_BG
         foreground = TEXT_PRIMARY
-        border = JBUI.Borders.empty(10, 12, 10, 12)
+        border = JBUI.Borders.empty(8)
     }
 
-    private val changelogCard = ShadowCard().apply {
-        layout = BorderLayout()
-        border = JBUI.Borders.empty(14, 16, 14, 16)
+    private val changelogPanel = JPanel(BorderLayout()).apply {
+        isOpaque = false
         isVisible = false
-        alignmentX = LEFT_ALIGNMENT
-        add(JLabel("CHANGELOG").apply {
+
+        val header = JLabel("CHANGELOG").apply {
             font = font.deriveFont(Font.BOLD, 10f)
             foreground = TEXT_SECONDARY
-            border = JBUI.Borders.emptyBottom(8)
-        }, BorderLayout.NORTH)
-        add(changelogContent, BorderLayout.CENTER)
-    }
+            border = JBUI.Borders.empty(0, 0, 4, 0)
+        }
 
-    private val scrollContent = JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        isOpaque = false
+        val scroll = JBScrollPane(changelogContent).apply {
+            border = BorderFactory.createLineBorder(BORDER_SUBTLE, 1, true)
+            isOpaque = false
+            viewport.isOpaque = false
+        }
+
+        add(header, BorderLayout.NORTH)
+        add(scroll, BorderLayout.CENTER)
     }
 
     init {
         background = BG_PRIMARY
-        border = JBUI.Borders.empty(14)
+        border = JBUI.Borders.empty(8, 12)
         runner.setOutputListener(this)
         buildLayout()
         attachListeners()
     }
 
     private fun buildLayout() {
-        val statusCard = ShadowCard().apply {
-            layout = GridBagLayout()
-            border = JBUI.Borders.empty(16, 18, 16, 18)
-            alignmentX = LEFT_ALIGNMENT
-        }
-
-        val gbc = GridBagConstraints().apply {
-            anchor = GridBagConstraints.WEST
-            fill = GridBagConstraints.HORIZONTAL
-            gridx = 0
-            weightx = 1.0
-        }
-
-        gbc.gridy = 0; gbc.insets = Insets(0, 0, 0, 0)
-        statusCard.add(statusLabel, gbc)
-
-        gbc.gridy = 1; gbc.insets = Insets(4, 0, 0, 0)
-        statusCard.add(subtitleLabel, gbc)
-
-        gbc.gridy = 2; gbc.insets = Insets(12, 0, 0, 0)
-        statusCard.add(progressBar, gbc)
-
-        val buttonRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
-            isOpaque = false
-            alignmentX = LEFT_ALIGNMENT
-            border = JBUI.Borders.empty(12, 0, 0, 0)
-            add(releaseBtn)
-            add(dryRunBtn)
-            add(cancelBtn)
-        }
-
-        scrollContent.add(timelineContainer)
-        scrollContent.add(Box.createVerticalStrut(12))
-        scrollContent.add(changelogCard)
-
-        val scroll = JBScrollPane(scrollContent).apply {
-            border = JBUI.Borders.empty()
-            isOpaque = false
-            viewport.isOpaque = false
-            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-        }
-
-        val topSection = JPanel().apply {
+        // Left section: status + buttons (fixed width)
+        val leftPanel = JPanel().apply {
             isOpaque = false
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            add(statusCard)
+            border = JBUI.Borders.emptyRight(16)
+            preferredSize = Dimension(200, 0)
+            minimumSize = Dimension(180, 0)
+
+            val statusRow = JPanel(BorderLayout()).apply {
+                isOpaque = false
+                alignmentX = LEFT_ALIGNMENT
+                maximumSize = Dimension(Int.MAX_VALUE, 40)
+                add(JPanel().apply {
+                    isOpaque = false
+                    layout = BoxLayout(this, BoxLayout.Y_AXIS)
+                    add(statusLabel)
+                    add(Box.createVerticalStrut(2))
+                    add(subtitleLabel)
+                }, BorderLayout.CENTER)
+            }
+
+            val progressRow = JPanel(BorderLayout()).apply {
+                isOpaque = false
+                alignmentX = LEFT_ALIGNMENT
+                maximumSize = Dimension(Int.MAX_VALUE, 4)
+                border = JBUI.Borders.empty(6, 0, 8, 0)
+                add(progressBar, BorderLayout.CENTER)
+            }
+
+            val buttonRow = JPanel(FlowLayout(FlowLayout.LEFT, 6, 0)).apply {
+                isOpaque = false
+                alignmentX = LEFT_ALIGNMENT
+                maximumSize = Dimension(Int.MAX_VALUE, 32)
+                add(releaseBtn)
+                add(dryRunBtn)
+                add(cancelBtn)
+            }
+
+            add(statusRow)
+            add(progressRow)
             add(buttonRow)
-            add(Box.createVerticalStrut(14))
+            add(Box.createVerticalGlue())
         }
 
-        add(topSection, BorderLayout.NORTH)
-        add(scroll, BorderLayout.CENTER)
+        // Center section: horizontal pipeline
+        val centerPanel = JPanel(BorderLayout()).apply {
+            isOpaque = false
+            border = JBUI.Borders.empty(0, 8)
+
+            val pipelineLabel = JLabel("PIPELINE").apply {
+                font = font.deriveFont(Font.BOLD, 10f)
+                foreground = TEXT_SECONDARY
+                border = JBUI.Borders.emptyBottom(6)
+            }
+
+            val pipelineScroll = JBScrollPane(pipelineRow).apply {
+                border = JBUI.Borders.empty()
+                isOpaque = false
+                viewport.isOpaque = false
+                verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+                horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+            }
+
+            add(pipelineLabel, BorderLayout.NORTH)
+            add(pipelineScroll, BorderLayout.CENTER)
+        }
+
+        // Right section: changelog (shown after release)
+        changelogPanel.preferredSize = Dimension(280, 0)
+        changelogPanel.border = JBUI.Borders.emptyLeft(12)
+
+        // Dividers
+        val leftDivider = createDivider()
+        val rightDivider = createDivider()
+
+        val mainLayout = JPanel(BorderLayout()).apply {
+            isOpaque = false
+
+            val leftWithDivider = JPanel(BorderLayout()).apply {
+                isOpaque = false
+                add(leftPanel, BorderLayout.CENTER)
+                add(leftDivider, BorderLayout.EAST)
+            }
+
+            val rightWithDivider = JPanel(BorderLayout()).apply {
+                isOpaque = false
+                add(rightDivider, BorderLayout.WEST)
+                add(changelogPanel, BorderLayout.CENTER)
+            }
+
+            add(leftWithDivider, BorderLayout.WEST)
+            add(centerPanel, BorderLayout.CENTER)
+            add(rightWithDivider, BorderLayout.EAST)
+        }
+
+        add(mainLayout, BorderLayout.CENTER)
+    }
+
+    private fun createDivider() = JPanel().apply {
+        isOpaque = true
+        background = BORDER_SUBTLE
+        preferredSize = Dimension(1, 0)
+        maximumSize = Dimension(1, Int.MAX_VALUE)
     }
 
     private fun attachListeners() {
@@ -151,18 +204,18 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
     private fun launchRelease(mode: String, vararg flags: String) {
         resetPipeline()
 
-        RELEASE_PHASES.forEachIndexed { index, phase ->
-            val step = TimelineStep(phase.label, index == RELEASE_PHASES.lastIndex)
-            phaseSteps[phase.id] = step
-            timelineContainer.add(step)
+        RELEASE_PHASES.forEach { phase ->
+            val chip = HorizontalPhaseChip(phase.label)
+            phaseChips[phase.id] = chip
+            pipelineRow.add(chip)
         }
-        timelineContainer.revalidate()
-        timelineContainer.repaint()
+        pipelineRow.revalidate()
+        pipelineRow.repaint()
 
         val isDryRun = mode == "dry-run"
         statusLabel.text = if (isDryRun) "Preview" else "Releasing..."
         statusLabel.foreground = ACCENT
-        subtitleLabel.text = if (isDryRun) "Simulating release (no changes)" else "Starting release pipeline"
+        subtitleLabel.text = if (isDryRun) "Simulating (no changes)" else "Pipeline running"
         progressBar.setIndeterminate(true)
         progressBar.accentColor = ACCENT
         syncButtons(running = true)
@@ -170,20 +223,20 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
     }
 
     private fun resetPipeline() {
-        phaseSteps.clear()
-        timelineContainer.removeAll()
+        phaseChips.clear()
+        pipelineRow.removeAll()
         completedPhaseCount = 0
         releaseSkipped = false
         changelogLines.clear()
         capturingChangelog = false
         changelogComplete = false
-        changelogCard.isVisible = false
+        changelogPanel.isVisible = false
     }
 
     private fun applyIdleState() {
         statusLabel.text = "Ready"
         statusLabel.foreground = TEXT_PRIMARY
-        subtitleLabel.text = "Start a release or preview with dry run"
+        subtitleLabel.text = "Start a release or preview changes"
         progressBar.setIndeterminate(false)
         progressBar.progress = 0
         syncButtons(running = false)
@@ -214,7 +267,7 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
     }
 
     private fun setPhaseState(phaseId: PhaseId, state: PhaseState) {
-        phaseSteps[phaseId]?.setState(state)
+        phaseChips[phaseId]?.setState(state)
         if (state == PhaseState.DONE) completedPhaseCount++
         updateProgress()
     }
@@ -224,30 +277,30 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
         if (targetIndex < 0) return
 
         RELEASE_PHASES.forEachIndexed { index, phase ->
-            val step = phaseSteps[phase.id] ?: return@forEachIndexed
-            val isCompletable = step.currentState != PhaseState.DONE &&
-                                step.currentState != PhaseState.ERROR &&
-                                step.currentState != PhaseState.SKIPPED
+            val chip = phaseChips[phase.id] ?: return@forEachIndexed
+            val isCompletable = chip.currentState != PhaseState.DONE &&
+                                chip.currentState != PhaseState.ERROR &&
+                                chip.currentState != PhaseState.SKIPPED
 
             when {
                 index < targetIndex && isCompletable -> {
-                    step.setState(PhaseState.DONE)
+                    chip.setState(PhaseState.DONE)
                     completedPhaseCount++
                 }
-                index == targetIndex && step.currentState != PhaseState.ACTIVE -> {
-                    step.setState(PhaseState.ACTIVE)
+                index == targetIndex && chip.currentState != PhaseState.ACTIVE -> {
+                    chip.setState(PhaseState.ACTIVE)
                 }
             }
         }
         updateProgress()
     }
 
-    private fun showChangelogCard() {
+    private fun showChangelogPanel() {
         if (changelogLines.isEmpty()) return
         changelogContent.text = changelogLines.joinToString("\n")
-        changelogCard.isVisible = true
-        scrollContent.revalidate()
-        scrollContent.repaint()
+        changelogPanel.isVisible = true
+        revalidate()
+        repaint()
     }
 
     private fun handleSkippedLine(phase: PhaseInfo) {
@@ -255,19 +308,19 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
         val reachedIndex = RELEASE_PHASES.indexOfFirst { it.id == phase.id }
 
         RELEASE_PHASES.forEachIndexed { index, p ->
-            val step = phaseSteps[p.id] ?: return@forEachIndexed
+            val chip = phaseChips[p.id] ?: return@forEachIndexed
             when {
-                index < reachedIndex && step.currentState != PhaseState.DONE -> {
-                    step.setState(PhaseState.DONE)
+                index < reachedIndex && chip.currentState != PhaseState.DONE -> {
+                    chip.setState(PhaseState.DONE)
                     completedPhaseCount++
                 }
-                else -> step.setState(PhaseState.SKIPPED)
+                else -> chip.setState(PhaseState.SKIPPED)
             }
         }
 
         statusLabel.text = "Skipped"
         statusLabel.foreground = AMBER
-        subtitleLabel.text = "No uncommitted changes found \u2014 nothing to release"
+        subtitleLabel.text = "No changes to release"
         progressBar.setIndeterminate(false)
         progressBar.progress = 100
         progressBar.accentColor = AMBER
@@ -277,9 +330,9 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
         val targetIndex = RELEASE_PHASES.indexOfFirst { it.id == phase.id }
 
         RELEASE_PHASES.forEachIndexed { index, p ->
-            val step = phaseSteps[p.id] ?: return@forEachIndexed
-            if (index < targetIndex && step.currentState == PhaseState.ACTIVE) {
-                step.setState(PhaseState.DONE)
+            val chip = phaseChips[p.id] ?: return@forEachIndexed
+            if (index < targetIndex && chip.currentState == PhaseState.ACTIVE) {
+                chip.setState(PhaseState.DONE)
                 completedPhaseCount++
             }
         }
@@ -325,8 +378,6 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
                 isErrorLine(cleanLine) -> handleErrorLine(cleanLine, phase)
                 else -> handleActivePhase(phase)
             }
-
-            scrollToBottom()
         }
     }
 
@@ -340,7 +391,7 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
             }
 
             if (exitCode == 0) {
-                phaseSteps.values.forEach {
+                phaseChips.values.forEach {
                     if (it.currentState != PhaseState.ERROR && it.currentState != PhaseState.SKIPPED) {
                         it.setState(PhaseState.DONE)
                     }
@@ -350,9 +401,9 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
                 statusLabel.text = "Complete"
                 statusLabel.foreground = GREEN
                 subtitleLabel.text = "Release finished successfully"
-                showChangelogCard()
+                showChangelogPanel()
             } else {
-                phaseSteps.values
+                phaseChips.values
                     .filter { it.currentState == PhaseState.ACTIVE }
                     .forEach { it.setState(PhaseState.ERROR) }
                 progressBar.accentColor = RED
@@ -364,13 +415,6 @@ class ControlPanelTab(private val project: Project) : JPanel(BorderLayout()), Tu
             }
 
             syncButtons(running = false)
-        }
-    }
-
-    private fun scrollToBottom() {
-        SwingUtilities.invokeLater {
-            (SwingUtilities.getAncestorOfClass(JBScrollPane::class.java, scrollContent) as? JBScrollPane)
-                ?.verticalScrollBar?.let { it.value = it.maximum }
         }
     }
 }
