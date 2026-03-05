@@ -1,16 +1,16 @@
 import { ErrorCodes } from "./constants.js";
 
-export class TurlError extends Error {
+export class NitError extends Error {
   constructor(message, code, details = {}) {
     super(message);
-    this.name = "TurlError";
+    this.name = "NitError";
     this.code = code;
     this.details = details;
   }
 }
 
 export function createError(message, code, details = {}) {
-  return new TurlError(message, code, details);
+  return new NitError(message, code, details);
 }
 
 export function isNetworkError(err) {

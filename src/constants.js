@@ -1,5 +1,5 @@
 export const PACKAGE_VERSION = "8.0.0";
-export const PACKAGE_NAME = "turl-release";
+export const PACKAGE_NAME = "nit";
 
 export const COLORS = {
   reset: "\x1b[0m",

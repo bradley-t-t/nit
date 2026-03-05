@@ -1,11 +1,11 @@
-package com.turl.release.toolwindow
+package com.nit.release.toolwindow
 
 import com.intellij.ui.JBColor
 import java.awt.Color
 import java.awt.Font
 
-/** Centralized palette and typography for the TURL Release tool window. */
-object TurlTheme {
+/** Centralized palette and typography for the Nit Release tool window. */
+object NitTheme {
 
     // Background
     val BG = JBColor(Color(0xF8F9FB), Color(0x1E1F22))

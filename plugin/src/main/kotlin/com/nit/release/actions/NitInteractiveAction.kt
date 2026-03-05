@@ -1,8 +1,8 @@
-package com.turl.release.actions
+package com.nit.release.actions
 
 import com.intellij.icons.AllIcons
 
-class TurlInteractiveAction : BaseTurlAction() {
+class NitInteractiveAction : BaseNitAction() {
     init {
         templatePresentation.text = "Interactive Release"
         templatePresentation.description = "Run release in interactive mode"

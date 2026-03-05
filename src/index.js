@@ -25,9 +25,9 @@ import {
 } from "./env.js";
 import {
   validateApiKey,
-  readTurlConfig,
+  readNitConfig,
   incrementVersion,
-  writeTurlConfig,
+  writeNitConfig,
   updateChangelog,
 } from "./config.js";
 import { generateChangelog, generateCommitMessage } from "./api.js";
@@ -40,12 +40,12 @@ import {
 } from "./cli.js";
 
 const args = process.argv.slice(2);
-let originalTurlConfig = null;
+let originalNitConfig = null;
 
 function rollbackVersion() {
-  if (originalTurlConfig) {
+  if (originalNitConfig) {
     try {
-      writeTurlConfig(originalTurlConfig);
+      writeNitConfig(originalNitConfig);
     } catch {}
   }
 }
@@ -66,7 +66,7 @@ async function main() {
       ui.printHeaderWithStatus(
         `Update available: v${updateInfo.currentVersion} ${SYMBOLS.arrow} v${updateInfo.latestVersion}`,
       );
-      ui.printHeaderWithStatus("Auto-updating turl-release...");
+      ui.printHeaderWithStatus("Auto-updating nit...");
       const updated = await performUpdate();
       if (updated) {
         ui.printHeaderWithStatus(
@@ -125,22 +125,22 @@ async function main() {
   }
 
   ui.printHeaderWithStatus("Reading project config...");
-  let turlConfig;
+  let nitConfig;
   try {
-    turlConfig = readTurlConfig();
-    originalTurlConfig = { ...turlConfig };
+    nitConfig = readNitConfig();
+    originalNitConfig = { ...nitConfig };
   } catch (err) {
     ui.printHeaderWithStatus(`Config error: ${err.message}`);
     process.exit(1);
   }
 
-  const projectName = turlConfig.projectName;
+  const projectName = nitConfig.projectName;
   const branch =
-    interactiveOptions.branch || cliOptions.branch || turlConfig.branch;
-  const newVersion = incrementVersion(turlConfig.version);
+    interactiveOptions.branch || cliOptions.branch || nitConfig.branch;
+  const newVersion = incrementVersion(nitConfig.version);
 
   ui.printHeaderWithStatus(
-    `Preparing release: v${turlConfig.version} ${SYMBOLS.arrow} v${newVersion}`,
+    `Preparing release: v${nitConfig.version} ${SYMBOLS.arrow} v${newVersion}`,
   );
 
   if (cliOptions.dryRun) {
@@ -179,9 +179,9 @@ async function main() {
     const updatedConfig = {
       version: newVersion,
       projectName,
-      branch: turlConfig.branch,
+      branch: nitConfig.branch,
     };
-    if (!cliOptions.dryRun) writeTurlConfig(updatedConfig);
+    if (!cliOptions.dryRun) writeNitConfig(updatedConfig);
   } catch (err) {
     ui.printHeaderWithStatus(`Version update failed: ${err.message}`);
     process.exit(1);

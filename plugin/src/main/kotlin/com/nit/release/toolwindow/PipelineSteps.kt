@@ -1,4 +1,4 @@
-package com.turl.release.toolwindow
+package com.nit.release.toolwindow
 
 /** Identifiers for each pipeline step. */
 enum class StepId {

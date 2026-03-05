@@ -2,10 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8.2] - 2026-03-05
+
+- Rebranded the project from "turl-release" to "nit" throughout the codebase, including renaming configuration files, updating documentation, and revising project references in scripts and plugins.
+- Updated README.md with a refreshed layout and content, focusing on the new "nit" branding, streamlined installation instructions, and a detailed breakdown of the release pipeline process.
+- Enhanced the CLI tool with new options and improved functionality, including support for branch overrides, dry runs, interactive prompts, and update skipping as seen in updated CLI scripts.
+- Improved the IntelliJ/WebStorm plugin by refining the user interface in NitPanel.kt, updating action classes for better integration, and adjusting settings and process handling for a smoother release workflow.
+- Made minor adjustments to core scripts like api.js, git.js, and config.js to align with the rebranding and improve error handling and configuration management.
+
 ## [8.1] - 2026-03-05
 
 - Removed the auto-managed project rules section from copilot-instructions.md, eliminating the TURL rules content that was previously embedded in the documentation.
-- Deleted the _test_rules.js file, which contained a comprehensive list of project rules and validation logic for testing rule compliance.
+- Deleted the \_test_rules.js file, which contained a comprehensive list of project rules and validation logic for testing rule compliance.
 - Removed several source files including api.js, cli.js, git.js, and rules.js, effectively eliminating significant portions of the CLI tool's functionality and rule management logic.
 - Simplified the index.js file by reducing its content, likely streamlining the main entry point of the application.
 - Updated constants.js with minor changes to the defined constants.

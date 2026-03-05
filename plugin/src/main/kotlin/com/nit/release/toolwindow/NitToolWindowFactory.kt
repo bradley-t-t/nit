@@ -1,4 +1,4 @@
-package com.turl.release.toolwindow
+package com.nit.release.toolwindow
 
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -9,18 +9,18 @@ import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import javax.swing.JPanel
 
-class TurlToolWindowFactory : ToolWindowFactory, DumbAware {
+class NitToolWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val panel = TurlMainPanel(project)
+        val panel = NitMainPanel(project)
         val content = ContentFactory.getInstance().createContent(panel, "", false)
         toolWindow.contentManager.addContent(content)
     }
 }
 
-private class TurlMainPanel(project: Project) : JPanel(BorderLayout()) {
+private class NitMainPanel(project: Project) : JPanel(BorderLayout()) {
     init {
-        background = BG_PRIMARY
+        background = NitTheme.BG
         border = JBUI.Borders.empty()
-        add(ControlPanelTab(project), BorderLayout.CENTER)
+        add(NitPanel(project), BorderLayout.CENTER)
     }
 }

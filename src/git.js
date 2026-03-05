@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { execSync, spawn } from "child_process";
 import { ErrorCodes } from "./constants.js";
-import { TurlError } from "./errors.js";
+import { NitError } from "./errors.js";
 
 const PROJECT_ROOT = process.cwd();
 
@@ -37,7 +37,7 @@ export function checkGitInstalled() {
     execSync("git --version", { stdio: "pipe" });
     return true;
   } catch {
-    throw new TurlError(
+    throw new NitError(
       "Git is not installed or not in PATH",
       ErrorCodes.GIT_NOT_INSTALLED,
       {
@@ -52,14 +52,10 @@ export function checkGitRepository() {
     execSync("git rev-parse --git-dir", { cwd: PROJECT_ROOT, stdio: "pipe" });
     return true;
   } catch {
-    throw new TurlError(
-      "Not a git repository",
-      ErrorCodes.GIT_NOT_INITIALIZED,
-      {
-        path: PROJECT_ROOT,
-        suggestion: "Run 'git init' to initialize a git repository",
-      },
-    );
+    throw new NitError("Not a git repository", ErrorCodes.GIT_NOT_INITIALIZED, {
+      path: PROJECT_ROOT,
+      suggestion: "Run 'git init' to initialize a git repository",
+    });
   }
 }
 
@@ -71,18 +67,14 @@ export function checkGitRemote() {
       stdio: "pipe",
     });
     if (!remotes.trim()) {
-      throw new TurlError(
-        "No git remote configured",
-        ErrorCodes.GIT_NO_REMOTE,
-        {
-          suggestion: "Run 'git remote add origin <url>' to add a remote",
-        },
-      );
+      throw new NitError("No git remote configured", ErrorCodes.GIT_NO_REMOTE, {
+        suggestion: "Run 'git remote add origin <url>' to add a remote",
+      });
     }
     return true;
   } catch (err) {
-    if (err instanceof TurlError) throw err;
-    throw new TurlError(
+    if (err instanceof NitError) throw err;
+    throw new NitError(
       "Failed to check git remotes",
       ErrorCodes.GIT_NO_REMOTE,
       { originalError: err.message },
@@ -95,13 +87,13 @@ export function hasChanges() {
   return status.trim().length > 0;
 }
 
-export function getGitDiff(excludeTurlJson = false) {
-  if (excludeTurlJson) {
+export function getGitDiff(excludeNitJson = false) {
+  if (excludeNitJson) {
     const diff = execCommandSilent(
-      "git diff HEAD -- . ':(exclude)public/turl.json'",
+      "git diff HEAD -- . ':(exclude)public/nit.json'",
     );
     const stagedDiff = execCommandSilent(
-      "git diff --cached -- . ':(exclude)public/turl.json'",
+      "git diff --cached -- . ':(exclude)public/nit.json'",
     );
     return diff + stagedDiff;
   }
@@ -110,13 +102,13 @@ export function getGitDiff(excludeTurlJson = false) {
   );
 }
 
-export function getGitDiffStat(excludeTurlJson = false) {
-  if (excludeTurlJson) {
+export function getGitDiffStat(excludeNitJson = false) {
+  if (excludeNitJson) {
     const stat = execCommandSilent(
-      "git diff HEAD --stat -- . ':(exclude)public/turl.json'",
+      "git diff HEAD --stat -- . ':(exclude)public/nit.json'",
     );
     const stagedStat = execCommandSilent(
-      "git diff --cached --stat -- . ':(exclude)public/turl.json'",
+      "git diff --cached --stat -- . ':(exclude)public/nit.json'",
     );
     return stat + stagedStat;
   }
@@ -126,15 +118,15 @@ export function getGitDiffStat(excludeTurlJson = false) {
   );
 }
 
-export function getChangedFiles(excludeTurlJson = false) {
+export function getChangedFiles(excludeNitJson = false) {
   const files = execCommandSilent("git diff HEAD --name-only");
   const stagedFiles = execCommandSilent("git diff --cached --name-only");
   let fileList = [
     ...new Set((files + stagedFiles).split("\n").filter(Boolean)),
   ];
-  if (excludeTurlJson) {
+  if (excludeNitJson) {
     fileList = fileList.filter(
-      (f) => f !== "public/turl.json" && f !== "turl.json",
+      (f) => f !== "public/nit.json" && f !== "nit.json",
     );
   }
   return fileList;
@@ -153,7 +145,7 @@ export function gitCommit(commitMessage) {
       fs.unlinkSync(tempFile);
     } catch {}
     if (err.message?.includes("nothing to commit")) {
-      throw new TurlError(
+      throw new NitError(
         "Nothing to commit - all changes may have been reverted",
         ErrorCodes.GIT_COMMIT_FAILED,
         {
@@ -161,7 +153,7 @@ export function gitCommit(commitMessage) {
         },
       );
     }
-    throw new TurlError(
+    throw new NitError(
       `Git commit failed: ${err.message}`,
       ErrorCodes.GIT_COMMIT_FAILED,
       { originalError: err.message },
@@ -178,7 +170,7 @@ export function gitPush(branch = "main") {
       errorMsg.includes("rejected") ||
       errorMsg.includes("non-fast-forward")
     ) {
-      throw new TurlError(
+      throw new NitError(
         `Push rejected. Remote has changes not present locally.`,
         ErrorCodes.GIT_PUSH_FAILED,
         {
@@ -191,7 +183,7 @@ export function gitPush(branch = "main") {
       errorMsg.includes("Permission denied") ||
       errorMsg.includes("authentication")
     ) {
-      throw new TurlError(
+      throw new NitError(
         "Git push failed: Authentication error",
         ErrorCodes.GIT_PUSH_FAILED,
         {
@@ -204,7 +196,7 @@ export function gitPush(branch = "main") {
       errorMsg.includes("does not exist") ||
       errorMsg.includes("Could not read from remote")
     ) {
-      throw new TurlError(
+      throw new NitError(
         "Git push failed: Remote repository not found",
         ErrorCodes.GIT_PUSH_FAILED,
         {
@@ -213,7 +205,7 @@ export function gitPush(branch = "main") {
         },
       );
     }
-    throw new TurlError(
+    throw new NitError(
       `Git push failed: ${errorMsg}`,
       ErrorCodes.GIT_PUSH_FAILED,
       { branch, originalError: errorMsg },
@@ -245,7 +237,7 @@ export function runBuild(buildCommand) {
       if (code === 0) return resolve();
       const errorOutput = (stderrOutput || stdoutOutput).trim();
       reject(
-        new TurlError(
+        new NitError(
           `Build failed with exit code ${code}`,
           ErrorCodes.BUILD_FAILED,
           { command: buildCommand, exitCode: code, output: errorOutput },
@@ -255,7 +247,7 @@ export function runBuild(buildCommand) {
 
     child.on("error", (err) => {
       reject(
-        new TurlError(
+        new NitError(
           `Build process error: ${err.message}`,
           ErrorCodes.BUILD_FAILED,
           { command: buildCommand, originalError: err.message },

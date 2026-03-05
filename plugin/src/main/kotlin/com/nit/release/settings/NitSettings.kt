@@ -1,12 +1,12 @@
-package com.turl.release.settings
+package com.nit.release.settings
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 
-@State(name = "TurlReleaseSettings", storages = [Storage("TurlReleaseSettings.xml")])
-class TurlSettings : PersistentStateComponent<TurlSettings.State> {
+@State(name = "NitReleaseSettings", storages = [Storage("NitReleaseSettings.xml")])
+class NitSettings : PersistentStateComponent<NitSettings.State> {
 
     data class State(
         var grokApiKey: String = "",
@@ -24,7 +24,7 @@ class TurlSettings : PersistentStateComponent<TurlSettings.State> {
     }
 
     companion object {
-        fun getInstance(): TurlSettings =
-            ApplicationManager.getApplication().getService(TurlSettings::class.java)
+        fun getInstance(): NitSettings =
+            ApplicationManager.getApplication().getService(NitSettings::class.java)
     }
 }

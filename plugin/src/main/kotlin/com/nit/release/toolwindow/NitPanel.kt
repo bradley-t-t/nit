@@ -1,10 +1,10 @@
-package com.turl.release.toolwindow
+package com.nit.release.toolwindow
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.util.ui.JBUI
-import com.turl.release.services.TurlOutputListener
-import com.turl.release.services.TurlProcessRunner
+import com.nit.release.services.NitOutputListener
+import com.nit.release.services.NitProcessRunner
 import java.awt.*
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -12,7 +12,7 @@ import java.awt.geom.RoundRectangle2D
 import javax.swing.*
 
 /**
- * TURL Release tool window — custom-painted, wide-first layout.
+ * Nit Release tool window — custom-painted, wide-first layout.
  *
  * ┌─────────────────────────────────────────────────────────────────────────┐
  * │ [Publish]                                              status message  │
@@ -20,9 +20,9 @@ import javax.swing.*
  * │ Result banner + changelog (only when finished)                         │
  * └─────────────────────────────────────────────────────────────────────────┘
  */
-class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutputListener {
+class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutputListener {
 
-    private val runner = TurlProcessRunner(project)
+    private val runner = NitProcessRunner(project)
     private val commandBar = CommandBar()
     private val resultBanner = ResultBanner()
 
@@ -34,7 +34,7 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
     private var isRunning = false
 
     init {
-        background = TurlTheme.BG
+        background = NitTheme.BG
         border = JBUI.Borders.empty()
         runner.setOutputListener(this)
 
@@ -51,7 +51,7 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
         isRunning = true
         commandBar.setRunning(true)
         commandBar.statusMessage = "Starting..."
-        commandBar.statusColor = TurlTheme.BLUE
+        commandBar.statusColor = NitTheme.BLUE
         if (dryRun) runner.execute("--dry-run") else runner.execute()
     }
 
@@ -97,16 +97,16 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
                 isSkipLine(cleanLine) -> {
                     releaseSkipped = true
                     commandBar.statusMessage = "No changes to release"
-                    commandBar.statusColor = TurlTheme.WARN
+                    commandBar.statusColor = NitTheme.WARN
                     commandBar.setRunning(false)
                 }
                 isErrorLine(cleanLine) -> {
                     commandBar.statusMessage = "${step.label} failed"
-                    commandBar.statusColor = TurlTheme.DANGER
+                    commandBar.statusColor = NitTheme.DANGER
                 }
                 else -> {
                     commandBar.statusMessage = step.label
-                    commandBar.statusColor = TurlTheme.BLUE
+                    commandBar.statusColor = NitTheme.BLUE
                 }
             }
         }
@@ -117,19 +117,19 @@ class TurlPanel(private val project: Project) : JPanel(BorderLayout()), TurlOutp
             if (!releaseSkipped) {
                 if (exitCode == 0) {
                     commandBar.statusMessage = "Release published"
-                    commandBar.statusColor = TurlTheme.SUCCESS
+                    commandBar.statusColor = NitTheme.SUCCESS
                     val changelog = changelogLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
-                    resultBanner.show("Release published successfully", TurlTheme.SUCCESS, changelog)
+                    resultBanner.show("Release published successfully", NitTheme.SUCCESS, changelog)
                 } else {
                     val errorDetail = errorLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
                     val lastError = errorLines.lastOrNull()
                     val statusText = lastError ?: "Release failed"
                     commandBar.statusMessage = statusText
-                    commandBar.statusColor = TurlTheme.DANGER
-                    resultBanner.show("Release failed", TurlTheme.DANGER, errorDetail)
+                    commandBar.statusColor = NitTheme.DANGER
+                    resultBanner.show("Release failed", NitTheme.DANGER, errorDetail)
                 }
             } else {
-                resultBanner.show("No changes to release — skipped", TurlTheme.WARN, null)
+                resultBanner.show("No changes to release — skipped", NitTheme.WARN, null)
             }
             resultBanner.isVisible = true
             revalidate()
@@ -168,7 +168,7 @@ private class CommandBar : JPanel() {
     var statusMessage = "Ready"
         set(value) { field = value; repaint() }
 
-    var statusColor: Color = TurlTheme.FG_DIM
+    var statusColor: Color = NitTheme.FG_DIM
         set(value) { field = value; repaint() }
 
     private var running = false
@@ -178,7 +178,7 @@ private class CommandBar : JPanel() {
 
     init {
         isOpaque = true
-        background = TurlTheme.BG
+        background = NitTheme.BG
         preferredSize = Dimension(0, 40)
         border = JBUI.Borders.empty(0, 12)
 
@@ -220,13 +220,13 @@ private class CommandBar : JPanel() {
         }
 
         val midY = height / 2
-        val fm = g2.getFontMetrics(TurlTheme.FONT_SMALL)
+        val fm = g2.getFontMetrics(NitTheme.FONT_SMALL)
 
         // Publish button (left)
-        publishHit = paintPill(g2, "Publish", insets.left + 2, midY, TurlTheme.BLUE, publishHover, buttonsEnabled)
+        publishHit = paintPill(g2, "Publish", insets.left + 2, midY, NitTheme.BLUE, publishHover, buttonsEnabled)
 
         // Status message (right-aligned)
-        g2.font = TurlTheme.FONT_SMALL
+        g2.font = NitTheme.FONT_SMALL
         g2.color = statusColor
         val textWidth = fm.stringWidth(statusMessage)
         g2.drawString(statusMessage, width - insets.right - textWidth - 4, midY + fm.ascent / 2 - 1)
@@ -238,7 +238,7 @@ private class CommandBar : JPanel() {
         g2: Graphics2D, text: String, x: Int, midY: Int,
         color: Color, hovered: Boolean, enabled: Boolean
     ): Rectangle {
-        val fm = g2.getFontMetrics(TurlTheme.FONT_SMALL)
+        val fm = g2.getFontMetrics(NitTheme.FONT_SMALL)
         val textW = fm.stringWidth(text)
         val padX = 14
         val h = 24
@@ -246,7 +246,7 @@ private class CommandBar : JPanel() {
         val top = midY - h / 2
 
         val bg = when {
-            !enabled -> TurlTheme.BORDER
+            !enabled -> NitTheme.BORDER
             hovered -> brighten(color, 0.1f)
             else -> color
         }
@@ -254,8 +254,8 @@ private class CommandBar : JPanel() {
         g2.color = bg
         g2.fill(RoundRectangle2D.Float(x.toFloat(), top.toFloat(), w.toFloat(), h.toFloat(), 8f, 8f))
 
-        g2.font = TurlTheme.FONT_SMALL.deriveFont(Font.BOLD)
-        g2.color = if (!enabled) TurlTheme.FG_MUTED else Color.WHITE
+        g2.font = NitTheme.FONT_SMALL.deriveFont(Font.BOLD)
+        g2.color = if (!enabled) NitTheme.FG_MUTED else Color.WHITE
         g2.drawString(text, x + padX, midY + fm.ascent / 2 - 1)
 
         return Rectangle(x, top, w, h)
@@ -276,13 +276,13 @@ private class CommandBar : JPanel() {
 private class ResultBanner : JPanel(BorderLayout()) {
 
     private val messageLabel = JLabel().apply {
-        font = TurlTheme.FONT_BODY.deriveFont(Font.BOLD)
+        font = NitTheme.FONT_BODY.deriveFont(Font.BOLD)
         border = JBUI.Borders.empty(6, 14)
     }
 
     private val changelogArea = JTextArea().apply {
-        font = TurlTheme.FONT_MONO
-        foreground = TurlTheme.FG
+        font = NitTheme.FONT_MONO
+        foreground = NitTheme.FG
         isEditable = false
         lineWrap = true
         wrapStyleWord = true
@@ -290,7 +290,7 @@ private class ResultBanner : JPanel(BorderLayout()) {
     }
 
     private val changelogScroll = JScrollPane(changelogArea).apply {
-        border = BorderFactory.createMatteBorder(1, 0, 0, 0, TurlTheme.BORDER)
+        border = BorderFactory.createMatteBorder(1, 0, 0, 0, NitTheme.BORDER)
         preferredSize = Dimension(0, 100)
         isOpaque = false
         viewport.isOpaque = false
@@ -340,9 +340,9 @@ private class ResultBanner : JPanel(BorderLayout()) {
     }
 
     private fun mutedColor(accent: Color): Color = when (accent) {
-        TurlTheme.SUCCESS -> TurlTheme.SUCCESS_MUTED
-        TurlTheme.DANGER -> TurlTheme.DANGER_MUTED
-        TurlTheme.WARN -> TurlTheme.WARN_MUTED
-        else -> TurlTheme.BLUE_MUTED
+        NitTheme.SUCCESS -> NitTheme.SUCCESS_MUTED
+        NitTheme.DANGER -> NitTheme.DANGER_MUTED
+        NitTheme.WARN -> NitTheme.WARN_MUTED
+        else -> NitTheme.BLUE_MUTED
     }
 }

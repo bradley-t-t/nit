@@ -1,2 +1,2 @@
-rootProject.name = "turl-release-plugin"
+rootProject.name = "nit-plugin"
 

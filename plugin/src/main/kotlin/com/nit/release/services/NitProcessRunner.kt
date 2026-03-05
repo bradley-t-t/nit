@@ -1,4 +1,4 @@
-package com.turl.release.services
+package com.nit.release.services
 
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.OSProcessHandler
@@ -6,49 +6,49 @@ import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
-import com.turl.release.settings.TurlSettings
+import com.nit.release.settings.NitSettings
 import java.io.File
 import java.nio.charset.StandardCharsets
 
 enum class RunState { IDLE, RUNNING, SUCCESS, FAILED }
 
-interface TurlOutputListener {
+interface NitOutputListener {
     fun onOutputLine(cleanLine: String)
     fun onProcessFinished(exitCode: Int)
 }
 
-class TurlProcessRunner(private val project: Project) {
+class NitProcessRunner(private val project: Project) {
 
     private val ansiPattern = Regex("\u001B\\[[0-9;]*[a-zA-Z]|\u001B\\[\\?[0-9]*[a-zA-Z]|\u001B\\[[0-9]*[JHK]")
     private val homeDir = System.getProperty("user.home")
     private val nvmBaseDir = File("$homeDir/.nvm/versions/node")
 
     private var currentHandler: OSProcessHandler? = null
-    private var listener: TurlOutputListener? = null
+    private var listener: NitOutputListener? = null
 
     var runState: RunState = RunState.IDLE
         private set
 
     val isRunning: Boolean get() = runState == RunState.RUNNING
 
-    fun setOutputListener(l: TurlOutputListener) { listener = l }
+    fun setOutputListener(l: NitOutputListener) { listener = l }
 
     fun execute(vararg extraFlags: String) {
         if (isRunning) return
 
-        val settings = TurlSettings.getInstance().state
+        val settings = NitSettings.getInstance().state
         val nodePath = resolveNodePath(settings.nodePath)
-        val turlPath = resolveTurlPath()
+        val nitPath = resolveNitPath()
 
-        if (turlPath == null) {
-            listener?.onOutputLine("Could not find turl-release. Ensure it is installed globally via npm.")
+        if (nitPath == null) {
+            listener?.onOutputLine("Could not find nit. Ensure it is installed globally via npm.")
             runState = RunState.FAILED
             listener?.onProcessFinished(1)
             return
         }
 
         val flags = buildFlagList(settings, extraFlags)
-        val commandLine = buildCommandLine(nodePath, turlPath, flags, settings)
+        val commandLine = buildCommandLine(nodePath, nitPath, flags, settings)
 
         runState = RunState.RUNNING
         val handler = OSProcessHandler(commandLine)
@@ -78,7 +78,7 @@ class TurlProcessRunner(private val project: Project) {
         runState = RunState.IDLE
     }
 
-    private fun buildFlagList(settings: TurlSettings.State, extraFlags: Array<out String>): List<String> {
+    private fun buildFlagList(settings: NitSettings.State, extraFlags: Array<out String>): List<String> {
         val flags = mutableListOf<String>()
         if (settings.skipUpdateOnRun) flags.add("--skip-update")
         if (settings.defaultBranch.isNotBlank()) {
@@ -91,12 +91,12 @@ class TurlProcessRunner(private val project: Project) {
 
     private fun buildCommandLine(
         nodePath: String,
-        turlPath: String,
+        nitPath: String,
         flags: List<String>,
-        settings: TurlSettings.State
+        settings: NitSettings.State
     ) = GeneralCommandLine().apply {
         exePath = nodePath
-        addParameter(turlPath)
+        addParameter(nitPath)
         addParameters(flags)
         withWorkDirectory(project.basePath)
         withCharset(StandardCharsets.UTF_8)
@@ -120,14 +120,14 @@ class TurlProcessRunner(private val project: Project) {
             .firstOrNull { File(it).exists() } ?: "node"
     }
 
-    private fun resolveTurlPath(): String? {
+    private fun resolveNitPath(): String? {
         latestNvmNodeDir()?.let { nodeDir ->
-            listOf("lib/node_modules/turl-release/src/index.js", "bin/turl-release")
+            listOf("lib/node_modules/nit/src/index.js", "bin/nit")
                 .map { File(nodeDir, it) }
                 .firstOrNull { it.exists() }
                 ?.let { return it.absolutePath }
         }
-        return listOf("/usr/local/bin/turl-release", "/opt/homebrew/bin/turl-release", "$homeDir/.npm-global/bin/turl-release")
+        return listOf("/usr/local/bin/nit", "/opt/homebrew/bin/nit", "$homeDir/.npm-global/bin/nit")
             .firstOrNull { File(it).exists() }
     }
 

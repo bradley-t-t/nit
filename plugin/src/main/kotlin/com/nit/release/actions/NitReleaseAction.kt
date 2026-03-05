@@ -1,11 +1,11 @@
-package com.turl.release.actions
+package com.nit.release.actions
 
 import com.intellij.icons.AllIcons
 
-class TurlReleaseAction : BaseTurlAction() {
+class NitReleaseAction : BaseNitAction() {
     init {
         templatePresentation.text = "Run Release"
-        templatePresentation.description = "Run a full turl-release"
+        templatePresentation.description = "Run a full nit"
         templatePresentation.icon = AllIcons.Actions.Execute
     }
 }

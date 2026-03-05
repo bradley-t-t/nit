@@ -1,4 +1,4 @@
-package com.turl.release.toolwindow
+package com.nit.release.toolwindow
 
 enum class PhaseId {
     UPDATE, PREFLIGHT, ENVIRONMENT, CODE_PREP, VERSIONING, CHANGELOG, BUILD, COMMIT

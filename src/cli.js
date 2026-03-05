@@ -50,31 +50,31 @@ export function parseArgs(args) {
 
 export function printHelp() {
   process.stdout.write(`
-  ${COLORS.bright}TURL Release Tool${COLORS.reset} ${COLORS.dim}v${PACKAGE_VERSION}${COLORS.reset}
+  ${COLORS.bright}Nit${COLORS.reset} ${COLORS.dim}v${PACKAGE_VERSION}${COLORS.reset}
 
-  ${COLORS.bright}Usage:${COLORS.reset} turl-release [options]
+  ${COLORS.bright}Usage:${COLORS.reset} nit [options]
 
   ${COLORS.bright}What it does (all automatic):${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks for turl-release updates and auto-updates
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks for nit updates and auto-updates
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs code cleanup (removes console.logs)
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Formats code with Prettier
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Increments version in turl.json + package.json
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Increments version in nit.json + package.json
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Generates AI changelog and commit message
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs production build
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Commits and pushes to git
 
   ${COLORS.bright}Options:${COLORS.reset}
     ${COLORS.brightBlue}-b, --branch <name>${COLORS.reset}   Override branch to push to
-    ${COLORS.brightBlue}-s, --skip-update${COLORS.reset}     Skip turl-release update check
+    ${COLORS.brightBlue}-s, --skip-update${COLORS.reset}     Skip nit update check
     ${COLORS.brightBlue}-i, --interactive${COLORS.reset}     Interactive mode (prompts for options)
     ${COLORS.brightBlue}-d, --dry-run${COLORS.reset}         Preview without making changes
     ${COLORS.brightBlue}-q, --quiet${COLORS.reset}           Minimal output
     ${COLORS.brightBlue}-h, --help${COLORS.reset}            Show this help
 
   ${COLORS.bright}Examples:${COLORS.reset}
-    ${COLORS.dim}turl-release${COLORS.reset}              Run a full release
-    ${COLORS.dim}turl-release -d${COLORS.reset}           Preview what would happen
-    ${COLORS.dim}turl-release -b develop${COLORS.reset}   Release to develop branch
+    ${COLORS.dim}nit${COLORS.reset}              Run a full release
+    ${COLORS.dim}nit -d${COLORS.reset}           Preview what would happen
+    ${COLORS.dim}nit -b develop${COLORS.reset}   Release to develop branch
 
 `);
 }

@@ -1,11 +1,11 @@
 {
-  "name": "turl-release",
-  "version": "8.1.0",
-  "description": "CLI tool for automated semantic versioning, cleanup, changelog generation, and release commits for React projects",
+  "name": "nit",
+  "version": "8.2.0",
+  "description": "The pedantic release tool your codebase deserves. One command: clean code, AI changelogs, versioning, and a perfect commit.",
   "main": "./src/index.js",
   "type": "module",
   "bin": {
-    "turl-release": "./src/index.js"
+    "nit": "./src/index.js"
   },
   "scripts": {
     "test": "echo 'no tests yet'",
@@ -15,9 +15,15 @@
     "release",
     "versioning",
     "changelog",
+    "commit",
+    "ai",
+    "cleanup",
+    "formatting",
     "react",
     "vite",
-    "cli"
+    "cli",
+    "semantic-versioning",
+    "automation"
   ],
   "author": "Trent",
   "license": "MIT",

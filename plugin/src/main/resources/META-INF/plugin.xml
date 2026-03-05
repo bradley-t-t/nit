@@ -1,46 +1,46 @@
 <idea-plugin>
-    <id>com.turl.release</id>
-    <name>TURL Release</name>
-    <version>8.1.0</version>
+    <id>com.nit.release</id>
+    <name>Nit</name>
+    <version>8.2.0</version>
     <vendor>Trent</vendor>
 
     <description><![CDATA[
-    Automated Release Management for your projects. Runs turl-release CLI directly from WebStorm
+    Automated Release Management for your projects. Runs nit CLI directly from WebStorm
     with a dedicated tool window and actions.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="TURL Release"
+        <toolWindow id="Nit Release"
                     anchor="right"
                     secondary="false"
                     icon="AllIcons.Actions.Upload"
-                    factoryClass="com.turl.release.toolwindow.TurlToolWindowFactory"/>
+                    factoryClass="com.nit.release.toolwindow.NitToolWindowFactory"/>
 
         <applicationService
-                serviceImplementation="com.turl.release.settings.TurlSettings"/>
+                serviceImplementation="com.nit.release.settings.NitSettings"/>
     </extensions>
 
     <actions>
-        <group id="TurlRelease.Menu" text="TURL Release" popup="true"
+        <group id="NitRelease.Menu" text="Nit" popup="true"
                icon="AllIcons.Actions.Upload">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
 
-            <action id="TurlRelease.Run"
-                    class="com.turl.release.actions.TurlReleaseAction"
+            <action id="NitRelease.Run"
+                    class="com.nit.release.actions.NitReleaseAction"
                     text="Run Release"
-                    description="Run a full turl-release"
+                    description="Run a full nit release"
                     icon="AllIcons.Actions.Execute"/>
 
-            <action id="TurlRelease.DryRun"
-                    class="com.turl.release.actions.TurlDryRunAction"
+            <action id="NitRelease.DryRun"
+                    class="com.nit.release.actions.NitDryRunAction"
                     text="Dry Run"
                     description="Preview release without making changes"
                     icon="AllIcons.Actions.Preview"/>
 
-            <action id="TurlRelease.Interactive"
-                    class="com.turl.release.actions.TurlInteractiveAction"
+            <action id="NitRelease.Interactive"
+                    class="com.nit.release.actions.NitInteractiveAction"
                     text="Interactive Release"
                     description="Run release in interactive mode"
                     icon="AllIcons.Actions.RunAll"/>

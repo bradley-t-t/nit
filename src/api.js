@@ -1,5 +1,5 @@
 import { ErrorCodes } from "./constants.js";
-import { TurlError, isNetworkError, parseApiError } from "./errors.js";
+import { NitError, isNetworkError, parseApiError } from "./errors.js";
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 2000;
@@ -51,14 +51,14 @@ export async function callGrokApi(apiKey, prompt) {
             "Network timeout: Grok API request timed out. Try again later.",
           ECONNREFUSED: "Connection refused: Unable to connect to Grok API.",
         };
-        throw new TurlError(
+        throw new NitError(
           messages[err.code] ||
             `Network error calling Grok API: ${err.message}`,
           ErrorCodes.API_NETWORK_ERROR,
           { originalError: err.message },
         );
       }
-      throw new TurlError(
+      throw new NitError(
         `Network error calling Grok API: ${err.message}`,
         ErrorCodes.API_NETWORK_ERROR,
         { originalError: err.message },
@@ -91,7 +91,7 @@ export async function callGrokApi(apiKey, prompt) {
     try {
       data = await response.json();
     } catch (err) {
-      throw new TurlError(
+      throw new NitError(
         "Invalid JSON response from Grok API",
         ErrorCodes.API_RESPONSE_INVALID,
         { originalError: err.message },
@@ -99,7 +99,7 @@ export async function callGrokApi(apiKey, prompt) {
     }
 
     if (!data.choices?.[0]?.message) {
-      throw new TurlError(
+      throw new NitError(
         "Unexpected response format from Grok API",
         ErrorCodes.API_RESPONSE_INVALID,
         { response: data },
@@ -121,7 +121,7 @@ export async function generateChangelog(
   const today = new Date().toISOString().split("T")[0];
 
   if (!diff.trim()) {
-    throw new TurlError(
+    throw new NitError(
       "No diff available to generate changelog",
       ErrorCodes.API_RESPONSE_INVALID,
       {
@@ -166,7 +166,7 @@ Output format (EXACTLY):
   const response = await callGrokApi(apiKey, prompt);
 
   if (!response?.includes(`## [${newVersion}]`)) {
-    throw new TurlError(
+    throw new NitError(
       "Grok API returned invalid changelog format",
       ErrorCodes.API_RESPONSE_INVALID,
       {
@@ -190,7 +190,7 @@ export async function generateCommitMessage(
   const firstLine = `${projectName}: Release v${newVersion}`;
 
   if (!diff.trim()) {
-    throw new TurlError(
+    throw new NitError(
       "No diff available to generate commit message",
       ErrorCodes.API_RESPONSE_INVALID,
       {
@@ -236,7 +236,7 @@ ${projectName}: Release v${newVersion}
   const response = await callGrokApi(apiKey, prompt);
 
   if (!response) {
-    throw new TurlError(
+    throw new NitError(
       "Grok API returned empty commit message",
       ErrorCodes.API_RESPONSE_INVALID,
       {
@@ -249,7 +249,7 @@ ${projectName}: Release v${newVersion}
     return response.trim();
   if (response.includes("-")) return `${firstLine}\n\n${response.trim()}`;
 
-  throw new TurlError(
+  throw new NitError(
     "Grok API returned invalid commit message format",
     ErrorCodes.API_RESPONSE_INVALID,
     {

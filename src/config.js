@@ -7,13 +7,13 @@ import {
   fileExists,
 } from "./file-utils.js";
 import { ErrorCodes } from "./constants.js";
-import { TurlError } from "./errors.js";
+import { NitError } from "./errors.js";
 
 const PROJECT_ROOT = process.cwd();
 
 export function validateApiKey(apiKey) {
   if (!apiKey) {
-    throw new TurlError(
+    throw new NitError(
       "GROK_API_KEY not found. Add GROK_API_KEY=your-key to your project's .env file",
       ErrorCodes.API_KEY_MISSING,
       {
@@ -24,7 +24,7 @@ export function validateApiKey(apiKey) {
     );
   }
   if (!apiKey.startsWith("xai-") && !apiKey.startsWith("sk-")) {
-    throw new TurlError(
+    throw new NitError(
       "Invalid API key format. Key should start with 'xai-' or 'sk-'",
       ErrorCodes.API_KEY_INVALID,
       {
@@ -34,7 +34,7 @@ export function validateApiKey(apiKey) {
     );
   }
   if (apiKey.length < 20) {
-    throw new TurlError(
+    throw new NitError(
       "API key appears to be too short",
       ErrorCodes.API_KEY_INVALID,
       { suggestion: "Verify your API key at https://console.x.ai" },
@@ -43,27 +43,27 @@ export function validateApiKey(apiKey) {
   return true;
 }
 
-export function readTurlConfig() {
-  const turlPath = path.join(PROJECT_ROOT, "public", "turl.json");
+export function readNitConfig() {
+  const nitConfigPath = path.join(PROJECT_ROOT, "public", "nit.json");
   const defaultConfig = {
     version: "1.0",
     projectName: path.basename(PROJECT_ROOT),
     branch: "main",
   };
 
-  if (!fileExists(turlPath)) {
+  if (!fileExists(nitConfigPath)) {
     const publicDir = path.join(PROJECT_ROOT, "public");
     if (!fileExists(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
     safeWriteFile(
-      turlPath,
+      nitConfigPath,
       JSON.stringify(defaultConfig, null, 2),
-      "turl.json",
+      "nit.json",
     );
     return defaultConfig;
   }
 
-  const content = safeReadFile(turlPath, "turl.json");
-  const parsed = safeParseJson(content, turlPath, "turl.json");
+  const content = safeReadFile(nitConfigPath, "nit.json");
+  const parsed = safeParseJson(content, nitConfigPath, "nit.json");
 
   return {
     version: String(parsed.version || defaultConfig.version),
@@ -163,9 +163,13 @@ function updatePluginVersion(newVersion) {
   }
 }
 
-export function writeTurlConfig(config) {
-  const turlPath = path.join(PROJECT_ROOT, "public", "turl.json");
-  safeWriteFile(turlPath, JSON.stringify(config, null, 2) + "\n", "turl.json");
+export function writeNitConfig(config) {
+  const nitConfigPath = path.join(PROJECT_ROOT, "public", "nit.json");
+  safeWriteFile(
+    nitConfigPath,
+    JSON.stringify(config, null, 2) + "\n",
+    "nit.json",
+  );
   updatePluginVersion(config.version);
   return updatePackageJsonVersion(config.version);
 }
