@@ -1,89 +1,153 @@
 package com.nit.release.toolwindow
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.ui.JBColor
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
-import com.nit.release.settings.AiProvider
+import com.intellij.util.ui.UIUtil
 import com.nit.release.services.NitOutputListener
 import com.nit.release.services.NitProcessRunner
 import java.awt.*
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
-import java.awt.geom.RoundRectangle2D
 import javax.swing.*
+import javax.swing.text.SimpleAttributeSet
+import javax.swing.text.StyleConstants
 
 /**
- * Nit Release tool window — custom-painted, wide-first layout.
+ * Nit Release tool window panel.
  *
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ [Publish]                                              status message  │
- * ├─────────────────────────────────────────────────────────────────────────┤
- * │ Result banner + changelog (only when finished)                         │
- * └─────────────────────────────────────────────────────────────────────────┘
+ * Layout (top → bottom):
+ *   [Header]   Publish / Dry Run / Stop buttons
+ *   [Progress] Active pipeline step label
+ *   [Log]      Scrollable live output stream
+ *   [Result]   Outcome banner, shown after each run
  */
 class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutputListener {
 
     private val runner = NitProcessRunner(project)
-    private val commandBar = CommandBar()
+
+    private val publishButton = actionButton("Publish", AllIcons.Actions.Execute, isPrimary = true)
+    private val dryRunButton  = actionButton("Dry Run", AllIcons.Actions.Preview,  isPrimary = false)
+    private val stopButton    = actionButton("Stop",    AllIcons.Actions.Suspend,   isPrimary = false)
+        .apply { isVisible = false }
+
+    private val stepLabel = JBLabel("Ready").apply {
+        font       = JBUI.Fonts.smallFont()
+        foreground = UIUtil.getContextHelpForeground()
+        border     = JBUI.Borders.empty(0, 14, 4, 14)
+    }
+
+    private val logPane = JTextPane().apply {
+        isEditable  = false
+        background  = UIUtil.getPanelBackground()
+        font        = Font(Font.MONOSPACED, Font.PLAIN, JBUI.scaleFontSize(11f).toInt())
+        border      = JBUI.Borders.empty(6, 10)
+    }
+
     private val resultBanner = ResultBanner()
 
     private val changelogLines = mutableListOf<String>()
-    private val errorLines = mutableListOf<String>()
+    private val errorLines     = mutableListOf<String>()
     private var capturingChangelog = false
-    private var changelogDone = false
-    private var releaseSkipped = false
-    private var isRunning = false
+    private var changelogDone      = false
+    private var releaseSkipped     = false
 
     init {
-        background = NitTheme.BG
-        border = JBUI.Borders.empty()
+        background = UIUtil.getPanelBackground()
+        border     = JBUI.Borders.empty()
         runner.setOutputListener(this)
 
-        commandBar.onPublish = { launch(dryRun = false) }
+        publishButton.addActionListener { launch(dryRun = false) }
+        dryRunButton.addActionListener  { launch(dryRun = true)  }
+        stopButton.addActionListener    { runner.stop(); onStopped() }
 
-        add(commandBar, BorderLayout.NORTH)
-        add(resultBanner, BorderLayout.CENTER)
-        resultBanner.isVisible = false
+        add(buildHeader(), BorderLayout.NORTH)
+        add(buildCenter(), BorderLayout.CENTER)
     }
 
+    // ── Layout ────────────────────────────────────────────────────────────
+
+    private fun buildHeader() = JPanel(BorderLayout()).apply {
+        isOpaque = false
+        border   = JBUI.Borders.empty(8, 8, 4, 8)
+        add(JPanel(FlowLayout(FlowLayout.LEFT, 6, 0)).apply {
+            isOpaque = false
+            add(publishButton)
+            add(dryRunButton)
+            add(stopButton)
+        }, BorderLayout.WEST)
+    }
+
+    private fun buildCenter() = JPanel(BorderLayout()).apply {
+        isOpaque = false
+        add(stepLabel, BorderLayout.NORTH)
+        add(JBScrollPane(logPane).apply {
+            border                    = JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0)
+            horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        }, BorderLayout.CENTER)
+        add(resultBanner, BorderLayout.SOUTH)
+    }
+
+    // ── Run lifecycle ─────────────────────────────────────────────────────
+
     private fun launch(dryRun: Boolean) {
-        if (isRunning) return
-        reset()
-        isRunning = true
-        commandBar.setRunning(true)
-        commandBar.statusMessage = "Starting..."
-        commandBar.statusColor = NitTheme.BLUE
+        if (runner.isRunning) return
+        resetState()
+        setRunning(true)
+        stepLabel.text       = "Starting…"
+        stepLabel.foreground = NitTheme.BLUE
         if (dryRun) runner.execute("--dry-run") else runner.execute()
     }
 
-    private fun reset() {
-        resultBanner.isVisible = false
-        resultBanner.clear()
+    private fun resetState() {
+        resultBanner.reset()
+        logPane.text = ""
         changelogLines.clear()
         errorLines.clear()
         capturingChangelog = false
-        changelogDone = false
-        releaseSkipped = false
+        changelogDone      = false
+        releaseSkipped     = false
     }
 
-    private fun finish() {
-        isRunning = false
-        commandBar.setRunning(false)
+    private fun setRunning(on: Boolean) {
+        publishButton.isEnabled = !on
+        dryRunButton.isEnabled  = !on
+        stopButton.isVisible    = on
     }
+
+    private fun onStopped() {
+        setRunning(false)
+        stepLabel.text       = "Stopped"
+        stepLabel.foreground = UIUtil.getContextHelpForeground()
+        appendLog("Process stopped.", LogLevel.WARN)
+    }
+
+    // ── NitOutputListener ─────────────────────────────────────────────────
 
     override fun onOutputLine(cleanLine: String) {
         ApplicationManager.getApplication().invokeLater {
             val trimmed = cleanLine.trim()
+            if (trimmed.isEmpty()) return@invokeLater
+
+            val level = when {
+                isErrorLine(trimmed) -> LogLevel.ERROR
+                isSkipLine(trimmed)  -> LogLevel.WARN
+                else                 -> LogLevel.INFO
+            }
+            appendLog(trimmed, level)
 
             if (isErrorLine(trimmed)) errorLines.add(trimmed)
 
+            // Capture changelog lines emitted inline by the CLI.
             if (capturingChangelog && !changelogDone) {
                 if (trimmed.startsWith("- ") || trimmed.startsWith("## [")) {
                     changelogLines.add(trimmed)
                     return@invokeLater
                 } else if (trimmed.isNotEmpty()) {
                     capturingChangelog = false
-                    changelogDone = true
+                    changelogDone      = true
                 }
             }
             if (!changelogDone && trimmed.startsWith("## [")) {
@@ -96,18 +160,18 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
             when {
                 isSkipLine(cleanLine) -> {
-                    releaseSkipped = true
-                    commandBar.statusMessage = "No changes to release"
-                    commandBar.statusColor = NitTheme.WARN
-                    commandBar.setRunning(false)
+                    releaseSkipped       = true
+                    stepLabel.text       = "No changes to release"
+                    stepLabel.foreground = NitTheme.WARN
+                    setRunning(false)
                 }
                 isErrorLine(cleanLine) -> {
-                    commandBar.statusMessage = "${step.label} failed"
-                    commandBar.statusColor = NitTheme.DANGER
+                    stepLabel.text       = "${step.label} failed"
+                    stepLabel.foreground = NitTheme.DANGER
                 }
                 else -> {
-                    commandBar.statusMessage = step.label
-                    commandBar.statusColor = NitTheme.BLUE
+                    stepLabel.text       = step.label
+                    stepLabel.foreground = NitTheme.BLUE
                 }
             }
         }
@@ -115,235 +179,144 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     override fun onProcessFinished(exitCode: Int) {
         ApplicationManager.getApplication().invokeLater {
-            if (!releaseSkipped) {
-                if (exitCode == 0) {
-                    commandBar.statusMessage = "Release published"
-                    commandBar.statusColor = NitTheme.SUCCESS
-                    val changelog = changelogLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
-                    resultBanner.show("Release published successfully", NitTheme.SUCCESS, changelog)
-                } else {
-                    val errorDetail = errorLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
-                    val lastError = errorLines.lastOrNull()
-                    val statusText = lastError ?: "Release failed"
-                    commandBar.statusMessage = statusText
-                    commandBar.statusColor = NitTheme.DANGER
-                    resultBanner.show("Release failed", NitTheme.DANGER, errorDetail)
+            val changelog = changelogLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
+
+            when {
+                releaseSkipped -> {
+                    stepLabel.text       = "Skipped"
+                    stepLabel.foreground = NitTheme.WARN
+                    resultBanner.show(ResultOutcome.SKIPPED, "No changes detected — release skipped", null)
                 }
-            } else {
-                resultBanner.show("No changes to release — skipped", NitTheme.WARN, null)
+                exitCode == 0 -> {
+                    stepLabel.text       = "Published"
+                    stepLabel.foreground = NitTheme.SUCCESS
+                    resultBanner.show(ResultOutcome.SUCCESS, "Release published successfully", changelog)
+                }
+                else -> {
+                    val errorSummary = errorLines.lastOrNull() ?: "Release failed"
+                    stepLabel.text       = errorSummary
+                    stepLabel.foreground = NitTheme.DANGER
+                    resultBanner.show(
+                        ResultOutcome.FAILURE, "Release failed",
+                        errorLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
+                    )
+                }
             }
-            resultBanner.isVisible = true
+
             revalidate()
             repaint()
-            finish()
+            setRunning(false)
         }
     }
 
-    private fun matchStep(line: String): StepDef? =
+    // ── Log helpers ───────────────────────────────────────────────────────
+
+    private enum class LogLevel { INFO, WARN, ERROR }
+
+    private fun appendLog(text: String, level: LogLevel) {
+        val doc   = logPane.styledDocument
+        val attrs = SimpleAttributeSet().also { a ->
+            StyleConstants.setForeground(a, when (level) {
+                LogLevel.INFO  -> UIUtil.getLabelForeground()
+                LogLevel.WARN  -> NitTheme.WARN
+                LogLevel.ERROR -> NitTheme.DANGER
+            })
+        }
+        doc.insertString(doc.length, "$text\n", attrs)
+        logPane.caretPosition = doc.length // auto-scroll to latest line
+    }
+
+    // ── Line classifiers ──────────────────────────────────────────────────
+
+    private fun matchStep(line: String) =
         PIPELINE_STEPS.find { step -> step.triggers.any { line.contains(it, ignoreCase = true) } }
 
     private fun isErrorLine(line: String): Boolean {
         val lower = line.lowercase()
-        // "unavailable, using fallback" is a warning, not a fatal error
+        // "unavailable, using fallback" is a soft warning — not a fatal error.
         if (lower.contains("unavailable") && lower.contains("fallback")) return false
+        return ERROR_KEYWORDS.any { line.contains(it, ignoreCase = true) }
+    }
+
+    private fun isSkipLine(line: String) =
+        line.contains("No changes detected", ignoreCase = true) ||
+        line.contains("Release skipped",     ignoreCase = true)
+
+    private companion object {
         val ERROR_KEYWORDS = listOf(
             "failed", "error", "Release aborted", "Release Failed",
             "not a git repository", "could not find", "ENOENT",
             "permission denied", "EACCES", "timeout", "ETIMEDOUT"
         )
-        return ERROR_KEYWORDS.any { line.contains(it, ignoreCase = true) }
-    }
-
-    private fun isSkipLine(line: String) =
-        line.contains("No changes detected", true) || line.contains("Release skipped", true)
-}
-
-
-/**
- * Top bar — single Publish button on the left, status message right-aligned.
- */
-private class CommandBar : JPanel() {
-
-    var onPublish: (() -> Unit)? = null
-
-    var statusMessage = "Ready"
-        set(value) { field = value; repaint() }
-
-    var statusColor: Color = NitTheme.FG_DIM
-        set(value) { field = value; repaint() }
-
-    private var running = false
-    private var buttonsEnabled = true
-    private var publishHit = Rectangle()
-    private var publishHover = false
-
-    init {
-        isOpaque = true
-        background = NitTheme.BG
-        preferredSize = Dimension(0, 40)
-        border = JBUI.Borders.empty(0, 12)
-
-        addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                if (buttonsEnabled && publishHit.contains(e.point)) onPublish?.invoke()
-            }
-            override fun mouseExited(e: MouseEvent) {
-                if (publishHover) {
-                    publishHover = false
-                    cursor = Cursor.getDefaultCursor()
-                    repaint()
-                }
-            }
-        })
-        addMouseMotionListener(object : MouseAdapter() {
-            override fun mouseMoved(e: MouseEvent) {
-                val was = publishHover
-                publishHover = buttonsEnabled && publishHit.contains(e.point)
-                cursor = if (publishHover)
-                    Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-                else Cursor.getDefaultCursor()
-                if (was != publishHover) repaint()
-            }
-        })
-    }
-
-    fun setRunning(on: Boolean) {
-        running = on
-        buttonsEnabled = !on
-        repaint()
-    }
-
-    override fun paintComponent(g: Graphics) {
-        super.paintComponent(g)
-        val g2 = (g.create() as Graphics2D).apply {
-            setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB)
-        }
-
-        val midY = height / 2
-        val fm = g2.getFontMetrics(NitTheme.FONT_SMALL)
-
-        // Publish button (left)
-        publishHit = paintPill(g2, "Publish", insets.left + 2, midY, NitTheme.BLUE, publishHover, buttonsEnabled)
-
-        // Status message (right-aligned)
-        g2.font = NitTheme.FONT_SMALL
-        g2.color = statusColor
-        val textWidth = fm.stringWidth(statusMessage)
-        g2.drawString(statusMessage, width - insets.right - textWidth - 4, midY + fm.ascent / 2 - 1)
-
-        g2.dispose()
-    }
-
-    private fun paintPill(
-        g2: Graphics2D, text: String, x: Int, midY: Int,
-        color: Color, hovered: Boolean, enabled: Boolean
-    ): Rectangle {
-        val fm = g2.getFontMetrics(NitTheme.FONT_SMALL)
-        val textW = fm.stringWidth(text)
-        val padX = 14
-        val h = 24
-        val w = textW + padX * 2
-        val top = midY - h / 2
-
-        val bg = when {
-            !enabled -> NitTheme.BORDER
-            hovered -> brighten(color, 0.1f)
-            else -> color
-        }
-
-        g2.color = bg
-        g2.fill(RoundRectangle2D.Float(x.toFloat(), top.toFloat(), w.toFloat(), h.toFloat(), 8f, 8f))
-
-        g2.font = NitTheme.FONT_SMALL.deriveFont(Font.BOLD)
-        g2.color = if (!enabled) NitTheme.FG_MUTED else Color.WHITE
-        g2.drawString(text, x + padX, midY + fm.ascent / 2 - 1)
-
-        return Rectangle(x, top, w, h)
-    }
-
-    private fun brighten(c: Color, amount: Float): Color {
-        val hsb = Color.RGBtoHSB(c.red, c.green, c.blue, null)
-        hsb[2] = (hsb[2] + amount).coerceAtMost(1f)
-        return Color(Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]))
     }
 }
 
+// ── Button factory ────────────────────────────────────────────────────────
+
+private fun actionButton(text: String, icon: Icon, isPrimary: Boolean) =
+    JButton(text, icon).apply {
+        isFocusPainted = false
+        if (isPrimary) putClientProperty("JButton.buttonType", "default")
+    }
+
+// ── Result banner ─────────────────────────────────────────────────────────
+
+private enum class ResultOutcome { SUCCESS, SKIPPED, FAILURE }
 
 /**
- * Bottom result area — only visible after a run finishes.
- * Shows a colored banner with outcome text and optional changelog.
+ * Shown at the bottom of the tool window after each run completes.
+ * Displays an outcome icon, headline, and an optional collapsible detail pane.
  */
 private class ResultBanner : JPanel(BorderLayout()) {
 
-    private val messageLabel = JLabel().apply {
-        font = NitTheme.FONT_BODY.deriveFont(Font.BOLD)
-        border = JBUI.Borders.empty(6, 14)
+    private val headlineLabel = JBLabel().apply {
+        font   = UIUtil.getLabelFont().deriveFont(Font.BOLD)
+        border = JBUI.Borders.empty(8, 12, 6, 12)
     }
 
-    private val changelogArea = JTextArea().apply {
-        font = NitTheme.FONT_MONO
-        foreground = NitTheme.FG
+    private val detailArea = JTextPane().apply {
         isEditable = false
-        lineWrap = true
-        wrapStyleWord = true
-        border = JBUI.Borders.empty(4, 14, 8, 14)
+        font       = Font(Font.MONOSPACED, Font.PLAIN, JBUI.scaleFontSize(11f).toInt())
+        border     = JBUI.Borders.empty(4, 12, 8, 12)
     }
 
-    private val changelogScroll = JScrollPane(changelogArea).apply {
-        border = BorderFactory.createMatteBorder(1, 0, 0, 0, NitTheme.BORDER)
-        preferredSize = Dimension(0, 100)
-        isOpaque = false
-        viewport.isOpaque = false
+    private val detailScroll = JBScrollPane(detailArea).apply {
+        border                    = JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0)
+        preferredSize             = Dimension(0, 110)
+        horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        isVisible                 = false
     }
 
     init {
-        isOpaque = false
-        border = JBUI.Borders.empty(2, 12, 6, 12)
-        add(messageLabel, BorderLayout.NORTH)
-        add(changelogScroll, BorderLayout.CENTER)
-        changelogScroll.isVisible = false
+        isVisible = false
+        border    = JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0)
+        add(headlineLabel, BorderLayout.NORTH)
+        add(detailScroll,  BorderLayout.CENTER)
     }
 
-    fun show(message: String, accent: Color, changelog: String?) {
-        val bgColor = mutedColor(accent)
-        messageLabel.text = message
-        messageLabel.foreground = accent
-        changelogArea.background = bgColor
-        background = bgColor
-        isOpaque = true
-
-        if (changelog != null) {
-            changelogArea.text = changelog
-            changelogScroll.isVisible = true
-        } else {
-            changelogScroll.isVisible = false
+    fun show(outcome: ResultOutcome, headline: String, detail: String?) {
+        val (fg, bg, icon) = when (outcome) {
+            ResultOutcome.SUCCESS -> Triple(NitTheme.SUCCESS, NitTheme.SUCCESS_MUTED, AllIcons.General.InspectionsOK)
+            ResultOutcome.SKIPPED -> Triple(NitTheme.WARN,    NitTheme.WARN_MUTED,    AllIcons.General.Warning)
+            ResultOutcome.FAILURE -> Triple(NitTheme.DANGER,  NitTheme.DANGER_MUTED,  AllIcons.General.Error)
         }
+        background              = bg
+        isOpaque                = true
+        headlineLabel.text      = headline
+        headlineLabel.foreground = fg
+        headlineLabel.icon      = icon
+        detailArea.background   = bg
+        detailScroll.isVisible  = detail != null
+        if (detail != null) detailArea.text = detail
+        isVisible = true
         revalidate()
         repaint()
     }
 
-    fun clear() {
-        isOpaque = false
-        messageLabel.text = ""
-        changelogArea.text = ""
-        changelogScroll.isVisible = false
-    }
-
-    override fun paintComponent(g: Graphics) {
-        if (!isOpaque) return
-        val g2 = (g.create() as Graphics2D).apply {
-            setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        }
-        g2.color = background
-        g2.fill(RoundRectangle2D.Float(0f, 0f, width.toFloat(), height.toFloat(), 8f, 8f))
-        g2.dispose()
-    }
-
-    private fun mutedColor(accent: Color): Color = when (accent) {
-        NitTheme.SUCCESS -> NitTheme.SUCCESS_MUTED
-        NitTheme.DANGER -> NitTheme.DANGER_MUTED
-        NitTheme.WARN -> NitTheme.WARN_MUTED
-        else -> NitTheme.BLUE_MUTED
+    fun reset() {
+        isVisible = false
+        headlineLabel.text     = ""
+        detailArea.text        = ""
+        detailScroll.isVisible = false
     }
 }

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.2] - 2026-03-05
+
+- Revamped the settings UI for Nit Release under Settings -> Tools -> Nit Release, switching from a GridBagLayout to a more modern DialogPanel with a cleaner, structured layout using IntelliJ's UI DSL.
+- Added a dynamic API key hint in the settings panel that updates based on the selected AI provider, providing contextual help to users.
+- Introduced a "Browse…" button for the Node Binary path in the settings, allowing users to select the Node executable via a file chooser dialog.
+- Enhanced the Node Binary field with a placeholder text ("e.g. /usr/local/bin/node") and a descriptive comment about leaving it empty to resolve from system PATH.
+
 ## [9.1] - 2026-03-05
 
 - Updated the AI Provider dropdown rendering in the settings UI to directly access the displayName property without casting, improving code robustness.

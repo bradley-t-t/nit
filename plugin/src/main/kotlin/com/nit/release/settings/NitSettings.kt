@@ -10,6 +10,9 @@ enum class AiProvider(val displayName: String, val envKey: String, val providerI
     GROK("Grok (xAI)", "GROK_API_KEY", "grok"),
     OPENAI("OpenAI", "OPENAI_API_KEY", "openai"),
     ANTHROPIC("Anthropic (Claude)", "ANTHROPIC_API_KEY", "anthropic");
+
+    // Ensures JComboBox renders displayName without needing a custom ListCellRenderer.
+    override fun toString() = displayName
 }
 
 @State(name = "NitReleaseSettings", storages = [Storage("NitReleaseSettings.xml")])

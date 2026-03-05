@@ -1,97 +1,115 @@
 package com.nit.release.settings
 
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.Configurable
-import java.awt.GridBagConstraints
-import java.awt.GridBagLayout
-import java.awt.Insets
-import javax.swing.*
+import com.intellij.openapi.ui.DialogPanel
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.dsl.builder.*
+import javax.swing.JComponent
 
-/** Settings UI panel under Settings -> Tools -> Nit Release. */
+/** Settings panel registered under Settings → Tools → Nit Release. */
 class NitConfigurable : Configurable {
 
-    private var panel: JPanel? = null
-    private var apiKeyField: JPasswordField? = null
-    private var nodePathField: JTextField? = null
-    private var branchField: JTextField? = null
-    private var skipUpdateCheckbox: JCheckBox? = null
-    private var providerCombo: JComboBox<AiProvider>? = null
+    private lateinit var dialogPanel: DialogPanel
 
     override fun getDisplayName() = "Nit Release"
 
     override fun createComponent(): JComponent {
-        val settings = NitSettings.getInstance().state
+        val nit = NitSettings.getInstance()
+        val state = nit.state
 
-        providerCombo = JComboBox(AiProvider.entries.toTypedArray()).apply {
-            val baseRenderer = DefaultListCellRenderer()
-            setRenderer(ListCellRenderer { list, value, index, isSelected, cellHasFocus ->
-                baseRenderer.getListCellRendererComponent(list, (value as? AiProvider)?.displayName ?: "", index, isSelected, cellHasFocus)
-            })
-            selectedItem = try { AiProvider.valueOf(settings.aiProvider) } catch (_: Exception) { AiProvider.GROK }
+        // Reactive hint that updates when the provider dropdown changes.
+        val apiKeyHint = JBLabel(apiKeyComment(nit.resolvedProvider)).apply {
+            foreground = com.intellij.util.ui.UIUtil.getContextHelpForeground()
+            font = com.intellij.util.ui.JBUI.Fonts.smallFont()
         }
 
-        apiKeyField = JPasswordField(40).apply { text = settings.apiKey }
-        nodePathField = JTextField(settings.nodePath, 40)
-        branchField = JTextField(settings.defaultBranch, 20)
-        skipUpdateCheckbox = JCheckBox("Skip update check on run", settings.skipUpdateOnRun)
-
-        panel = JPanel(GridBagLayout()).apply {
-            val gbc = GridBagConstraints().apply {
-                insets = Insets(4, 8, 4, 8)
-                anchor = GridBagConstraints.WEST
-                fill = GridBagConstraints.HORIZONTAL
+        dialogPanel = panel {
+            group("AI Provider") {
+                row("Provider:") {
+                    comboBox(AiProvider.entries)
+                        .bindItem(
+                            getter = { nit.resolvedProvider },
+                            setter = { provider ->
+                                state.aiProvider = (provider ?: AiProvider.GROK).name
+                                apiKeyHint.text = apiKeyComment(provider ?: AiProvider.GROK)
+                            }
+                        )
+                }
+                row("API Key:") {
+                    passwordField()
+                        .bindText(
+                            getter = { state.apiKey },
+                            setter = { state.apiKey = it }
+                        )
+                        .columns(COLUMNS_LARGE)
+                }
+                row("") {
+                    cell(apiKeyHint)
+                }
             }
 
-            fun addRow(row: Int, label: String, component: JComponent) {
-                gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0
-                add(JLabel(label), gbc)
-                gbc.gridx = 1; gbc.weightx = 1.0
-                add(component, gbc)
+            group("Runtime") {
+                row("Node Binary:") {
+                    textField()
+                        .bindText(
+                            getter = { state.nodePath },
+                            setter = { state.nodePath = it }
+                        )
+                        .columns(COLUMNS_LARGE)
+                        .applyToComponent {
+                            emptyText.text = "e.g. /usr/local/bin/node"
+                        }
+                        .comment("Absolute path to the node binary. Leave empty to resolve from the system PATH.")
+                }.layout(RowLayout.PARENT_GRID)
+
+                row("") {
+                    button("Browse…") {
+                        val descriptor = FileChooserDescriptorFactory.createSingleFileDescriptor()
+                        val chosen = com.intellij.openapi.fileChooser.FileChooser.chooseFile(
+                            descriptor, null, null
+                        )
+                        if (chosen != null) state.nodePath = chosen.path
+                        dialogPanel.reset()
+                    }
+                }
+
+                row("Default Branch:") {
+                    textField()
+                        .bindText(
+                            getter = { state.defaultBranch },
+                            setter = { state.defaultBranch = it }
+                        )
+                        .columns(COLUMNS_SHORT)
+                        .applyToComponent {
+                            emptyText.text = "e.g. main"
+                        }
+                        .comment("Branch used when no branch is specified at release time.")
+                }
             }
 
-            addRow(0, "AI Provider:", providerCombo!!)
-            addRow(1, "API Key:", apiKeyField!!)
-            addRow(2, "Node Path (optional):", nodePathField!!)
-            addRow(3, "Default Branch:", branchField!!)
-
-            gbc.gridx = 1; gbc.gridy = 4; gbc.weightx = 1.0
-            add(skipUpdateCheckbox!!, gbc)
-
-            // Fill remaining vertical space
-            gbc.gridx = 0; gbc.gridy = 5; gbc.weighty = 1.0; gbc.gridwidth = 2
-            add(JPanel(), gbc)
+            group("Behavior") {
+                row {
+                    checkBox("Skip CLI update check on run")
+                        .bindSelected(
+                            getter = { state.skipUpdateOnRun },
+                            setter = { state.skipUpdateOnRun = it }
+                        )
+                        .comment("Bypass the CLI self-update check each time a release is triggered from the IDE.")
+                }
+            }
         }
 
-        return panel!!
+        return dialogPanel
     }
 
-    override fun isModified(): Boolean {
-        val settings = NitSettings.getInstance().state
-        val currentProvider = try { AiProvider.valueOf(settings.aiProvider) } catch (_: Exception) { AiProvider.GROK }
-        return providerCombo?.selectedItem != currentProvider
-            || String(apiKeyField?.password ?: charArrayOf()) != settings.apiKey
-            || nodePathField?.text != settings.nodePath
-            || branchField?.text != settings.defaultBranch
-            || skipUpdateCheckbox?.isSelected != settings.skipUpdateOnRun
-    }
+    override fun isModified() = dialogPanel.isModified()
 
-    override fun apply() {
-        val settings = NitSettings.getInstance()
-        val state = settings.state
-        state.aiProvider = (providerCombo?.selectedItem as? AiProvider)?.name ?: AiProvider.GROK.name
-        state.apiKey = String(apiKeyField?.password ?: charArrayOf())
-        state.nodePath = nodePathField?.text ?: ""
-        state.defaultBranch = branchField?.text ?: ""
-        state.skipUpdateOnRun = skipUpdateCheckbox?.isSelected ?: true
-    }
+    override fun apply() = dialogPanel.apply()
 
-    override fun reset() {
-        val settings = NitSettings.getInstance().state
-        val currentProvider = try { AiProvider.valueOf(settings.aiProvider) } catch (_: Exception) { AiProvider.GROK }
-        providerCombo?.selectedItem = currentProvider
-        apiKeyField?.text = settings.apiKey
-        nodePathField?.text = settings.nodePath
-        branchField?.text = settings.defaultBranch
-        skipUpdateCheckbox?.isSelected = settings.skipUpdateOnRun
-    }
+    override fun reset() = dialogPanel.reset()
 }
 
+/** Contextual hint shown below the API Key field — tells the user which env var to set. */
+private fun apiKeyComment(provider: AiProvider) =
+    "Or set ${provider.envKey} in your environment to skip entering a key here."
