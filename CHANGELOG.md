@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.8] - 2026-03-05
+
+- Improved the NitPanel UI in the IntelliJ plugin by refining the log output formatting. The step badge in logs now has a cleaner fixed-width alignment, and the separator styling has been adjusted for better readability.
+- Enhanced the ResultBanner component in the NitPanel with an increased default height for the detail area (from 160 to 200 pixels) to better accommodate content.
+- Updated the HTML rendering in the ResultBanner for detailed output, introducing better spacing, font sizing, and color contrast. Headings, list items, and regular text now have distinct styling for improved clarity.
+- Adjusted color usage in the ResultBanner by dynamically pulling context help foreground color for dim text, ensuring better theme compatibility.
+
 ## [9.7] - 2026-03-05
 
 - Enhanced the NitPanel log display by cleaning up message formatting, specifically stripping any leading "▸" characters from CLI output to avoid duplicate separators.

@@ -244,15 +244,14 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
     }
 
     /**
-     * Appends a styled log row with a fixed-width step badge and a `▸` separator:
-     *   Build        ▸  Running production build...
+     * Appends a styled log row with a fixed-width step badge and a single `▸` separator:
+     *   Build         ▸  Running production build...
      *
-     * Strips any leading `▸` the CLI already emits so the separator never doubles up.
+     * The CLI already emits a leading `▸` on most lines — strip it to avoid doubling.
      */
     private fun appendStyledLog(message: String, level: LogLevel, stepLabel: String?) {
         val doc      = logPane.styledDocument
         val baseFont = logPane.font
-        // The CLI prefixes every status line with "▸ " — strip it so our own separator is the only one.
         val displayMessage = message.trimStart().removePrefix("▸").trimStart()
 
         val badgeColor = when (level) {
@@ -268,14 +267,14 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
         val dimColor = JBColor(Color(0x888888), Color(0x666666))
 
         if (stepLabel != null) {
-            // Fixed-width badge column: right-pad to 12 chars so messages align.
+            // Fixed-width badge: right-pad to 12 chars so all messages align vertically.
             doc.insertStyledText("  ${stepLabel.padEnd(12)}", SimpleAttributeSet().apply {
                 StyleConstants.setForeground(this, badgeColor)
                 StyleConstants.setBold(this, true)
                 StyleConstants.setFontFamily(this, baseFont.family)
                 StyleConstants.setFontSize(this, baseFont.size)
             })
-            doc.insertStyledText("▸  ", SimpleAttributeSet().apply {
+            doc.insertStyledText(" ▸  ", SimpleAttributeSet().apply {
                 StyleConstants.setForeground(this, dimColor)
                 StyleConstants.setFontFamily(this, baseFont.family)
                 StyleConstants.setFontSize(this, baseFont.size)
@@ -365,7 +364,7 @@ private class ResultBanner : JPanel(BorderLayout()) {
 
     private val detailScroll = JBScrollPane(detailArea).apply {
         border                    = JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0)
-        preferredSize             = Dimension(0, 160)
+        preferredSize             = Dimension(0, 200)
         horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
         isVisible                 = false
     }
@@ -393,24 +392,27 @@ private class ResultBanner : JPanel(BorderLayout()) {
         if (detail != null) {
             val fgHex   = "#%06X".format(fg.rgb and 0xFFFFFF)
             val bodyHex = "#%06X".format(UIUtil.getLabelForeground().rgb and 0xFFFFFF)
-            val dimHex  = "#888888"
+            val dimHex  = "#%06X".format(UIUtil.getContextHelpForeground().rgb and 0xFFFFFF)
             val htmlLines = detail.lines().joinToString("") { line ->
                 val escaped = line
                     .replace("&", "&amp;")
                     .replace("<", "&lt;")
                     .replace(">", "&gt;")
                 when {
-                    line.startsWith("## ") -> "<p style='margin:6px 0 2px 0;font-weight:bold;color:$fgHex;'>${escaped.removePrefix("## ")}</p>"
-                    line.startsWith("- ")  -> "<p style='margin:1px 0 1px 12px;color:$bodyHex;'><span style='color:$fgHex;'>▸</span> ${escaped.removePrefix("- ")}</p>"
-                    line.isBlank()         -> "<p style='margin:2px 0;'>&nbsp;</p>"
-                    else                   -> "<p style='margin:1px 0;color:$dimHex;'>$escaped</p>"
+                    line.startsWith("## ") ->
+                        "<p style='margin:8px 0 3px 0;padding:0;font-weight:bold;font-size:11px;" +
+                        "color:$fgHex;letter-spacing:0.05em;text-transform:uppercase;'>" +
+                        "${escaped.removePrefix("## ")}</p>"
+                    line.startsWith("- ")  ->
+                        "<p style='margin:0;padding:2px 0 2px 0;font-size:11px;color:$bodyHex;'>" +
+                        "<span style='color:$fgHex;margin-right:6px;'>▸</span>" +
+                        "${escaped.removePrefix("- ")}</p>"
+                    line.isBlank()         -> ""
+                    else                   ->
+                        "<p style='margin:0;padding:1px 0;font-size:11px;color:$dimHex;'>$escaped</p>"
                 }
             }
-            detailArea.text = """
-                <html><body style='font-family:monospace;font-size:11px;padding:4px 0;'>
-                $htmlLines
-                </body></html>
-            """.trimIndent()
+            detailArea.text = "<html><body style='font-family:monospace;padding:6px 8px;margin:0;'>$htmlLines</body></html>"
             detailScroll.isVisible = true
         } else {
             detailScroll.isVisible = false
