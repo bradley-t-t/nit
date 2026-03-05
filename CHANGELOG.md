@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8.8] - 2026-03-05
+
+- Added AI provider selection in the Nit plugin for WebStorm/IntelliJ IDEA, allowing users to choose between Grok, OpenAI, or Anthropic under Settings → Tools → Nit Release.
+- Updated the plugin to share the selected AI provider with the CLI via the `public/nit.json` configuration file, enabling a single configuration to be used across environments.
+- Revised README.md to reflect the inclusion of AI provider selection in the `public/nit.json` file and to clarify that the `.env` file should contain the API key for the chosen provider.
+
 ## [8.7] - 2026-03-05
 
 - Added support for multiple AI providers for generating changelogs and commit messages. You can now choose between Grok (xAI), OpenAI, and Anthropic (Claude) during setup.

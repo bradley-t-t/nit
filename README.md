@@ -249,6 +249,8 @@ nit ships with an optional **WebStorm / IntelliJ IDEA plugin** that gives you a 
 - Real-time pipeline status as each step executes
 - Changelog preview on completion
 - Error reporting with context
+- **AI provider selection** in Settings → Tools → Nit Release (Grok, OpenAI, or Anthropic)
+- Provider choice is shared with the CLI via `public/nit.json` — configure once, use everywhere
 
 The plugin is included in the `plugin/` directory and can be built with Gradle or installed from a local `.zip`.
 
@@ -284,9 +286,9 @@ Minimum required:
 
 ```
 my-project/
-  .env               ← API key (required, gitignored)
+  .env               ← API key for your chosen provider (required, gitignored)
   public/
-    nit.json          ← Auto-generated config
+    nit.json          ← Auto-generated config (includes provider selection)
   src/                ← Code cleanup targets this directory
   package.json
 ```
