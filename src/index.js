@@ -59,6 +59,7 @@ function exitWithRollback(code = 1) {
 async function main() {
   const cliOptions = parseArgs(args);
 
+  ui.printHeader();
   ui.printHeaderWithStatus("Checking for updates...");
 
   if (!cliOptions.skipUpdate) {

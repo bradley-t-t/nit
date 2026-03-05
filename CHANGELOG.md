@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.3] - 2026-03-05
+
+- Added a new header display at startup in the CLI by introducing a `printHeader` function in `ui.js`, which shows the ASCII logo and title block exactly once when the application starts.
+- Refactored the UI status and error messaging in `ui.js` by extracting a `printStatusLine` helper function to streamline how status messages are displayed.
+- Removed the `clear` function from the UI module in `ui.js`, eliminating the screen-clearing behavior before displaying headers or messages.
+
 ## [9.2] - 2026-03-05
 
 - Revamped the settings UI for Nit Release under Settings -> Tools -> Nit Release, switching from a GridBagLayout to a more modern DialogPanel with a cleaner, structured layout using IntelliJ's UI DSL.
