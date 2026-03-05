@@ -36,6 +36,14 @@ class NitProcessRunner(private val project: Project) {
     fun execute(vararg extraFlags: String) {
         if (isRunning) return
 
+        val workDir = project.basePath
+        if (workDir == null) {
+            listener?.onOutputLine("No project directory found. Open a project first.")
+            runState = RunState.FAILED
+            listener?.onProcessFinished(1)
+            return
+        }
+
         val settings = NitSettings.getInstance().state
         val nodePath = resolveNodePath(settings.nodePath)
         val nitPath = resolveNitPath()
@@ -48,7 +56,7 @@ class NitProcessRunner(private val project: Project) {
         }
 
         val flags = buildFlagList(settings, extraFlags)
-        val commandLine = buildCommandLine(nodePath, nitPath, flags, settings)
+        val commandLine = buildCommandLine(nodePath, nitPath, flags, workDir, settings)
 
         runState = RunState.RUNNING
         val handler = OSProcessHandler(commandLine)
@@ -93,12 +101,13 @@ class NitProcessRunner(private val project: Project) {
         nodePath: String,
         nitPath: String,
         flags: List<String>,
+        workDir: String,
         settings: NitSettings.State
     ) = GeneralCommandLine().apply {
         exePath = nodePath
         addParameter(nitPath)
         addParameters(flags)
-        withWorkDirectory(project.basePath)
+        withWorkDirectory(workDir)
         withCharset(StandardCharsets.UTF_8)
         withEnvironment("FORCE_COLOR", "0")
         withEnvironment("NO_COLOR", "1")
@@ -121,12 +130,28 @@ class NitProcessRunner(private val project: Project) {
     }
 
     private fun resolveNitPath(): String? {
+        // Project-local install (npm install --save-dev nit)
+        project.basePath?.let { base ->
+            val localBin = File(base, "node_modules/.bin/nit")
+            if (localBin.exists()) return localBin.absolutePath
+
+            // Self-development: running nit on its own repo
+            val selfIndex = File(base, "src/index.js")
+            val selfPkg = File(base, "package.json")
+            if (selfIndex.exists() && selfPkg.exists() && selfPkg.readText().contains("\"name\": \"nit\"")) {
+                return selfIndex.absolutePath
+            }
+        }
+
+        // nvm global install
         latestNvmNodeDir()?.let { nodeDir ->
             listOf("lib/node_modules/nit/src/index.js", "bin/nit")
                 .map { File(nodeDir, it) }
                 .firstOrNull { it.exists() }
                 ?.let { return it.absolutePath }
         }
+
+        // Common global paths
         return listOf("/usr/local/bin/nit", "/opt/homebrew/bin/nit", "$homeDir/.npm-global/bin/nit")
             .firstOrNull { File(it).exists() }
     }

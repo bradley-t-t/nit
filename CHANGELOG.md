@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8.4] - 2026-03-05
+
+- Enhanced the NitProcessRunner in the IntelliJ plugin to improve path resolution for the Nit executable, now checking for project-local installations, self-development scenarios in the Nit repository, and NVM global installs before falling back to common global paths.
+- Added validation in NitProcessRunner to ensure a project directory exists before executing the Nit process, providing feedback if no directory is found.
+- Updated the NitProcessRunner to explicitly pass the project directory as the working directory for the command execution.
+
 ## [8.3] - 2026-03-05
 
 - No functional changes or features were introduced in this release; the update only reflects version increments across configuration files.
