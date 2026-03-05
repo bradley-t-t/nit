@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.7] - 2026-03-05
+
+- Enhanced the NitPanel log display by cleaning up message formatting, specifically stripping any leading "▸" characters from CLI output to avoid duplicate separators.
+- Improved the ResultBanner component in NitPanel to support HTML-formatted detail text, allowing for richer formatting with styled headings, bullet points, and color-coded text.
+- Increased the preferred height of the detail scroll pane in ResultBanner from 110 to 160 pixels for better visibility of detailed content.
+
 ## [9.6] - 2026-03-05
 
 - Improved output filtering in NitProcessRunner by adding a check to exclude raw Node invocation command lines from the output, ensuring cleaner logs.

@@ -245,11 +245,15 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     /**
      * Appends a styled log row with a fixed-width step badge and a `▸` separator:
-     *   [  Build  ]  ▸  Running production build...
+     *   Build        ▸  Running production build...
+     *
+     * Strips any leading `▸` the CLI already emits so the separator never doubles up.
      */
     private fun appendStyledLog(message: String, level: LogLevel, stepLabel: String?) {
         val doc      = logPane.styledDocument
         val baseFont = logPane.font
+        // The CLI prefixes every status line with "▸ " — strip it so our own separator is the only one.
+        val displayMessage = message.trimStart().removePrefix("▸").trimStart()
 
         val badgeColor = when (level) {
             LogLevel.INFO  -> NitTheme.BLUE
@@ -280,7 +284,7 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
             doc.insertStyledText("  ", SimpleAttributeSet())
         }
 
-        doc.insertStyledText("$message\n", SimpleAttributeSet().apply {
+        doc.insertStyledText("$displayMessage\n", SimpleAttributeSet().apply {
             StyleConstants.setForeground(this, messageColor)
             StyleConstants.setFontFamily(this, baseFont.family)
             StyleConstants.setFontSize(this, baseFont.size)
@@ -354,14 +358,14 @@ private class ResultBanner : JPanel(BorderLayout()) {
     }
 
     private val detailArea = JTextPane().apply {
-        isEditable = false
-        font       = Font(Font.MONOSPACED, Font.PLAIN, JBUI.scaleFontSize(11f).toInt())
-        border     = JBUI.Borders.empty(4, 12, 8, 12)
+        isEditable  = false
+        contentType = "text/html"
+        border      = JBUI.Borders.empty(4, 12, 8, 12)
     }
 
     private val detailScroll = JBScrollPane(detailArea).apply {
         border                    = JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0)
-        preferredSize             = Dimension(0, 110)
+        preferredSize             = Dimension(0, 160)
         horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
         isVisible                 = false
     }
@@ -385,8 +389,33 @@ private class ResultBanner : JPanel(BorderLayout()) {
         headlineLabel.foreground = fg
         headlineLabel.icon       = icon
         detailArea.background    = bg
-        detailScroll.isVisible   = detail != null
-        if (detail != null) detailArea.text = detail
+
+        if (detail != null) {
+            val fgHex   = "#%06X".format(fg.rgb and 0xFFFFFF)
+            val bodyHex = "#%06X".format(UIUtil.getLabelForeground().rgb and 0xFFFFFF)
+            val dimHex  = "#888888"
+            val htmlLines = detail.lines().joinToString("") { line ->
+                val escaped = line
+                    .replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                when {
+                    line.startsWith("## ") -> "<p style='margin:6px 0 2px 0;font-weight:bold;color:$fgHex;'>${escaped.removePrefix("## ")}</p>"
+                    line.startsWith("- ")  -> "<p style='margin:1px 0 1px 12px;color:$bodyHex;'><span style='color:$fgHex;'>▸</span> ${escaped.removePrefix("- ")}</p>"
+                    line.isBlank()         -> "<p style='margin:2px 0;'>&nbsp;</p>"
+                    else                   -> "<p style='margin:1px 0;color:$dimHex;'>$escaped</p>"
+                }
+            }
+            detailArea.text = """
+                <html><body style='font-family:monospace;font-size:11px;padding:4px 0;'>
+                $htmlLines
+                </body></html>
+            """.trimIndent()
+            detailScroll.isVisible = true
+        } else {
+            detailScroll.isVisible = false
+        }
+
         isVisible = true
         revalidate()
         repaint()
