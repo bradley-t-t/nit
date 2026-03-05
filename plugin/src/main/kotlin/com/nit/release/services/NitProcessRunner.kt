@@ -6,6 +6,7 @@ import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import com.nit.release.settings.AiProvider
 import com.nit.release.settings.NitSettings
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -103,16 +104,21 @@ class NitProcessRunner(private val project: Project) {
         flags: List<String>,
         workDir: String,
         settings: NitSettings.State
-    ) = GeneralCommandLine().apply {
-        exePath = nodePath
-        addParameter(nitPath)
-        addParameters(flags)
-        withWorkDirectory(workDir)
-        withCharset(StandardCharsets.UTF_8)
-        withEnvironment("FORCE_COLOR", "0")
-        withEnvironment("NO_COLOR", "1")
-        if (settings.grokApiKey.isNotBlank()) withEnvironment("GROK_API_KEY", settings.grokApiKey)
-        withEnvironment("PATH", buildPathEnv())
+    ): GeneralCommandLine {
+        val provider = try { AiProvider.valueOf(settings.aiProvider) } catch (_: Exception) { AiProvider.GROK }
+        return GeneralCommandLine().apply {
+            exePath = nodePath
+            addParameter(nitPath)
+            addParameters(flags)
+            withWorkDirectory(workDir)
+            withCharset(StandardCharsets.UTF_8)
+            withEnvironment("FORCE_COLOR", "0")
+            withEnvironment("NO_COLOR", "1")
+            if (settings.apiKey.isNotBlank()) {
+                withEnvironment(provider.envKey, settings.apiKey)
+            }
+            withEnvironment("PATH", buildPathEnv())
+        }
     }
 
     private fun latestNvmNodeDir(): File? =

@@ -1,71 +1,109 @@
-import { ErrorCodes } from "./constants.js";
+import { ErrorCodes, AI_PROVIDERS } from "./constants.js";
 import { NitError, isNetworkError, parseApiError } from "./errors.js";
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 2000;
+const SYSTEM_PROMPT =
+  "You are a precise technical assistant that generates changelog entries and commit messages. You ONLY describe changes that are explicitly visible in the provided diff. Never invent or assume changes. Be specific and accurate.";
 
-/** Waits for the specified duration in milliseconds. */
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Builds the fetch request body for OpenAI-compatible APIs (Grok, OpenAI). */
+function buildOpenAiBody(model, prompt) {
+  return JSON.stringify({
+    model,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: prompt },
+    ],
+    temperature: 0.3,
+    max_tokens: 1000,
+  });
+}
+
+/** Builds the fetch request body for the Anthropic Messages API. */
+function buildAnthropicBody(model, prompt) {
+  return JSON.stringify({
+    model,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.3,
+    max_tokens: 1000,
+  });
+}
+
+/** Extracts the text content from a provider's response JSON. */
+function extractResponseContent(providerId, data) {
+  if (providerId === "anthropic") {
+    return data.content?.[0]?.text || "";
+  }
+  return data.choices?.[0]?.message?.content || "";
+}
+
+/** Validates the response structure from a provider. */
+function isValidResponse(providerId, data) {
+  if (providerId === "anthropic") return !!data.content?.[0]?.text;
+  return !!data.choices?.[0]?.message;
+}
+
 /**
- * Calls the Grok API with automatic retry + exponential backoff for rate limits (429)
- * and transient server errors (5xx).
+ * Calls any supported AI provider with retry + exponential backoff.
+ * Provider is resolved from AI_PROVIDERS config.
  */
-export async function callGrokApi(apiKey, prompt) {
+export async function callAiApi(apiKey, prompt, providerId = "grok") {
+  const provider = AI_PROVIDERS[providerId];
+  if (!provider) {
+    throw new NitError(
+      `Unknown AI provider: ${providerId}. Supported: ${Object.keys(AI_PROVIDERS).join(", ")}`,
+      ErrorCodes.API_RESPONSE_INVALID,
+    );
+  }
+
+  const isAnthropic = providerId === "anthropic";
+  const headers = {
+    "Content-Type": "application/json",
+    ...(isAnthropic
+      ? { "x-api-key": apiKey, "anthropic-version": "2023-06-01" }
+      : { Authorization: `Bearer ${apiKey}` }),
+  };
+  const body = isAnthropic
+    ? buildAnthropicBody(provider.model, prompt)
+    : buildOpenAiBody(provider.model, prompt);
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     let response;
 
     try {
-      response = await fetch("https://api.x.ai/v1/chat/completions", {
+      response = await fetch(provider.endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "grok-3-latest",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a precise technical assistant that generates changelog entries and commit messages. You ONLY describe changes that are explicitly visible in the provided diff. Never invent or assume changes. Be specific and accurate.",
-            },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.3,
-          max_tokens: 1000,
-        }),
+        headers,
+        body,
       });
     } catch (err) {
       if (isNetworkError(err)) {
-        const messages = {
-          ENOTFOUND:
-            "Network error: Unable to reach Grok API. Check your internet connection.",
-          EAI_AGAIN:
-            "Network error: Unable to reach Grok API. Check your internet connection.",
-          ETIMEDOUT:
-            "Network timeout: Grok API request timed out. Try again later.",
-          ESOCKETTIMEDOUT:
-            "Network timeout: Grok API request timed out. Try again later.",
-          ECONNREFUSED: "Connection refused: Unable to connect to Grok API.",
+        const networkMessages = {
+          ENOTFOUND: `Network error: Unable to reach ${provider.name}. Check your internet connection.`,
+          EAI_AGAIN: `Network error: Unable to reach ${provider.name}. Check your internet connection.`,
+          ETIMEDOUT: `Network timeout: ${provider.name} request timed out. Try again later.`,
+          ESOCKETTIMEDOUT: `Network timeout: ${provider.name} request timed out. Try again later.`,
+          ECONNREFUSED: `Connection refused: Unable to connect to ${provider.name}.`,
         };
         throw new NitError(
-          messages[err.code] ||
-            `Network error calling Grok API: ${err.message}`,
+          networkMessages[err.code] ??
+            `Network error calling ${provider.name}: ${err.message}`,
           ErrorCodes.API_NETWORK_ERROR,
           { originalError: err.message },
         );
       }
       throw new NitError(
-        `Network error calling Grok API: ${err.message}`,
+        `Network error calling ${provider.name}: ${err.message}`,
         ErrorCodes.API_NETWORK_ERROR,
         { originalError: err.message },
       );
     }
 
-    // Retry on rate-limit (429) or transient server errors (5xx)
     const isRetryable = response.status === 429 || response.status >= 500;
     if (!response.ok && isRetryable && attempt < MAX_RETRIES) {
       const retryAfterHeader = response.headers.get("retry-after");
@@ -84,7 +122,7 @@ export async function callGrokApi(apiKey, prompt) {
       } catch {
         errorData = { error: errorText };
       }
-      throw parseApiError(response, errorText, errorData);
+      throw parseApiError(response, errorText, errorData, providerId);
     }
 
     let data;
@@ -92,22 +130,27 @@ export async function callGrokApi(apiKey, prompt) {
       data = await response.json();
     } catch (err) {
       throw new NitError(
-        "Invalid JSON response from Grok API",
+        `Invalid JSON response from ${provider.name}`,
         ErrorCodes.API_RESPONSE_INVALID,
         { originalError: err.message },
       );
     }
 
-    if (!data.choices?.[0]?.message) {
+    if (!isValidResponse(providerId, data)) {
       throw new NitError(
-        "Unexpected response format from Grok API",
+        `Unexpected response format from ${provider.name}`,
         ErrorCodes.API_RESPONSE_INVALID,
         { response: data },
       );
     }
 
-    return data.choices[0].message.content || "";
+    return extractResponseContent(providerId, data);
   }
+}
+
+/** @deprecated Use callAiApi instead. Kept for backward compatibility. */
+export async function callGrokApi(apiKey, prompt) {
+  return callAiApi(apiKey, prompt, "grok");
 }
 
 export async function generateChangelog(
@@ -117,7 +160,9 @@ export async function generateChangelog(
   diff,
   stat,
   changedFiles,
+  providerId = "grok",
 ) {
+  const providerName = AI_PROVIDERS[providerId]?.name ?? providerId;
   const today = new Date().toISOString().split("T")[0];
 
   if (!diff.trim()) {
@@ -163,11 +208,11 @@ Output format (EXACTLY):
 - Second change
 - (as many as needed)`;
 
-  const response = await callGrokApi(apiKey, prompt);
+  const response = await callAiApi(apiKey, prompt, providerId);
 
   if (!response?.includes(`## [${newVersion}]`)) {
     throw new NitError(
-      "Grok API returned invalid changelog format",
+      `${providerName} returned invalid changelog format`,
       ErrorCodes.API_RESPONSE_INVALID,
       {
         response: response ? response.substring(0, 200) : "empty",
@@ -186,7 +231,9 @@ export async function generateCommitMessage(
   diff,
   stat,
   changedFiles,
+  providerId = "grok",
 ) {
+  const providerName = AI_PROVIDERS[providerId]?.name ?? providerId;
   const firstLine = `${projectName}: Release v${newVersion}`;
 
   if (!diff.trim()) {
@@ -233,11 +280,11 @@ ${projectName}: Release v${newVersion}
 - Second change
 - (as many as needed)`;
 
-  const response = await callGrokApi(apiKey, prompt);
+  const response = await callAiApi(apiKey, prompt, providerId);
 
   if (!response) {
     throw new NitError(
-      "Grok API returned empty commit message",
+      `${providerName} returned empty commit message`,
       ErrorCodes.API_RESPONSE_INVALID,
       {
         suggestion: "The AI did not generate a valid response",
@@ -250,7 +297,7 @@ ${projectName}: Release v${newVersion}
   if (response.includes("-")) return `${firstLine}\n\n${response.trim()}`;
 
   throw new NitError(
-    "Grok API returned invalid commit message format",
+    `${providerName} returned invalid commit message format`,
     ErrorCodes.API_RESPONSE_INVALID,
     {
       response: response.substring(0, 200),

@@ -21,6 +21,7 @@ Every release is the same tedious ritual: strip out debug logs, format the code,
 
 - **Zero config to start** → auto-generates everything on first run
 - **AI-powered changelogs & commits** → describes _what actually changed_ in your code, not "version bump"
+- **Multiple AI providers** → choose between Grok (xAI), OpenAI, or Anthropic (Claude)
 - **Code cleanup built in** → strips `console.log()` calls and unused CSS classes before every release
 - **Automatic formatting** → runs Prettier (or your configured formatter) so diffs stay clean
 - **Fail-safe versioning** → automatic rollback if anything goes wrong mid-release
@@ -55,17 +56,51 @@ npm install -g nit
 
 ## Quick Start
 
-**1. Add your API key**
+**1. Run your first release**
 
-Create a `.env` file in your project root:
-
-```env
-GROK_API_KEY=xai-your-api-key-here
+```bash
+npm run release
 ```
 
-Get a free key at [console.x.ai](https://console.x.ai). Add `.env` to your `.gitignore`.
+On first run, nit will prompt you to select your AI provider:
 
-**2. Release**
+```
+  AI Provider Setup
+  Choose which AI provider nit will use for changelogs and commit messages.
+
+  1) Grok (xAI)          (env: GROK_API_KEY)
+  2) OpenAI              (env: OPENAI_API_KEY)
+  3) Anthropic (Claude)  (env: ANTHROPIC_API_KEY)
+
+  Select provider (1-3):
+```
+
+Your choice is saved to `public/nit.json` and shared with the JetBrains plugin — you only set it once.
+
+**2. Add your API key**
+
+Create a `.env` file in your project root with the key for your chosen provider:
+
+```env
+# Grok (xAI)
+GROK_API_KEY=xai-your-api-key-here
+
+# OpenAI
+OPENAI_API_KEY=sk-your-api-key-here
+
+# Anthropic (Claude)
+ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+```
+
+You only need the key for the provider you selected. Add `.env` to your `.gitignore`.
+
+| Provider  | Get a key at                                                         |
+| --------- | -------------------------------------------------------------------- |
+| Grok      | [console.x.ai](https://console.x.ai)                                 |
+| OpenAI    | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| Anthropic | [console.anthropic.com](https://console.anthropic.com)               |
+
+**3. Release**
 
 ```bash
 npm run release
@@ -110,6 +145,7 @@ Options:
   -i, --interactive      Prompt for options before running
   -s, --skip-update      Skip the self-update check
   -q, --quiet            Minimal output
+      --setup            Re-run AI provider selection
   -h, --help             Show help
 ```
 
@@ -120,6 +156,7 @@ nit                     # Full release to configured branch
 nit -d                  # Dry run — see what would happen
 nit -b develop          # Release to the develop branch
 nit -i                  # Interactive mode — choose options
+nit --setup             # Re-select your AI provider
 ```
 
 ---
@@ -134,24 +171,27 @@ Auto-generated on first run. You can also create or edit it manually:
 {
   "version": "1.0",
   "projectName": "my-app",
-  "branch": "main"
+  "branch": "main",
+  "provider": "grok"
 }
 ```
 
-| Field         | Type     | Description                               | Default          |
-| ------------- | -------- | ----------------------------------------- | ---------------- |
-| `version`     | `string` | Current version (auto-incremented)        | `"1.0"`          |
-| `projectName` | `string` | Name used in commit messages & changelogs | Your folder name |
-| `branch`      | `string` | Default branch to push to                 | `"main"`         |
+| Field         | Type     | Description                                | Default          |
+| ------------- | -------- | ------------------------------------------ | ---------------- |
+| `version`     | `string` | Current version (auto-incremented)         | `"1.0"`          |
+| `projectName` | `string` | Name used in commit messages & changelogs  | Your folder name |
+| `branch`      | `string` | Default branch to push to                  | `"main"`         |
+| `provider`    | `string` | AI provider: `grok`, `openai`, `anthropic` | Set on first run |
 
 ### Environment Variables
 
-Set in your project's `.env` file (checked in order):
+Set in your project's `.env` file. Only the key for your selected provider is required:
 
-| Variable                 | Description        |
-| ------------------------ | ------------------ |
-| `GROK_API_KEY`           | Your Grok API key  |
-| `REACT_APP_GROK_API_KEY` | CRA-compatible key |
+| Variable            | Provider  | Description              |
+| ------------------- | --------- | ------------------------ |
+| `GROK_API_KEY`      | Grok      | xAI Grok API key         |
+| `OPENAI_API_KEY`    | OpenAI    | OpenAI API key           |
+| `ANTHROPIC_API_KEY` | Anthropic | Anthropic Claude API key |
 
 ---
 

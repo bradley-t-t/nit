@@ -3,6 +3,7 @@ package com.nit.release.toolwindow
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.util.ui.JBUI
+import com.nit.release.settings.AiProvider
 import com.nit.release.services.NitOutputListener
 import com.nit.release.services.NitProcessRunner
 import java.awt.*

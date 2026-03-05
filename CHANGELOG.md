@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8.7] - 2026-03-05
+
+- Added support for multiple AI providers for generating changelogs and commit messages. You can now choose between Grok (xAI), OpenAI, and Anthropic (Claude) during setup.
+- Introduced a new `--setup` command-line option in the CLI to re-run AI provider selection at any time.
+- Updated the configuration file (`public/nit.json`) to include a `provider` field that stores the selected AI provider.
+- Enhanced the JetBrains plugin to dynamically set the appropriate environment variable for the chosen AI provider's API key during process execution.
+- Improved documentation in README.md to detail the setup process for AI providers, including where to obtain API keys for each provider and how to configure them in the `.env` file.
+- Added a new settings UI in the JetBrains plugin to manage AI provider selection and API key configuration (based on the creation of `NitConfigurable.kt`).
+
 ## [8.6] - 2026-03-05
 
 - Removed the LICENSE.md file, which previously contained the MIT License text, from the repository.

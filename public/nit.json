@@ -1,5 +1,6 @@
 {
-  "version": "8.6",
+  "version": "8.7",
   "projectName": "nit",
-  "branch": "main"
+  "branch": "main",
+  "provider": "grok"
 }

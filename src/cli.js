@@ -1,6 +1,12 @@
 import { execSync } from "child_process";
 import { createRequire } from "module";
-import { COLORS, SYMBOLS, PACKAGE_NAME, PACKAGE_VERSION } from "./constants.js";
+import {
+  COLORS,
+  SYMBOLS,
+  PACKAGE_NAME,
+  PACKAGE_VERSION,
+  AI_PROVIDERS,
+} from "./constants.js";
 
 function getInstalledVersion() {
   try {
@@ -20,6 +26,7 @@ export function parseArgs(args) {
     verbose: false,
     dryRun: false,
     quiet: false,
+    setup: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -39,6 +46,8 @@ export function parseArgs(args) {
       options.dryRun = true;
     } else if (arg === "--quiet" || arg === "-q") {
       options.quiet = true;
+    } else if (arg === "--setup") {
+      options.setup = true;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -63,20 +72,81 @@ export function printHelp() {
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs production build
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Commits and pushes to git
 
+  ${COLORS.bright}Supported AI Providers:${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Grok (xAI)          ${COLORS.dim}GROK_API_KEY${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} OpenAI (GPT-4o)     ${COLORS.dim}OPENAI_API_KEY${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Anthropic (Claude)  ${COLORS.dim}ANTHROPIC_API_KEY${COLORS.reset}
+
   ${COLORS.bright}Options:${COLORS.reset}
     ${COLORS.brightBlue}-b, --branch <name>${COLORS.reset}   Override branch to push to
     ${COLORS.brightBlue}-s, --skip-update${COLORS.reset}     Skip nit update check
     ${COLORS.brightBlue}-i, --interactive${COLORS.reset}     Interactive mode (prompts for options)
     ${COLORS.brightBlue}-d, --dry-run${COLORS.reset}         Preview without making changes
     ${COLORS.brightBlue}-q, --quiet${COLORS.reset}           Minimal output
+    ${COLORS.brightBlue}    --setup${COLORS.reset}           Re-run AI provider setup
     ${COLORS.brightBlue}-h, --help${COLORS.reset}            Show this help
 
   ${COLORS.bright}Examples:${COLORS.reset}
     ${COLORS.dim}nit${COLORS.reset}              Run a full release
     ${COLORS.dim}nit -d${COLORS.reset}           Preview what would happen
     ${COLORS.dim}nit -b develop${COLORS.reset}   Release to develop branch
+    ${COLORS.dim}nit --setup${COLORS.reset}      Choose your AI provider
 
 `);
+}
+
+/**
+ * Interactive prompt for selecting an AI provider.
+ * Only runs on first use (no provider in nit.json) or when --setup is passed.
+ * Returns the selected provider ID.
+ */
+export async function providerSetup() {
+  const readline = await import("readline");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  const question = (prompt) =>
+    new Promise((resolve) => rl.question(prompt, resolve));
+
+  const providerEntries = Object.entries(AI_PROVIDERS);
+
+  process.stdout.write(`
+  ${COLORS.bright}AI Provider Setup${COLORS.reset}
+  ${COLORS.dim}Choose which AI provider nit will use for changelogs and commit messages.${COLORS.reset}
+  ${COLORS.dim}This choice is saved in public/nit.json and shared with the JetBrains plugin.${COLORS.reset}
+`);
+
+  providerEntries.forEach(([key, provider], index) => {
+    process.stdout.write(
+      `  ${COLORS.brightBlue}${index + 1}${COLORS.reset}) ${provider.name}  ${COLORS.dim}(env: ${provider.envKeys[0]})${COLORS.reset}\n`,
+    );
+  });
+
+  const answer = await question(
+    `\n  ${COLORS.bright}Select provider (1-${providerEntries.length}):${COLORS.reset} `,
+  );
+  rl.close();
+
+  const index = parseInt(answer.trim(), 10) - 1;
+  if (index < 0 || index >= providerEntries.length) {
+    process.stdout.write(
+      `\n  ${COLORS.brightYellow}Invalid selection, defaulting to Grok.${COLORS.reset}\n\n`,
+    );
+    return "grok";
+  }
+
+  const [selectedId, selectedProvider] = providerEntries[index];
+  process.stdout.write(
+    `\n  ${COLORS.brightGreen}${SYMBOLS.check}${COLORS.reset} Selected: ${selectedProvider.name}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.dim}Make sure ${selectedProvider.envKeys[0]} is set in your .env file.${COLORS.reset}\n`,
+  );
+  process.stdout.write(
+    `  ${COLORS.dim}Get a key at: ${selectedProvider.signupUrl}${COLORS.reset}\n\n`,
+  );
+  return selectedId;
 }
 
 export async function interactiveMenu() {

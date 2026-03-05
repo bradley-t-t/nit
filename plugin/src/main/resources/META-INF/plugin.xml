@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.nit.release</id>
     <name>Nit</name>
-    <version>8.6.0</version>
+    <version>8.7.0</version>
     <vendor>Trent</vendor>
 
     <description><![CDATA[
@@ -20,6 +20,12 @@
 
         <applicationService
                 serviceImplementation="com.nit.release.settings.NitSettings"/>
+
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.nit.release.settings.NitConfigurable"
+                id="com.nit.release.settings.NitConfigurable"
+                displayName="Nit Release"/>
     </extensions>
 
     <actions>

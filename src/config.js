@@ -6,38 +6,32 @@ import {
   safeParseJson,
   fileExists,
 } from "./file-utils.js";
-import { ErrorCodes } from "./constants.js";
+import { ErrorCodes, AI_PROVIDERS } from "./constants.js";
 import { NitError } from "./errors.js";
 
 const PROJECT_ROOT = process.cwd();
 
-export function validateApiKey(apiKey) {
+export function validateApiKey(apiKey, providerId = "grok") {
+  const provider = AI_PROVIDERS[providerId];
+  const providerName = provider?.name ?? providerId;
+  const signupUrl = provider?.signupUrl ?? "your AI provider dashboard";
+  const envKeyHint = provider?.envKeys?.[0] ?? "API_KEY";
+
   if (!apiKey) {
     throw new NitError(
-      "GROK_API_KEY not found. Add GROK_API_KEY=your-key to your project's .env file",
+      `API key not found for ${providerName}. Add ${envKeyHint}=your-key to your project's .env file`,
       ErrorCodes.API_KEY_MISSING,
       {
-        suggestion:
-          "Create a .env file in your project root with: GROK_API_KEY=xai-your-key-here",
-        helpUrl: "https://console.x.ai",
-      },
-    );
-  }
-  if (!apiKey.startsWith("xai-") && !apiKey.startsWith("sk-")) {
-    throw new NitError(
-      "Invalid API key format. Key should start with 'xai-' or 'sk-'",
-      ErrorCodes.API_KEY_INVALID,
-      {
-        suggestion: "Check your API key at https://console.x.ai",
-        keyPrefix: apiKey.substring(0, 4) + "...",
+        suggestion: `Create a .env file in your project root with: ${envKeyHint}=your-key-here`,
+        helpUrl: signupUrl,
       },
     );
   }
   if (apiKey.length < 20) {
     throw new NitError(
-      "API key appears to be too short",
+      `API key for ${providerName} appears to be too short`,
       ErrorCodes.API_KEY_INVALID,
-      { suggestion: "Verify your API key at https://console.x.ai" },
+      { suggestion: `Verify your API key at ${signupUrl}` },
     );
   }
   return true;
@@ -49,6 +43,7 @@ export function readNitConfig() {
     version: "1.0",
     projectName: path.basename(PROJECT_ROOT),
     branch: "main",
+    provider: null,
   };
 
   if (!fileExists(nitConfigPath)) {
@@ -69,6 +64,7 @@ export function readNitConfig() {
     version: String(parsed.version || defaultConfig.version),
     projectName: parsed.projectName || defaultConfig.projectName,
     branch: parsed.branch || defaultConfig.branch,
+    provider: parsed.provider || null,
   };
 }
 
@@ -165,9 +161,15 @@ function updatePluginVersion(newVersion) {
 
 export function writeNitConfig(config) {
   const nitConfigPath = path.join(PROJECT_ROOT, "public", "nit.json");
+  const persistedConfig = {
+    version: config.version,
+    projectName: config.projectName,
+    branch: config.branch,
+    provider: config.provider || null,
+  };
   safeWriteFile(
     nitConfigPath,
-    JSON.stringify(config, null, 2) + "\n",
+    JSON.stringify(persistedConfig, null, 2) + "\n",
     "nit.json",
   );
   updatePluginVersion(config.version);

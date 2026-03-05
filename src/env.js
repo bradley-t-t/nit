@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { safeReadFile, safeParseJson, fileExists } from "./file-utils.js";
+import { AI_PROVIDERS } from "./constants.js";
 
 const PROJECT_ROOT = process.cwd();
 
@@ -31,16 +32,20 @@ export function loadEnvFromPath(envPath) {
 
 export function loadEnv() {
   const projectEnvPath = path.join(PROJECT_ROOT, ".env");
-  const projectEnvLoaded = loadEnvFromPath(projectEnvPath);
-  if (
-    projectEnvLoaded &&
-    (process.env.GROK_API_KEY || process.env.REACT_APP_GROK_API_KEY)
-  ) {
-    return "project";
+  loadEnvFromPath(projectEnvPath);
+}
+
+/** Resolves the API key for a given provider from environment variables. */
+export function getApiKeyForProvider(providerId) {
+  const provider = AI_PROVIDERS[providerId];
+  if (!provider) return null;
+  for (const envKey of provider.envKeys) {
+    if (process.env[envKey]) return process.env[envKey];
   }
   return null;
 }
 
+/** @deprecated Use getApiKeyForProvider instead. Kept for backward compatibility. */
 export function getApiKey() {
   return process.env.GROK_API_KEY || process.env.REACT_APP_GROK_API_KEY || null;
 }

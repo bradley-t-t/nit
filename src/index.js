@@ -18,7 +18,7 @@ import {
 } from "./git.js";
 import {
   loadEnv,
-  getApiKey,
+  getApiKeyForProvider,
   checkNodeModules,
   detectBuildCommand,
   detectFormatCommand,
@@ -37,6 +37,7 @@ import {
   checkForUpdates,
   performUpdate,
   reExecuteAfterUpdate,
+  providerSetup,
 } from "./cli.js";
 
 const args = process.argv.slice(2);
@@ -115,14 +116,6 @@ async function main() {
 
   ui.printHeaderWithStatus("Loading environment...");
   loadEnv();
-  const apiKey = getApiKey();
-
-  try {
-    validateApiKey(apiKey);
-  } catch (err) {
-    ui.printHeaderWithStatus(`Environment error: ${err.message}`);
-    process.exit(1);
-  }
 
   ui.printHeaderWithStatus("Reading project config...");
   let nitConfig;
@@ -131,6 +124,30 @@ async function main() {
     originalNitConfig = { ...nitConfig };
   } catch (err) {
     ui.printHeaderWithStatus(`Config error: ${err.message}`);
+    process.exit(1);
+  }
+
+  // Provider setup: run if --setup flag passed or no provider configured yet
+  let providerId = nitConfig.provider;
+  if (cliOptions.setup || !providerId) {
+    providerId = await providerSetup();
+    nitConfig.provider = providerId;
+    try {
+      writeNitConfig(nitConfig);
+      originalNitConfig = { ...nitConfig };
+    } catch {}
+    if (cliOptions.setup) {
+      ui.printHeaderWithStatus("Provider setup complete");
+      process.exit(0);
+    }
+  }
+
+  const apiKey = getApiKeyForProvider(providerId);
+
+  try {
+    validateApiKey(apiKey, providerId);
+  } catch (err) {
+    ui.printHeaderWithStatus(`Environment error: ${err.message}`);
     process.exit(1);
   }
 
@@ -180,6 +197,7 @@ async function main() {
       version: newVersion,
       projectName,
       branch: nitConfig.branch,
+      provider: providerId,
     };
     if (!cliOptions.dryRun) writeNitConfig(updatedConfig);
   } catch (err) {
@@ -202,6 +220,7 @@ async function main() {
       changelogDiff,
       changelogStat,
       changelogFiles,
+      providerId,
     );
   } catch (err) {
     ui.printHeaderWithStatus(
@@ -257,6 +276,7 @@ async function main() {
       finalDiff,
       finalStat,
       finalChangedFiles,
+      providerId,
     );
   } catch (err) {
     ui.printHeaderWithStatus(
