@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8.5] - 2026-03-05
+
+- Removed the Copilot instructions file from the repository, which previously provided context for GitHub Copilot in the project.
+
 ## [8.4] - 2026-03-05
 
 - Enhanced the NitProcessRunner in the IntelliJ plugin to improve path resolution for the Nit executable, now checking for project-local installations, self-development scenarios in the Nit repository, and NVM global installs before falling back to common global paths.
