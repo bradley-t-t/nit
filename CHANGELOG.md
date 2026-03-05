@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8.3] - 2026-03-05
+
+- No functional changes or features were introduced in this release; the update only reflects version increments across configuration files.
+
 ## [8.2] - 2026-03-05
 
 - Rebranded the project from "turl-release" to "nit" throughout the codebase, including renaming configuration files, updating documentation, and revising project references in scripts and plugins.
