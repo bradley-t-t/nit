@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.5] - 2026-03-05
+
+- Updated the IntelliJ IDEA/WebStorm plugin to remove the "Dry Run" feature, simplifying the interface by eliminating the associated button and action.
+- Enhanced the plugin's log output in the tool window to feature styled formatting, explicitly avoiding raw terminal text, logo spam, and changelog content in the live stream.
+- Improved the README.md to reflect the updated plugin capabilities, emphasizing styled log output and changelog preview only on successful completion.
+- Refined the plugin's UI by removing references to the "Dry Run" option in the header and button layout.
+
 ## [9.4] - 2026-03-05
 
 - Enhanced the NitPanel UI in the IntelliJ plugin by introducing styled log output with badges for step labels, improving readability of log messages with distinct colors for different log levels and step indicators.

@@ -20,9 +20,9 @@ import javax.swing.text.StyledDocument
  * Nit Release tool window panel.
  *
  * Layout (top → bottom):
- *   [Header]   Publish / Dry Run / Stop buttons
+ *   [Header]   Publish / Stop buttons
  *   [Progress] Active pipeline step label
- *   [Log]      Scrollable live output stream
+ *   [Log]      Scrollable live output stream (styled, no logo spam, no changelog)
  *   [Result]   Outcome banner, shown after each run
  */
 class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutputListener {
@@ -30,8 +30,7 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
     private val runner = NitProcessRunner(project)
 
     private val publishButton = actionButton("Publish", AllIcons.Actions.Execute, isPrimary = true)
-    private val dryRunButton  = actionButton("Dry Run", AllIcons.Actions.Preview,  isPrimary = false)
-    private val stopButton    = actionButton("Stop",    AllIcons.Actions.Suspend,   isPrimary = false)
+    private val stopButton    = actionButton("Stop",    AllIcons.Actions.Suspend,  isPrimary = false)
         .apply { isVisible = false }
 
     private val stepLabel = JBLabel("Ready").apply {
@@ -49,19 +48,20 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     private val resultBanner = ResultBanner()
 
-    private val changelogLines = mutableListOf<String>()
-    private val errorLines     = mutableListOf<String>()
+    private val changelogLines  = mutableListOf<String>()
+    private val errorLines      = mutableListOf<String>()
     private var capturingChangelog = false
     private var changelogDone      = false
     private var releaseSkipped     = false
+    // Tracks whether the one-time styled header has been printed for this run.
+    private var headerPrinted      = false
 
     init {
         background = UIUtil.getPanelBackground()
         border     = JBUI.Borders.empty()
         runner.setOutputListener(this)
 
-        publishButton.addActionListener { launch(dryRun = false) }
-        dryRunButton.addActionListener  { launch(dryRun = true)  }
+        publishButton.addActionListener { launch() }
         stopButton.addActionListener    { runner.stop(); onStopped() }
 
         add(buildHeader(), BorderLayout.NORTH)
@@ -76,7 +76,6 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
         add(JPanel(FlowLayout(FlowLayout.LEFT, 6, 0)).apply {
             isOpaque = false
             add(publishButton)
-            add(dryRunButton)
             add(stopButton)
         }, BorderLayout.WEST)
     }
@@ -93,13 +92,13 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     // ── Run lifecycle ─────────────────────────────────────────────────────
 
-    private fun launch(dryRun: Boolean) {
+    private fun launch() {
         if (runner.isRunning) return
         resetState()
         setRunning(true)
         stepLabel.text       = "Starting…"
         stepLabel.foreground = NitTheme.BLUE
-        if (dryRun) runner.execute("--dry-run") else runner.execute()
+        runner.execute()
     }
 
     private fun resetState() {
@@ -110,11 +109,11 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
         capturingChangelog = false
         changelogDone      = false
         releaseSkipped     = false
+        headerPrinted      = false
     }
 
     private fun setRunning(on: Boolean) {
         publishButton.isEnabled = !on
-        dryRunButton.isEnabled  = !on
         stopButton.isVisible    = on
     }
 
@@ -132,7 +131,17 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
             val trimmed = cleanLine.trim()
             if (trimmed.isEmpty()) return@invokeLater
 
-            // Capture changelog lines for the result banner but never show them in the log pane.
+            // Suppress ASCII logo lines — they are box-drawing art from the CLI header.
+            if (isLogoLine(trimmed)) {
+                // Print a single styled "Nit Release" header in place of the raw ASCII block.
+                if (!headerPrinted) {
+                    headerPrinted = true
+                    appendRunHeader()
+                }
+                return@invokeLater
+            }
+
+            // Capture changelog lines for the result banner; never show them in the log pane.
             if (capturingChangelog && !changelogDone) {
                 if (trimmed.startsWith("- ") || trimmed.startsWith("## [")) {
                     changelogLines.add(trimmed)
@@ -215,6 +224,24 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     private enum class LogLevel { INFO, WARN, ERROR }
 
+    /** Appends a single styled "Nit Release" header row at the top of the log pane. */
+    private fun appendRunHeader() {
+        val doc      = logPane.styledDocument
+        val baseFont = logPane.font
+        doc.insertStyledText("  NIT RELEASE\n", SimpleAttributeSet().apply {
+            StyleConstants.setForeground(this, NitTheme.BLUE)
+            StyleConstants.setBold(this, true)
+            StyleConstants.setFontFamily(this, baseFont.family)
+            StyleConstants.setFontSize(this, baseFont.size + 1)
+        })
+        doc.insertStyledText("  ─────────────────────────────────────\n", SimpleAttributeSet().apply {
+            StyleConstants.setForeground(this, JBColor.border())
+            StyleConstants.setFontFamily(this, baseFont.family)
+            StyleConstants.setFontSize(this, baseFont.size)
+        })
+        logPane.caretPosition = doc.length
+    }
+
     /**
      * Appends a styled log row:  [STEP]  message text
      * Badge is colored by level; message uses a subtler secondary color.
@@ -256,6 +283,17 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
         insertString(length, text, attrs)
 
     // ── Line classifiers ──────────────────────────────────────────────────
+
+    /**
+     * Detects lines that are part of the CLI ASCII logo block.
+     * These are box-drawing characters (╗, ║, ╚, etc.) or version lines.
+     */
+    private fun isLogoLine(line: String): Boolean {
+        val logoChars = listOf("█", "╗", "║", "╚", "╔", "═", "╝", "╠", "╣", "╦", "╩")
+        return logoChars.any { line.contains(it) } ||
+               line.contains("Automated Release Management") ||
+               line.matches(Regex(".*Version \\d+\\.\\d+.*"))
+    }
 
     private fun matchStep(line: String) =
         PIPELINE_STEPS.find { step -> step.triggers.any { line.contains(it, ignoreCase = true) } }
@@ -329,13 +367,13 @@ private class ResultBanner : JPanel(BorderLayout()) {
             ResultOutcome.SKIPPED -> Triple(NitTheme.WARN,    NitTheme.WARN_MUTED,    AllIcons.General.Warning)
             ResultOutcome.FAILURE -> Triple(NitTheme.DANGER,  NitTheme.DANGER_MUTED,  AllIcons.General.Error)
         }
-        background              = bg
-        isOpaque                = true
-        headlineLabel.text      = headline
+        background               = bg
+        isOpaque                 = true
+        headlineLabel.text       = headline
         headlineLabel.foreground = fg
-        headlineLabel.icon      = icon
-        detailArea.background   = bg
-        detailScroll.isVisible  = detail != null
+        headlineLabel.icon       = icon
+        detailArea.background    = bg
+        detailScroll.isVisible   = detail != null
         if (detail != null) detailArea.text = detail
         isVisible = true
         revalidate()
@@ -343,7 +381,7 @@ private class ResultBanner : JPanel(BorderLayout()) {
     }
 
     fun reset() {
-        isVisible = false
+        isVisible              = false
         headlineLabel.text     = ""
         detailArea.text        = ""
         detailScroll.isVisible = false

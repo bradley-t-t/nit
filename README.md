@@ -245,9 +245,9 @@ nit fails loudly and clearly — no silent corruption, no half-finished releases
 
 nit ships with an optional **WebStorm / IntelliJ IDEA plugin** that gives you a dedicated tool window to run releases without leaving your IDE.
 
-- One-click publish from the sidebar
-- Real-time pipeline status as each step executes
-- Changelog preview on completion
+- One-click **Publish** from the sidebar
+- Real-time pipeline status as each step executes — styled log output, not raw terminal text
+- Changelog preview on successful completion
 - Error reporting with context
 - **AI provider selection** in Settings → Tools → Nit Release (Grok, OpenAI, or Anthropic)
 - Provider choice is shared with the CLI via `public/nit.json` — configure once, use everywhere

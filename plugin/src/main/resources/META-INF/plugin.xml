@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.nit.release</id>
     <name>Nit</name>
-    <version>9.4.0</version>
+    <version>9.5.0</version>
     <vendor>Trent</vendor>
 
     <description><![CDATA[
@@ -39,11 +39,6 @@
                     description="Run a full nit release"
                     icon="AllIcons.Actions.Execute"/>
 
-            <action id="NitRelease.DryRun"
-                    class="com.nit.release.actions.NitDryRunAction"
-                    text="Dry Run"
-                    description="Preview release without making changes"
-                    icon="AllIcons.Actions.Preview"/>
 
             <action id="NitRelease.Interactive"
                     class="com.nit.release.actions.NitInteractiveAction"
