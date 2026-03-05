@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8.6] - 2026-03-05
+
+- Removed the LICENSE.md file, which previously contained the MIT License text, from the repository.
+
 ## [8.5] - 2026-03-05
 
 - Removed the Copilot instructions file from the repository, which previously provided context for GitHub Copilot in the project.
