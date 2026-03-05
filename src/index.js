@@ -192,6 +192,8 @@ async function main() {
   const changelogDiff = getGitDiff(true);
   const changelogStat = getGitDiffStat(true);
   const changelogFiles = getChangedFiles(true);
+  const today = new Date().toISOString().split("T")[0];
+  const fallbackChangelog = `## [${newVersion}] - ${today}\n\n- ${projectName} Release v${newVersion}`;
   try {
     changelogEntry = await generateChangelog(
       apiKey,
@@ -202,8 +204,10 @@ async function main() {
       changelogFiles,
     );
   } catch (err) {
-    ui.printHeaderWithStatus(`Changelog generation failed: ${err.message}`);
-    exitWithRollback(1);
+    ui.printHeaderWithStatus(
+      `AI changelog unavailable, using fallback: ${err.message}`,
+    );
+    changelogEntry = fallbackChangelog;
   }
 
   process.stdout.write(`\n${changelogEntry}\n`);
@@ -256,9 +260,9 @@ async function main() {
     );
   } catch (err) {
     ui.printHeaderWithStatus(
-      `Commit message generation failed: ${err.message}`,
+      `AI commit message unavailable, using fallback: ${err.message}`,
     );
-    exitWithRollback(1);
+    commitMessage = `${projectName}: Release v${newVersion}`;
   }
 
   if (!cliOptions.dryRun) {
