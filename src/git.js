@@ -221,36 +221,6 @@ export function gitPush(branch = "main") {
   }
 }
 
-export function ensureGitHooksInstalled() {
-  const hooksDir = path.join(PROJECT_ROOT, ".git", "hooks");
-  if (!fs.existsSync(hooksDir)) return false;
-
-  const postCommitPath = path.join(hooksDir, "post-commit");
-  if (
-    !fs.existsSync(postCommitPath) ||
-    !fs.readFileSync(postCommitPath, "utf-8").includes("turl-release")
-  ) {
-    const hookContent = `#!/bin/sh
-# TURL Auto-Learning Hook
-if command -v turl-release &> /dev/null; then
-  (turl-release _post-commit &> /dev/null &)
-fi
-`;
-    let content = hookContent;
-    if (fs.existsSync(postCommitPath)) {
-      const existing = fs.readFileSync(postCommitPath, "utf-8");
-      if (!existing.includes("turl-release")) {
-        content = existing.trim() + "\n\n" + hookContent;
-      } else {
-        return true;
-      }
-    }
-    fs.writeFileSync(postCommitPath, content, { mode: 0o755 });
-    return true;
-  }
-  return true;
-}
-
 export function runBuild(buildCommand) {
   return new Promise((resolve, reject) => {
     const [cmd, ...cmdArgs] = buildCommand.split(" ");

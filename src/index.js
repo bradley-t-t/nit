@@ -13,7 +13,6 @@ import {
   getChangedFiles,
   gitCommit,
   gitPush,
-  ensureGitHooksInstalled,
   runBuild,
   execCommand,
 } from "./git.js";
@@ -31,22 +30,10 @@ import {
   writeTurlConfig,
   updateChangelog,
 } from "./config.js";
-import {
-  generateChangelog,
-  generateCommitMessage,
-  checkRulesViolations,
-  generateNewRules,
-} from "./api.js";
-import {
-  readTurlRules,
-  appendTurlRule,
-  cleanupRulesFile,
-  handlePostCommitHook,
-} from "./rules.js";
+import { generateChangelog, generateCommitMessage } from "./api.js";
 import {
   parseArgs,
   interactiveMenu,
-  promptUserForViolations,
   checkForUpdates,
   performUpdate,
   reExecuteAfterUpdate,
@@ -70,11 +57,6 @@ function exitWithRollback(code = 1) {
 
 async function main() {
   const cliOptions = parseArgs(args);
-
-  if (args[0] === "_post-commit") {
-    await handlePostCommitHook();
-    process.exit(0);
-  }
 
   ui.printHeaderWithStatus("Checking for updates...");
 
@@ -100,7 +82,6 @@ async function main() {
   }
 
   ui.printHeaderWithStatus("Initializing...");
-  ensureGitHooksInstalled();
 
   let interactiveOptions = {};
   if (cliOptions.interactive) {
@@ -142,9 +123,6 @@ async function main() {
     ui.printHeaderWithStatus(`Environment error: ${err.message}`);
     process.exit(1);
   }
-
-  ui.printHeaderWithStatus("Consolidating project rules...");
-  await cleanupRulesFile(apiKey);
 
   ui.printHeaderWithStatus("Reading project config...");
   let turlConfig;
@@ -190,38 +168,10 @@ async function main() {
 
   ui.printHeaderWithStatus("Checking for changes...");
   const diff = getGitDiff();
-  const changedFiles = getChangedFiles();
 
   if (!hasChanges() && !diff.trim()) {
     ui.printHeaderWithStatus("No changes detected - Release skipped");
     process.exit(0);
-  }
-
-  ui.printHeaderWithStatus("Checking project rules...");
-  const { rules: projectRules } = readTurlRules();
-
-  if (!interactiveOptions.skipRulesCheck && projectRules.length > 0) {
-    try {
-      const stat = getGitDiffStat();
-      const violationCheck = await checkRulesViolations(
-        apiKey,
-        diff,
-        stat,
-        changedFiles,
-        projectRules,
-      );
-      if (!violationCheck.passed) {
-        const shouldContinue = await promptUserForViolations(
-          violationCheck.violations,
-        );
-        if (!shouldContinue) {
-          ui.printHeaderWithStatus(
-            "Release aborted - Fix violations and retry",
-          );
-          process.exit(0);
-        }
-      }
-    } catch {}
   }
 
   ui.printHeaderWithStatus("Updating version files...");
@@ -279,26 +229,6 @@ async function main() {
       }
     }
   }
-
-  ui.printHeaderWithStatus("Learning from this release...");
-  const preDiff = getGitDiff(true);
-  const preStat = getGitDiffStat(true);
-  const preChangedFiles = getChangedFiles(true);
-  try {
-    const newRules = await generateNewRules(
-      apiKey,
-      preDiff,
-      preStat,
-      preChangedFiles,
-      projectRules,
-    );
-    if (newRules.length > 0 && !cliOptions.dryRun) {
-      for (const rule of newRules) {
-        appendTurlRule(rule);
-      }
-      await cleanupRulesFile(apiKey);
-    }
-  } catch {}
 
   ui.printHeaderWithStatus("Staging all changes...");
   try {

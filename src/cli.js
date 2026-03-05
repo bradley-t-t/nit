@@ -58,13 +58,10 @@ export function printHelp() {
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks for turl-release updates and auto-updates
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs code cleanup (removes console.logs)
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Formats code with Prettier
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks changes against project rules
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Increments version in turl.json + package.json
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Generates AI changelog and commit message
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs production build
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Commits and pushes to git
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Learns new rules from changes (like Claude's lessons.md)
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Syncs rules to .github/copilot-instructions.md
 
   ${COLORS.bright}Options:${COLORS.reset}
     ${COLORS.brightBlue}-b, --branch <name>${COLORS.reset}   Override branch to push to
@@ -95,7 +92,6 @@ export async function interactiveMenu() {
     branch: null,
     skipBuild: false,
     skipFormat: false,
-    skipRulesCheck: false,
   };
 
   const branchAnswer = await question(`\n  Branch (default): `);
@@ -107,28 +103,8 @@ export async function interactiveMenu() {
   const formatAnswer = await question(`  Run formatter? (Y/n): `);
   options.skipFormat = formatAnswer.trim().toLowerCase() === "n";
 
-  const rulesAnswer = await question(`  Check rules? (Y/n): `);
-  options.skipRulesCheck = rulesAnswer.trim().toLowerCase() === "n";
-
   rl.close();
   return options;
-}
-
-export async function promptUserForViolations(violations) {
-  const readline = await import("readline");
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    process.stdout.write(`\n  Rule violations found: ${violations.length}\n`);
-    rl.question(`  Continue anyway? (y/N): `, (answer) => {
-      rl.close();
-      const normalized = answer.trim().toLowerCase();
-      resolve(normalized === "y" || normalized === "yes");
-    });
-  });
 }
 
 export async function checkForUpdates() {

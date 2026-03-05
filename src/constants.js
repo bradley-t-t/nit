@@ -1,4 +1,4 @@
-export const PACKAGE_VERSION = "4.3.0";
+export const PACKAGE_VERSION = "8.0.0";
 export const PACKAGE_NAME = "turl-release";
 
 export const COLORS = {
@@ -34,6 +34,3 @@ export const ErrorCodes = {
   VERSION_JSON_INVALID: "VERSION_JSON_INVALID",
   BUILD_FAILED: "BUILD_FAILED",
 };
-
-export const TURL_SECTION_START = "<!-- TURL-RULES-START -->";
-export const TURL_SECTION_END = "<!-- TURL-RULES-END -->";

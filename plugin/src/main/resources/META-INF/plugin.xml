@@ -1,12 +1,12 @@
 <idea-plugin>
     <id>com.turl.release</id>
     <name>TURL Release</name>
-    <version>7.3.0</version>
+    <version>8.1.0</version>
     <vendor>Trent</vendor>
 
     <description><![CDATA[
     Automated Release Management for your projects. Runs turl-release CLI directly from WebStorm
-    with a dedicated tool window, actions, and persistent settings.
+    with a dedicated tool window and actions.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -17,12 +17,6 @@
                     secondary="false"
                     icon="AllIcons.Actions.Upload"
                     factoryClass="com.turl.release.toolwindow.TurlToolWindowFactory"/>
-
-        <applicationConfigurable
-                parentId="tools"
-                instance="com.turl.release.settings.TurlSettingsConfigurable"
-                id="com.turl.release.settings"
-                displayName="TURL Release"/>
 
         <applicationService
                 serviceImplementation="com.turl.release.settings.TurlSettings"/>
@@ -50,14 +44,6 @@
                     text="Interactive Release"
                     description="Run release in interactive mode"
                     icon="AllIcons.Actions.RunAll"/>
-
-            <separator/>
-
-            <action id="TurlRelease.Settings"
-                    class="com.turl.release.actions.TurlOpenSettingsAction"
-                    text="Settings"
-                    description="Open TURL Release settings"
-                    icon="AllIcons.General.Settings"/>
         </group>
     </actions>
 </idea-plugin>
