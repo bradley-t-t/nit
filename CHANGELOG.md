@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [10.0] - 2026-03-05
+
+- Added automatic AI provider setup in the IntelliJ/WebStorm plugin. If no provider is configured in `public/nit.json`, a native dialog now appears automatically to let you choose a provider (Grok, OpenAI, or Anthropic) without needing to use the terminal. The selection is saved to `nit.json` and the release process restarts.
+- Updated the plugin to handle a specific CLI sentinel (`NIT:NEEDS_PROVIDER_SETUP`) and exit code (2) to trigger the provider selection dialog when needed.
+- Enhanced the README.md to document the new automatic provider setup feature, including a note about the first-run behavior of the plugin prompting for provider selection.
+- Improved the NitPanel.kt code to manage the state of provider setup needs and to display the setup dialog seamlessly during the release process.
+
 ## [9.9] - 2026-03-05
 
 - Adjusted the UI layout in the NitPanel by reducing the preferred height of the detail scroll pane from 200 to 130 pixels for a more compact view.

@@ -97,10 +97,20 @@ export function printHelp() {
 
 /**
  * Interactive prompt for selecting an AI provider.
- * Only runs on first use (no provider in nit.json) or when --setup is passed.
- * Returns the selected provider ID.
+ *
+ * When stdin is not a TTY (e.g. running from the JetBrains plugin), emits a
+ * structured sentinel line `NIT:NEEDS_PROVIDER_SETUP` and exits with code 2
+ * so the plugin can intercept it and show a native UI dialog instead of hanging.
+ *
+ * @returns The selected provider ID string.
  */
 export async function providerSetup() {
+  // Non-interactive environment — signal the plugin to handle setup via its own UI.
+  if (!process.stdin.isTTY) {
+    process.stdout.write("NIT:NEEDS_PROVIDER_SETUP\n");
+    process.exit(2);
+  }
+
   const readline = await import("readline");
   const rl = readline.createInterface({
     input: process.stdin,
@@ -117,7 +127,7 @@ export async function providerSetup() {
   ${COLORS.dim}This choice is saved in public/nit.json and shared with the JetBrains plugin.${COLORS.reset}
 `);
 
-  providerEntries.forEach(([key, provider], index) => {
+  providerEntries.forEach(([, provider], index) => {
     process.stdout.write(
       `  ${COLORS.brightBlue}${index + 1}${COLORS.reset}) ${provider.name}  ${COLORS.dim}(env: ${provider.envKeys[0]})${COLORS.reset}\n`,
     );

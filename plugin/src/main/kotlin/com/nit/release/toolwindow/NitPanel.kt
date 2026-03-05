@@ -10,11 +10,15 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.nit.release.services.NitOutputListener
 import com.nit.release.services.NitProcessRunner
+import com.nit.release.settings.AiProvider
 import java.awt.*
+import java.io.File
 import javax.swing.*
 import javax.swing.text.SimpleAttributeSet
 import javax.swing.text.StyleConstants
 import javax.swing.text.StyledDocument
+
+private const val PROVIDER_SETUP_SENTINEL = "NIT:NEEDS_PROVIDER_SETUP"
 
 /**
  * Nit Release tool window panel.
@@ -48,13 +52,14 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     private val resultBanner = ResultBanner()
 
-    private val changelogLines  = mutableListOf<String>()
-    private val errorLines      = mutableListOf<String>()
+    private val changelogLines     = mutableListOf<String>()
+    private val errorLines         = mutableListOf<String>()
     private var capturingChangelog = false
     private var changelogDone      = false
     private var releaseSkipped     = false
-    // Tracks whether the one-time styled header has been printed for this run.
     private var headerPrinted      = false
+    // Set to true when the process exits with code 2 (needs provider setup).
+    private var needsProviderSetup = false
 
     init {
         background = UIUtil.getPanelBackground()
@@ -110,6 +115,7 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
         changelogDone      = false
         releaseSkipped     = false
         headerPrinted      = false
+        needsProviderSetup = false
     }
 
     private fun setRunning(on: Boolean) {
@@ -131,9 +137,14 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
             val trimmed = cleanLine.trim()
             if (trimmed.isEmpty()) return@invokeLater
 
-            // Suppress ASCII logo lines — they are box-drawing art from the CLI header.
+            // The CLI emits this sentinel when it detects a non-TTY environment
+            // and needs the user to pick an AI provider interactively.
+            if (trimmed == PROVIDER_SETUP_SENTINEL) {
+                needsProviderSetup = true
+                return@invokeLater
+            }
+
             if (isLogoLine(trimmed)) {
-                // Print a single styled "Nit Release" header in place of the raw ASCII block.
                 if (!headerPrinted) {
                     headerPrinted = true
                     appendRunHeader()
@@ -141,7 +152,6 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
                 return@invokeLater
             }
 
-            // Capture changelog lines for the result banner; never show them in the log pane.
             if (capturingChangelog && !changelogDone) {
                 if (trimmed.startsWith("- ") || trimmed.startsWith("## [")) {
                     changelogLines.add(trimmed)
@@ -190,6 +200,12 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     override fun onProcessFinished(exitCode: Int) {
         ApplicationManager.getApplication().invokeLater {
+            // Exit code 2 means the CLI needs a provider selected — show a dialog.
+            if (exitCode == 2 && needsProviderSetup) {
+                showProviderSetupDialog()
+                return@invokeLater
+            }
+
             val changelog = changelogLines.takeIf { it.isNotEmpty() }?.joinToString("\n")
 
             when {
@@ -220,6 +236,118 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
         }
     }
 
+    // ── Provider setup dialog ─────────────────────────────────────────────
+
+    /**
+     * Shows a native dialog to pick an AI provider when nit.json has none configured.
+     * Writes the selection directly to `public/nit.json` and re-runs the release.
+     */
+    private fun showProviderSetupDialog() {
+        setRunning(false)
+        stepLabel.text       = "Provider setup required"
+        stepLabel.foreground = NitTheme.WARN
+
+        val providers = AiProvider.entries.toTypedArray()
+        val displayNames = providers.map { "${it.displayName}  (${it.envKey})" }.toTypedArray()
+
+        val selectedIndex = JOptionPane.showOptionDialog(
+            this,
+            buildProviderDialogPanel(providers),
+            "AI Provider Setup",
+            JOptionPane.DEFAULT_OPTION,
+            JOptionPane.PLAIN_MESSAGE,
+            AllIcons.Actions.Upload,
+            displayNames,
+            displayNames[0]
+        )
+
+        if (selectedIndex < 0) {
+            // User dismissed — show a banner so they know what to do next.
+            appendStyledLog("Provider setup cancelled. Open Settings → Tools → Nit Release to configure.", LogLevel.WARN, "Setup")
+            stepLabel.text       = "Setup cancelled"
+            stepLabel.foreground = UIUtil.getContextHelpForeground()
+            return
+        }
+
+        val chosenProvider = providers[selectedIndex]
+        val saved = writeProviderToNitJson(chosenProvider)
+
+        if (saved) {
+            appendStyledLog("Provider set to ${chosenProvider.displayName}. Restarting release…", LogLevel.INFO, "Setup")
+            stepLabel.text       = "Provider saved — restarting…"
+            stepLabel.foreground = NitTheme.BLUE
+            // Re-run now that nit.json has a provider.
+            resetState()
+            setRunning(true)
+            runner.execute()
+        } else {
+            appendStyledLog(
+                "Could not write provider to nit.json. Set ${chosenProvider.envKey} in Settings → Tools → Nit Release.",
+                LogLevel.ERROR, "Setup"
+            )
+            stepLabel.text       = "Setup failed — configure manually"
+            stepLabel.foreground = NitTheme.DANGER
+        }
+    }
+
+    /**
+     * Builds the descriptive panel shown inside the provider selection dialog.
+     * Explains what the choice does and where the key is stored.
+     */
+    private fun buildProviderDialogPanel(providers: Array<AiProvider>): JPanel {
+        val labelFont  = UIUtil.getLabelFont()
+        val smallFont  = JBUI.Fonts.smallFont()
+        val dimColor   = UIUtil.getContextHelpForeground()
+
+        return JPanel(BorderLayout(0, 8)).apply {
+            isOpaque = false
+            border   = JBUI.Borders.empty(4, 0, 8, 0)
+
+            add(JBLabel("<html><b>Choose an AI provider for changelog and commit messages.</b></html>").apply {
+                font = labelFont
+            }, BorderLayout.NORTH)
+
+            add(JPanel(GridLayout(0, 1, 0, 2)).apply {
+                isOpaque = false
+                providers.forEach { provider ->
+                    add(JBLabel("<html>${provider.displayName} — set <code>${provider.envKey}</code> in your .env</html>").apply {
+                        font       = smallFont
+                        foreground = dimColor
+                    })
+                }
+            }, BorderLayout.CENTER)
+
+            add(JBLabel("<html><i>This choice is saved to public/nit.json.</i></html>").apply {
+                font       = smallFont
+                foreground = dimColor
+            }, BorderLayout.SOUTH)
+        }
+    }
+
+    /**
+     * Writes the `provider` field into `public/nit.json` in the project root.
+     * @return true if the write succeeded.
+     */
+    private fun writeProviderToNitJson(provider: AiProvider): Boolean {
+        val projectBase = project.basePath ?: return false
+        val nitJsonFile = File(projectBase, "public/nit.json")
+
+        return try {
+            val existing = if (nitJsonFile.exists()) nitJsonFile.readText().trimEnd() else "{}"
+            // Inject/replace the "provider" field while preserving all other fields.
+            val updated = if (existing.contains("\"provider\"")) {
+                existing.replace(Regex("\"provider\"\\s*:\\s*\"[^\"]*\""), "\"provider\": \"${provider.providerId}\"")
+            } else {
+                existing.trimEnd('}').trimEnd() + ",\n  \"provider\": \"${provider.providerId}\"\n}"
+            }
+            nitJsonFile.parentFile.mkdirs()
+            nitJsonFile.writeText(updated)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     // ── Log helpers ───────────────────────────────────────────────────────
 
     private enum class LogLevel { INFO, WARN, ERROR }
@@ -244,14 +372,14 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
     }
 
     /**
-     * Appends a styled log row with a fixed-width step badge and a single `▸` separator:
+     * Appends a styled log row:
      *   Build         ▸  Running production build...
      *
-     * The CLI already emits a leading `▸` on most lines — strip it to avoid doubling.
+     * Strips any leading `▸` the CLI already emits to avoid doubling.
      */
     private fun appendStyledLog(message: String, level: LogLevel, stepLabel: String?) {
-        val doc      = logPane.styledDocument
-        val baseFont = logPane.font
+        val doc            = logPane.styledDocument
+        val baseFont       = logPane.font
         val displayMessage = message.trimStart().removePrefix("▸").trimStart()
 
         val badgeColor = when (level) {
@@ -267,7 +395,6 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
         val dimColor = JBColor(Color(0x888888), Color(0x666666))
 
         if (stepLabel != null) {
-            // Fixed-width badge: right-pad to 12 chars so all messages align vertically.
             doc.insertStyledText("  ${stepLabel.padEnd(12)}", SimpleAttributeSet().apply {
                 StyleConstants.setForeground(this, badgeColor)
                 StyleConstants.setBold(this, true)
@@ -297,10 +424,6 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     // ── Line classifiers ──────────────────────────────────────────────────
 
-    /**
-     * Detects lines that are part of the CLI ASCII logo block.
-     * These are box-drawing characters (╗, ║, ╚, etc.) or version lines.
-     */
     private fun isLogoLine(line: String): Boolean {
         val logoChars = listOf("█", "╗", "║", "╚", "╔", "═", "╝", "╠", "╣", "╦", "╩")
         return logoChars.any { line.contains(it) } ||
@@ -315,7 +438,6 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     private fun isErrorLine(line: String): Boolean {
         val lower = line.lowercase()
-        // "unavailable, using fallback" is a soft warning — not a fatal error.
         if (lower.contains("unavailable") && lower.contains("fallback")) return false
         return ERROR_KEYWORDS.any { line.contains(it, ignoreCase = true) }
     }
@@ -400,19 +522,19 @@ private class ResultBanner : JPanel(BorderLayout()) {
                     .replace(">", "&gt;")
                 when {
                     line.startsWith("## ") ->
-                        "<p style='margin:5px 0 2px 0;padding:0;font-weight:bold;font-size:10px;" +
+                        "<p style='margin:2px 0 1px 0;padding:0;font-weight:bold;font-size:9px;" +
                         "color:$fgHex;letter-spacing:0.04em;text-transform:uppercase;'>" +
                         "${escaped.removePrefix("## ")}</p>"
                     line.startsWith("- ")  ->
-                        "<p style='margin:0;padding:1px 0;font-size:10px;color:$bodyHex;'>" +
-                        "<span style='color:$fgHex;margin-right:4px;'>▸ </span>" +
+                        "<p style='margin:0;padding:0;line-height:1.4;font-size:9px;color:$bodyHex;'>" +
+                        "<span style='color:$fgHex;margin-right:3px;'>▸ </span>" +
                         "${escaped.removePrefix("- ")}</p>"
                     line.isBlank()         -> ""
                     else                   ->
-                        "<p style='margin:0;padding:1px 0;font-size:10px;color:$dimHex;'>$escaped</p>"
+                        "<p style='margin:0;padding:0;line-height:1.4;font-size:9px;color:$dimHex;'>$escaped</p>"
                 }
             }
-            detailArea.text = "<html><body style='font-family:monospace;padding:4px 6px;margin:0;'>$htmlLines</body></html>"
+            detailArea.text = "<html><body style='font-family:monospace;padding:2px 4px;margin:0;'>$htmlLines</body></html>"
             detailScroll.isVisible = true
         } else {
             detailScroll.isVisible = false
