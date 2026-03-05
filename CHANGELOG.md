@@ -17,6 +17,14 @@ All notable changes to this project will be documented in this file.
 - Removed several source files including api.js, cli.js, git.js, and rules.js, effectively eliminating significant portions of the CLI tool's functionality and rule management logic.
 - Simplified the index.js file by reducing its content, likely streamlining the main entry point of the application.
 - Updated constants.js with minor changes to the defined constants.
+
+## [8.1] - 2026-03-05
+
+- Removed the auto-managed project rules section from copilot-instructions.md, eliminating the TURL rules content that was previously embedded in the documentation.
+- Deleted the \_test_rules.js file, which contained a comprehensive list of project rules and validation logic for testing rule compliance.
+- Removed several source files including api.js, cli.js, git.js, and rules.js, effectively eliminating significant portions of the CLI tool's functionality and rule management logic.
+- Simplified the index.js file by reducing its content, likely streamlining the main entry point of the application.
+- Updated constants.js with minor changes to the defined constants.
 - Removed TurlOpenSettingsAction.kt and TurlSettingsConfigurable.kt from the plugin, eliminating specific actions and settings interfaces in the IDE integration.
 - Modified ReleasePhases.kt and TurlToolWindowFactory.kt in the plugin, adjusting the release workflow phases and tool window implementation.
 - Removed RulesTab.kt and SettingsTab.kt from the plugin, deleting the tabbed interfaces for rules and settings in the IDE tool window.
