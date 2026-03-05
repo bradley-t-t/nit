@@ -24,7 +24,6 @@ export function parseArgs(args) {
     skipUpdate: false,
     interactive: false,
     verbose: false,
-    dryRun: false,
     quiet: false,
     setup: false,
   };
@@ -42,8 +41,6 @@ export function parseArgs(args) {
       options.interactive = true;
     } else if (arg === "--verbose" || arg === "-v") {
       options.verbose = true;
-    } else if (arg === "--dry-run" || arg === "-d") {
-      options.dryRun = true;
     } else if (arg === "--quiet" || arg === "-q") {
       options.quiet = true;
     } else if (arg === "--setup") {
@@ -81,14 +78,12 @@ export function printHelp() {
     ${COLORS.brightBlue}-b, --branch <name>${COLORS.reset}   Override branch to push to
     ${COLORS.brightBlue}-s, --skip-update${COLORS.reset}     Skip nit update check
     ${COLORS.brightBlue}-i, --interactive${COLORS.reset}     Interactive mode (prompts for options)
-    ${COLORS.brightBlue}-d, --dry-run${COLORS.reset}         Preview without making changes
     ${COLORS.brightBlue}-q, --quiet${COLORS.reset}           Minimal output
     ${COLORS.brightBlue}    --setup${COLORS.reset}           Re-run AI provider setup
     ${COLORS.brightBlue}-h, --help${COLORS.reset}            Show this help
 
   ${COLORS.bright}Examples:${COLORS.reset}
     ${COLORS.dim}nit${COLORS.reset}              Run a full release
-    ${COLORS.dim}nit -d${COLORS.reset}           Preview what would happen
     ${COLORS.dim}nit -b develop${COLORS.reset}   Release to develop branch
     ${COLORS.dim}nit --setup${COLORS.reset}      Choose your AI provider
 
@@ -97,20 +92,9 @@ export function printHelp() {
 
 /**
  * Interactive prompt for selecting an AI provider.
- *
- * When stdin is not a TTY (e.g. running from the JetBrains plugin), emits a
- * structured sentinel line `NIT:NEEDS_PROVIDER_SETUP` and exits with code 2
- * so the plugin can intercept it and show a native UI dialog instead of hanging.
- *
  * @returns The selected provider ID string.
  */
 export async function providerSetup() {
-  // Non-interactive environment — signal the plugin to handle setup via its own UI.
-  if (!process.stdin.isTTY) {
-    process.stdout.write("NIT:NEEDS_PROVIDER_SETUP\n");
-    process.exit(2);
-  }
-
   const readline = await import("readline");
   const rl = readline.createInterface({
     input: process.stdin,
@@ -124,7 +108,7 @@ export async function providerSetup() {
   process.stdout.write(`
   ${COLORS.bright}AI Provider Setup${COLORS.reset}
   ${COLORS.dim}Choose which AI provider nit will use for changelogs and commit messages.${COLORS.reset}
-  ${COLORS.dim}This choice is saved in public/nit.json and shared with the JetBrains plugin.${COLORS.reset}
+  ${COLORS.dim}Your choice is saved in public/nit.json.${COLORS.reset}
 `);
 
   providerEntries.forEach(([, provider], index) => {

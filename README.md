@@ -1,15 +1,10 @@
-<p align="center">
-  <h1 align="center">nit</h1>
-  <p align="center">
-    <strong>The pedantic release tool your codebase deserves.</strong>
-  </p>
-  <p align="center">
-    One command. Clean code, AI-generated changelogs, semantic versioning, and a perfect commit — every time.
-  </p>
-  <p align="center">
-    <a href="#installation">Install</a> · <a href="#quick-start">Quick Start</a> · <a href="#how-it-works">How It Works</a> · <a href="#configuration">Config</a> · <a href="#jetbrains-plugin">IDE Plugin</a>
-  </p>
-</p>
+# nit
+
+**The pedantic release tool your codebase deserves.**
+
+One command. Clean code, AI-generated changelogs, semantic versioning, and a perfect commit — every time.
+
+[Install](#installation) · [Quick Start](#quick-start) · [How It Works](#how-it-works) · [Config](#configuration)
 
 ---
 
@@ -26,7 +21,6 @@ Every release is the same tedious ritual: strip out debug logs, format the code,
 - **Automatic formatting** → runs Prettier (or your configured formatter) so diffs stay clean
 - **Fail-safe versioning** → automatic rollback if anything goes wrong mid-release
 - **Self-updating** → checks for new versions and updates itself before each run
-- **JetBrains plugin** → run releases directly from WebStorm/IntelliJ with a dedicated tool window
 
 ---
 
@@ -36,7 +30,7 @@ Every release is the same tedious ritual: strip out debug logs, format the code,
 npm install --save-dev nit
 ```
 
-Then add a release script to your `package.json`:
+Add a release script to your `package.json`:
 
 ```json
 {
@@ -75,11 +69,11 @@ On first run, nit will prompt you to select your AI provider:
   Select provider (1-3):
 ```
 
-Your choice is saved to `public/nit.json` and shared with the JetBrains plugin — you only set it once.
+Your choice is saved to `public/nit.json` — you only set it once.
 
 **2. Add your API key**
 
-Create a `.env` file in your project root with the key for your chosen provider:
+Create a `.env` file in your project root:
 
 ```env
 # Grok (xAI)
@@ -141,7 +135,6 @@ nit [options]
 
 Options:
   -b, --branch <name>    Push to a specific branch (overrides nit.json)
-  -d, --dry-run          Preview the entire pipeline without making changes
   -i, --interactive      Prompt for options before running
   -s, --skip-update      Skip the self-update check
   -q, --quiet            Minimal output
@@ -153,7 +146,6 @@ Options:
 
 ```bash
 nit                     # Full release to configured branch
-nit -d                  # Dry run — see what would happen
 nit -b develop          # Release to the develop branch
 nit -i                  # Interactive mode — choose options
 nit --setup             # Re-select your AI provider
@@ -241,24 +233,6 @@ nit fails loudly and clearly — no silent corruption, no half-finished releases
 
 ---
 
-## JetBrains Plugin
-
-nit ships with an optional **WebStorm / IntelliJ IDEA plugin** that gives you a dedicated tool window to run releases without leaving your IDE.
-
-- One-click **Publish** from the sidebar
-- Real-time pipeline status as each step executes — styled log output, not raw terminal text
-- Changelog preview on successful completion
-- Error reporting with context
-- **Automatic AI provider setup** — if no provider is configured, a native dialog appears automatically so you can pick one without touching a terminal
-- **AI provider selection** in Settings → Tools → Nit Release (Grok, OpenAI, or Anthropic)
-- Provider choice is shared with the CLI via `public/nit.json` — configure once, use everywhere
-
-The plugin is included in the `plugin/` directory and can be built with Gradle or installed from a local `.zip`.
-
-> **First run:** if `public/nit.json` has no `provider` set, the plugin will automatically show a provider selection dialog before continuing the release. Your choice is saved immediately to `nit.json` and the release restarts.
-
----
-
 ## Supported Projects
 
 | Framework               | Detected automatically? |
@@ -291,7 +265,7 @@ Minimum required:
 my-project/
   .env               ← API key for your chosen provider (required, gitignored)
   public/
-    nit.json          ← Auto-generated config (includes provider selection)
+    nit.json          ← Auto-generated config
   src/                ← Code cleanup targets this directory
   package.json
 ```

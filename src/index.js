@@ -161,10 +161,6 @@ async function main() {
     `Preparing release: v${nitConfig.version} ${SYMBOLS.arrow} v${newVersion}`,
   );
 
-  if (cliOptions.dryRun) {
-    ui.printHeaderWithStatus("DRY RUN MODE - No changes will be made");
-  }
-
   ui.printHeaderWithStatus("Running code cleanup...");
   try {
     await runCleanup(process.cwd());
@@ -175,11 +171,7 @@ async function main() {
     const formatResult = detectFormatCommand();
     if (formatResult.command) {
       try {
-        if (!cliOptions.dryRun)
-          execCommand(formatResult.command, {
-            silent: true,
-            ignoreError: false,
-          });
+        execCommand(formatResult.command, { silent: true, ignoreError: false });
       } catch {}
     }
   }
@@ -200,7 +192,7 @@ async function main() {
       branch: nitConfig.branch,
       provider: providerId,
     };
-    if (!cliOptions.dryRun) writeNitConfig(updatedConfig);
+    writeNitConfig(updatedConfig);
   } catch (err) {
     ui.printHeaderWithStatus(`Version update failed: ${err.message}`);
     process.exit(1);
@@ -234,7 +226,7 @@ async function main() {
 
   ui.printHeaderWithStatus("Updating CHANGELOG.md...");
   try {
-    if (!cliOptions.dryRun) updateChangelog(changelogEntry);
+    updateChangelog(changelogEntry);
   } catch (err) {
     ui.printHeaderWithStatus(`Changelog update failed: ${err.message}`);
     exitWithRollback(1);
@@ -245,7 +237,7 @@ async function main() {
     const buildCommand = detectBuildCommand();
     if (buildCommand) {
       try {
-        if (!cliOptions.dryRun) await runBuild(buildCommand);
+        await runBuild(buildCommand);
       } catch (err) {
         const errorOutput = err.details?.output || err.message;
         ui.printHeaderWithError("Build failed", errorOutput);
@@ -256,7 +248,7 @@ async function main() {
 
   ui.printHeaderWithStatus("Staging all changes...");
   try {
-    if (!cliOptions.dryRun) execCommand("git add -A", { silent: true });
+    execCommand("git add -A", { silent: true });
   } catch (err) {
     ui.printHeaderWithStatus(`Staging failed: ${err.message}`);
     exitWithRollback(1);
@@ -286,20 +278,18 @@ async function main() {
     commitMessage = `${projectName}: Release v${newVersion}`;
   }
 
-  if (!cliOptions.dryRun) {
-    try {
-      gitCommit(commitMessage);
-    } catch (err) {
-      ui.printHeaderWithStatus(`Commit failed: ${err.message}`);
-      exitWithRollback(1);
-    }
+  try {
+    gitCommit(commitMessage);
+  } catch (err) {
+    ui.printHeaderWithStatus(`Commit failed: ${err.message}`);
+    exitWithRollback(1);
+  }
 
-    try {
-      gitPush(branch);
-    } catch (err) {
-      ui.printHeaderWithStatus(`Push failed: ${err.message}`);
-      exitWithRollback(1);
-    }
+  try {
+    gitPush(branch);
+  } catch (err) {
+    ui.printHeaderWithStatus(`Push failed: ${err.message}`);
+    exitWithRollback(1);
   }
 
   ui.printHeaderWithStatus(`Release Complete! v${newVersion}`);
