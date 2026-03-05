@@ -14,6 +14,7 @@ import java.awt.*
 import javax.swing.*
 import javax.swing.text.SimpleAttributeSet
 import javax.swing.text.StyleConstants
+import javax.swing.text.StyledDocument
 
 /**
  * Nit Release tool window panel.
@@ -121,7 +122,7 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
         setRunning(false)
         stepLabel.text       = "Stopped"
         stepLabel.foreground = UIUtil.getContextHelpForeground()
-        appendLog("Process stopped.", LogLevel.WARN)
+        appendStyledLog("Process stopped.", LogLevel.WARN, "Stop")
     }
 
     // ── NitOutputListener ─────────────────────────────────────────────────
@@ -131,21 +132,12 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
             val trimmed = cleanLine.trim()
             if (trimmed.isEmpty()) return@invokeLater
 
-            val level = when {
-                isErrorLine(trimmed) -> LogLevel.ERROR
-                isSkipLine(trimmed)  -> LogLevel.WARN
-                else                 -> LogLevel.INFO
-            }
-            appendLog(trimmed, level)
-
-            if (isErrorLine(trimmed)) errorLines.add(trimmed)
-
-            // Capture changelog lines emitted inline by the CLI.
+            // Capture changelog lines for the result banner but never show them in the log pane.
             if (capturingChangelog && !changelogDone) {
                 if (trimmed.startsWith("- ") || trimmed.startsWith("## [")) {
                     changelogLines.add(trimmed)
                     return@invokeLater
-                } else if (trimmed.isNotEmpty()) {
+                } else {
                     capturingChangelog = false
                     changelogDone      = true
                 }
@@ -156,9 +148,19 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
                 return@invokeLater
             }
 
-            val step = matchStep(cleanLine) ?: return@invokeLater
+            if (isErrorLine(trimmed)) errorLines.add(trimmed)
+
+            val level = when {
+                isErrorLine(trimmed) -> LogLevel.ERROR
+                isSkipLine(trimmed)  -> LogLevel.WARN
+                else                 -> LogLevel.INFO
+            }
+
+            val step = matchStep(cleanLine)
+            appendStyledLog(trimmed, level, step?.label)
 
             when {
+                step == null -> return@invokeLater
                 isSkipLine(cleanLine) -> {
                     releaseSkipped       = true
                     stepLabel.text       = "No changes to release"
@@ -213,18 +215,45 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
 
     private enum class LogLevel { INFO, WARN, ERROR }
 
-    private fun appendLog(text: String, level: LogLevel) {
-        val doc   = logPane.styledDocument
-        val attrs = SimpleAttributeSet().also { a ->
-            StyleConstants.setForeground(a, when (level) {
-                LogLevel.INFO  -> UIUtil.getLabelForeground()
-                LogLevel.WARN  -> NitTheme.WARN
-                LogLevel.ERROR -> NitTheme.DANGER
-            })
+    /**
+     * Appends a styled log row:  [STEP]  message text
+     * Badge is colored by level; message uses a subtler secondary color.
+     */
+    private fun appendStyledLog(message: String, level: LogLevel, stepLabel: String?) {
+        val doc        = logPane.styledDocument
+        val badgeColor = when (level) {
+            LogLevel.INFO  -> NitTheme.BLUE
+            LogLevel.WARN  -> NitTheme.WARN
+            LogLevel.ERROR -> NitTheme.DANGER
         }
-        doc.insertString(doc.length, "$text\n", attrs)
-        logPane.caretPosition = doc.length // auto-scroll to latest line
+        val messageColor = when (level) {
+            LogLevel.INFO  -> UIUtil.getLabelForeground()
+            LogLevel.WARN  -> NitTheme.WARN
+            LogLevel.ERROR -> NitTheme.DANGER
+        }
+        val baseFont = logPane.font
+
+        if (stepLabel != null) {
+            doc.insertStyledText(" $stepLabel ", SimpleAttributeSet().apply {
+                StyleConstants.setForeground(this, badgeColor)
+                StyleConstants.setBold(this, true)
+                StyleConstants.setFontFamily(this, baseFont.family)
+                StyleConstants.setFontSize(this, baseFont.size)
+            })
+            doc.insertStyledText("  ", SimpleAttributeSet())
+        }
+
+        doc.insertStyledText("$message\n", SimpleAttributeSet().apply {
+            StyleConstants.setForeground(this, messageColor)
+            StyleConstants.setFontFamily(this, baseFont.family)
+            StyleConstants.setFontSize(this, baseFont.size)
+        })
+
+        logPane.caretPosition = doc.length
     }
+
+    private fun StyledDocument.insertStyledText(text: String, attrs: SimpleAttributeSet) =
+        insertString(length, text, attrs)
 
     // ── Line classifiers ──────────────────────────────────────────────────
 

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.4] - 2026-03-05
+
+- Enhanced the NitPanel UI in the IntelliJ plugin by introducing styled log output with badges for step labels, improving readability of log messages with distinct colors for different log levels and step indicators.
+- Refined log handling to filter out changelog lines from the visible log pane while still capturing them for the result banner, ensuring a cleaner user interface.
+- Improved error and step detection logic in the NitPanel by restructuring how log levels and steps are processed, making the output more accurate and contextually relevant.
+
 ## [9.3] - 2026-03-05
 
 - Added a new header display at startup in the CLI by introducing a `printHeader` function in `ui.js`, which shows the ASCII logo and title block exactly once when the application starts.
