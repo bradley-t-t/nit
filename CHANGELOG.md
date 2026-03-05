@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.1] - 2026-03-05
+
+- Updated the AI Provider dropdown rendering in the settings UI to directly access the displayName property without casting, improving code robustness.
+
 ## [9.0] - 2026-03-05
 
 - Improved the rendering of AI provider options in the settings UI by refining the custom renderer logic in NitConfigurable.kt for better clarity and type safety.
