@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8.9] - 2026-03-05
+
+- Removed unused import of FlowLayout from NitConfigurable.kt to clean up the codebase.
+
 ## [8.8] - 2026-03-05
 
 - Added AI provider selection in the Nit plugin for WebStorm/IntelliJ IDEA, allowing users to choose between Grok, OpenAI, or Anthropic under Settings → Tools → Nit Release.

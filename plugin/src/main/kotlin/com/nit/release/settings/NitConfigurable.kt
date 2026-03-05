@@ -1,7 +1,6 @@
 package com.nit.release.settings
 
 import com.intellij.openapi.options.Configurable
-import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets

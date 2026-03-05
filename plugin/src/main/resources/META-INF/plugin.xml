@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.nit.release</id>
     <name>Nit</name>
-    <version>8.8.0</version>
+    <version>8.9.0</version>
     <vendor>Trent</vendor>
 
     <description><![CDATA[
