@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0] - 2026-03-05
+
+- Improved the rendering of AI provider options in the settings UI by refining the custom renderer logic in NitConfigurable.kt for better clarity and type safety.
+
 ## [8.9] - 2026-03-05
 
 - Removed unused import of FlowLayout from NitConfigurable.kt to clean up the codebase.

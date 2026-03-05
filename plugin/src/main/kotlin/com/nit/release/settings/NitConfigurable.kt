@@ -22,11 +22,10 @@ class NitConfigurable : Configurable {
         val settings = NitSettings.getInstance().state
 
         providerCombo = JComboBox(AiProvider.entries.toTypedArray()).apply {
-            renderer = DefaultListCellRenderer().also { r ->
-                setRenderer { _, value, index, isSelected, cellHasFocus ->
-                    r.getListCellRendererComponent(this, value?.displayName ?: "", index, isSelected, cellHasFocus)
-                }
-            }
+            val baseRenderer = DefaultListCellRenderer()
+            setRenderer(ListCellRenderer { list, value, index, isSelected, cellHasFocus ->
+                baseRenderer.getListCellRendererComponent(list, (value as? AiProvider)?.displayName ?: "", index, isSelected, cellHasFocus)
+            })
             selectedItem = try { AiProvider.valueOf(settings.aiProvider) } catch (_: Exception) { AiProvider.GROK }
         }
 
