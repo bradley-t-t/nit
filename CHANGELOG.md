@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.6] - 2026-03-05
+
+- Improved output filtering in NitProcessRunner by adding a check to exclude raw Node invocation command lines from the output, ensuring cleaner logs.
+- Enhanced the visual styling of the NitPanel tool window with a larger font size for the "Nit Release" header and adjusted separator line styling for better readability.
+- Updated log row formatting in NitPanel to include a fixed-width step badge with a right-padded length of 12 characters and added a "▸" separator for clearer log entries.
+
 ## [9.5] - 2026-03-05
 
 - Updated the IntelliJ IDEA/WebStorm plugin to remove the "Dry Run" feature, simplifying the interface by eliminating the associated button and action.

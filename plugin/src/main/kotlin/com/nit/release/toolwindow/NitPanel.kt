@@ -228,14 +228,15 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
     private fun appendRunHeader() {
         val doc      = logPane.styledDocument
         val baseFont = logPane.font
-        doc.insertStyledText("  NIT RELEASE\n", SimpleAttributeSet().apply {
+
+        doc.insertStyledText("\n  Nit Release\n", SimpleAttributeSet().apply {
             StyleConstants.setForeground(this, NitTheme.BLUE)
             StyleConstants.setBold(this, true)
             StyleConstants.setFontFamily(this, baseFont.family)
-            StyleConstants.setFontSize(this, baseFont.size + 1)
+            StyleConstants.setFontSize(this, baseFont.size + 2)
         })
-        doc.insertStyledText("  ─────────────────────────────────────\n", SimpleAttributeSet().apply {
-            StyleConstants.setForeground(this, JBColor.border())
+        doc.insertStyledText("  ───────────────────────────────────────\n\n", SimpleAttributeSet().apply {
+            StyleConstants.setForeground(this, JBColor(Color(0xCCCCCC), Color(0x444444)))
             StyleConstants.setFontFamily(this, baseFont.family)
             StyleConstants.setFontSize(this, baseFont.size)
         })
@@ -243,11 +244,13 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
     }
 
     /**
-     * Appends a styled log row:  [STEP]  message text
-     * Badge is colored by level; message uses a subtler secondary color.
+     * Appends a styled log row with a fixed-width step badge and a `▸` separator:
+     *   [  Build  ]  ▸  Running production build...
      */
     private fun appendStyledLog(message: String, level: LogLevel, stepLabel: String?) {
-        val doc        = logPane.styledDocument
+        val doc      = logPane.styledDocument
+        val baseFont = logPane.font
+
         val badgeColor = when (level) {
             LogLevel.INFO  -> NitTheme.BLUE
             LogLevel.WARN  -> NitTheme.WARN
@@ -258,15 +261,22 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
             LogLevel.WARN  -> NitTheme.WARN
             LogLevel.ERROR -> NitTheme.DANGER
         }
-        val baseFont = logPane.font
+        val dimColor = JBColor(Color(0x888888), Color(0x666666))
 
         if (stepLabel != null) {
-            doc.insertStyledText(" $stepLabel ", SimpleAttributeSet().apply {
+            // Fixed-width badge column: right-pad to 12 chars so messages align.
+            doc.insertStyledText("  ${stepLabel.padEnd(12)}", SimpleAttributeSet().apply {
                 StyleConstants.setForeground(this, badgeColor)
                 StyleConstants.setBold(this, true)
                 StyleConstants.setFontFamily(this, baseFont.family)
                 StyleConstants.setFontSize(this, baseFont.size)
             })
+            doc.insertStyledText("▸  ", SimpleAttributeSet().apply {
+                StyleConstants.setForeground(this, dimColor)
+                StyleConstants.setFontFamily(this, baseFont.family)
+                StyleConstants.setFontSize(this, baseFont.size)
+            })
+        } else {
             doc.insertStyledText("  ", SimpleAttributeSet())
         }
 
@@ -291,6 +301,8 @@ class NitPanel(private val project: Project) : JPanel(BorderLayout()), NitOutput
     private fun isLogoLine(line: String): Boolean {
         val logoChars = listOf("█", "╗", "║", "╚", "╔", "═", "╝", "╠", "╣", "╦", "╩")
         return logoChars.any { line.contains(it) } ||
+               line.contains("NIT RELEASE", ignoreCase = false) ||
+               line.trimStart().all { it == '─' || it == '-' || it == ' ' } && line.length > 5 ||
                line.contains("Automated Release Management") ||
                line.matches(Regex(".*Version \\d+\\.\\d+.*"))
     }

@@ -67,8 +67,9 @@ class NitProcessRunner(private val project: Project) {
             override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
                 ansiPattern.replace(event.text, "")
                     .lines()
-                    .filter { it.isNotBlank() }
-                    .forEach { listener?.onOutputLine(it.trim()) }
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() && !isNodeInvocationLine(it) }
+                    .forEach { listener?.onOutputLine(it) }
             }
 
             override fun processTerminated(event: ProcessEvent) {
@@ -161,6 +162,10 @@ class NitProcessRunner(private val project: Project) {
         return listOf("/usr/local/bin/nit", "/opt/homebrew/bin/nit", "$homeDir/.npm-global/bin/nit")
             .firstOrNull { File(it).exists() }
     }
+
+    /** Returns true for lines that are the raw node invocation command (e.g. `/usr/bin/node /path/to/index.js`). */
+    private fun isNodeInvocationLine(line: String) =
+        line.startsWith("/") && line.contains("node") && (line.contains(".js") || line.contains("/nit"))
 
     private fun buildPathEnv(): String {
         val existingPath = System.getenv("PATH") ?: ""
