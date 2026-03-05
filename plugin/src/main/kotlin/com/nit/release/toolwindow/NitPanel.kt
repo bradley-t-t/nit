@@ -364,7 +364,7 @@ private class ResultBanner : JPanel(BorderLayout()) {
 
     private val detailScroll = JBScrollPane(detailArea).apply {
         border                    = JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0)
-        preferredSize             = Dimension(0, 200)
+        preferredSize             = Dimension(0, 130)
         horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
         isVisible                 = false
     }
@@ -400,19 +400,19 @@ private class ResultBanner : JPanel(BorderLayout()) {
                     .replace(">", "&gt;")
                 when {
                     line.startsWith("## ") ->
-                        "<p style='margin:8px 0 3px 0;padding:0;font-weight:bold;font-size:11px;" +
-                        "color:$fgHex;letter-spacing:0.05em;text-transform:uppercase;'>" +
+                        "<p style='margin:5px 0 2px 0;padding:0;font-weight:bold;font-size:10px;" +
+                        "color:$fgHex;letter-spacing:0.04em;text-transform:uppercase;'>" +
                         "${escaped.removePrefix("## ")}</p>"
                     line.startsWith("- ")  ->
-                        "<p style='margin:0;padding:2px 0 2px 0;font-size:11px;color:$bodyHex;'>" +
-                        "<span style='color:$fgHex;margin-right:6px;'>▸</span>" +
+                        "<p style='margin:0;padding:1px 0;font-size:10px;color:$bodyHex;'>" +
+                        "<span style='color:$fgHex;margin-right:4px;'>▸ </span>" +
                         "${escaped.removePrefix("- ")}</p>"
                     line.isBlank()         -> ""
                     else                   ->
-                        "<p style='margin:0;padding:1px 0;font-size:11px;color:$dimHex;'>$escaped</p>"
+                        "<p style='margin:0;padding:1px 0;font-size:10px;color:$dimHex;'>$escaped</p>"
                 }
             }
-            detailArea.text = "<html><body style='font-family:monospace;padding:6px 8px;margin:0;'>$htmlLines</body></html>"
+            detailArea.text = "<html><body style='font-family:monospace;padding:4px 6px;margin:0;'>$htmlLines</body></html>"
             detailScroll.isVisible = true
         } else {
             detailScroll.isVisible = false

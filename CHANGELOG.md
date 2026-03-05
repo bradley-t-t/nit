@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.9] - 2026-03-05
+
+- Adjusted the UI layout in the NitPanel by reducing the preferred height of the detail scroll pane from 200 to 130 pixels for a more compact view.
+- Refined the styling of the result banner in NitPanel, including smaller font sizes (from 11px to 10px for most text), tighter margins and padding, and subtle adjustments to bullet spacing and header letter spacing for improved readability.
+
 ## [9.8] - 2026-03-05
 
 - Improved the NitPanel UI in the IntelliJ plugin by refining the log output formatting. The step badge in logs now has a cleaner fixed-width alignment, and the separator styling has been adjusted for better readability.

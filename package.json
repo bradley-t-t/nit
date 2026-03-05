@@ -1,6 +1,6 @@
 {
   "name": "nit",
-  "version": "9.8.0",
+  "version": "9.9.0",
   "description": "The pedantic release tool your codebase deserves. One command: clean code, AI changelogs, versioning, and a perfect commit.",
   "main": "./src/index.js",
   "type": "module",
