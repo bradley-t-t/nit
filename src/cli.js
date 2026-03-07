@@ -26,6 +26,9 @@ export function parseArgs(args) {
     verbose: false,
     quiet: false,
     setup: false,
+    cleanLogs: false,
+    cleanCss: false,
+    update: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -45,6 +48,12 @@ export function parseArgs(args) {
       options.quiet = true;
     } else if (arg === "--setup") {
       options.setup = true;
+    } else if (arg === "--clean-logs") {
+      options.cleanLogs = true;
+    } else if (arg === "--clean-css") {
+      options.cleanCss = true;
+    } else if (arg === "--update") {
+      options.update = true;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -62,7 +71,7 @@ export function printHelp() {
 
   ${COLORS.bright}What it does (all automatic):${COLORS.reset}
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks for nit updates and auto-updates
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs code cleanup (removes console.logs)
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs code cleanup (opt-in via --clean-logs / --clean-css)
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Formats code with Prettier
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Increments version in nit.json + package.json
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Generates AI changelog and commit message
@@ -80,12 +89,18 @@ export function printHelp() {
     ${COLORS.brightBlue}-i, --interactive${COLORS.reset}     Interactive mode (prompts for options)
     ${COLORS.brightBlue}-q, --quiet${COLORS.reset}           Minimal output
     ${COLORS.brightBlue}    --setup${COLORS.reset}           Re-run AI provider setup
+    ${COLORS.brightBlue}    --clean-logs${COLORS.reset}      Remove console.log statements during release
+    ${COLORS.brightBlue}    --clean-css${COLORS.reset}       Remove unused CSS classes during release
+    ${COLORS.brightBlue}    --update${COLORS.reset}          Manually update nit to the latest version
     ${COLORS.brightBlue}-h, --help${COLORS.reset}            Show this help
 
   ${COLORS.bright}Examples:${COLORS.reset}
-    ${COLORS.dim}nit${COLORS.reset}              Run a full release
-    ${COLORS.dim}nit -b develop${COLORS.reset}   Release to develop branch
-    ${COLORS.dim}nit --setup${COLORS.reset}      Choose your AI provider
+    ${COLORS.dim}nit${COLORS.reset}                        Run a full release
+    ${COLORS.dim}nit -b develop${COLORS.reset}             Release to develop branch
+    ${COLORS.dim}nit --setup${COLORS.reset}                Choose your AI provider
+    ${COLORS.dim}nit --clean-logs${COLORS.reset}           Release with console.log removal
+    ${COLORS.dim}nit --clean-logs --clean-css${COLORS.reset}  Release with full code cleanup
+    ${COLORS.dim}nit --update${COLORS.reset}               Update nit to latest version
 
 `);
 }

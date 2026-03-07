@@ -60,6 +60,29 @@ async function main() {
   const cliOptions = parseArgs(args);
 
   ui.printHeader();
+
+  // Handle --update: update nit and exit
+  if (cliOptions.update) {
+    ui.printHeaderWithStatus("Checking for updates...");
+    const updateInfo = await checkForUpdates();
+    if (updateInfo.hasUpdate) {
+      ui.printHeaderWithStatus(
+        `Update available: v${updateInfo.currentVersion} ${SYMBOLS.arrow} v${updateInfo.latestVersion}`,
+      );
+      const updated = await performUpdate();
+      if (updated) {
+        ui.printHeaderWithStatus(`Updated to v${updateInfo.latestVersion}`);
+      } else {
+        ui.printHeaderWithStatus("Update failed");
+      }
+    } else {
+      ui.printHeaderWithStatus(
+        `Already on latest version (v${updateInfo.currentVersion})`,
+      );
+    }
+    process.exit(0);
+  }
+
   ui.printHeaderWithStatus("Checking for updates...");
 
   if (!cliOptions.skipUpdate) {
@@ -161,10 +184,29 @@ async function main() {
     `Preparing release: v${nitConfig.version} ${SYMBOLS.arrow} v${newVersion}`,
   );
 
-  ui.printHeaderWithStatus("Running code cleanup...");
-  try {
-    await runCleanup(process.cwd());
-  } catch {}
+  if (cliOptions.cleanLogs || cliOptions.cleanCss) {
+    ui.printHeaderWithStatus("Running code cleanup...");
+    try {
+      const cleanupResult = await runCleanup(process.cwd(), {
+        cleanLogs: cliOptions.cleanLogs,
+        cleanCss: cliOptions.cleanCss,
+      });
+      if (cleanupResult.consoleLogsRemoved > 0) {
+        ui.printHeaderWithStatus(
+          `Removed ${cleanupResult.consoleLogsRemoved} console.log(s)`,
+        );
+      }
+      if (cleanupResult.cssClassesRemoved > 0) {
+        ui.printHeaderWithStatus(
+          `Removed ${cleanupResult.cssClassesRemoved} unused CSS class(es)`,
+        );
+      }
+    } catch {}
+  } else {
+    ui.printHeaderWithStatus(
+      "Skipping code cleanup (use --clean-logs and/or --clean-css to enable)",
+    );
+  }
 
   ui.printHeaderWithStatus("Running code formatter...");
   if (!interactiveOptions.skipFormat) {
@@ -293,6 +335,11 @@ async function main() {
   }
 
   ui.printHeaderWithStatus(`Release Complete! v${newVersion}`);
+  if (!cliOptions.cleanLogs && !cliOptions.cleanCss) {
+    ui.printHeaderWithStatus(
+      "Tip: Use --clean-logs / --clean-css to auto-clean code on release",
+    );
+  }
 }
 
 main().catch((err) => {

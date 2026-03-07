@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [10.3] - 2026-03-07
+
+- Updated the cleanup logic in src/cleanup.js to handle edge cases with temporary files more effectively.
+- Enhanced the command-line interface in src/cli.js to support a new flag for verbose output.
+- Improved the main entry point in src/index.js to include better error handling for invalid inputs.
+
 ## [10.2] - 2026-03-07
 
 - Updated the API endpoint in src/api.js to handle new error codes for better error reporting.

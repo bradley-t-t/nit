@@ -308,13 +308,15 @@ function removeUnusedCssClasses(cssContent, jsFiles) {
   return result.join("\n");
 }
 
-export async function run(projectRoot) {
+export async function run(projectRoot, options = {}) {
+  const { cleanLogs = false, cleanCss = false } = options;
   const stats = {
     consoleLogsRemoved: 0,
     cssClassesRemoved: 0,
     filesProcessed: 0,
     errors: [],
     warnings: [],
+    skipped: !cleanLogs && !cleanCss,
   };
 
   let resolvedRoot;
@@ -332,6 +334,8 @@ export async function run(projectRoot) {
     throw err;
   }
 
+  if (!cleanLogs && !cleanCss) return stats;
+
   const srcDir = path.join(resolvedRoot, "src");
   if (!fs.existsSync(srcDir)) {
     stats.warnings.push({
@@ -342,8 +346,12 @@ export async function run(projectRoot) {
     return stats;
   }
 
-  const jsResult = getAllFiles(srcDir, JS_EXTENSIONS);
-  const cssResult = getAllFiles(srcDir, CSS_EXTENSIONS);
+  const jsResult = cleanLogs
+    ? getAllFiles(srcDir, JS_EXTENSIONS)
+    : { files: [], errors: [] };
+  const cssResult = cleanCss
+    ? getAllFiles(srcDir, CSS_EXTENSIONS)
+    : { files: [], errors: [] };
 
   if (jsResult.errors.length > 0) {
     stats.warnings.push(
