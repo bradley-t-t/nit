@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [10.5] - 2026-03-07
+
+- Updated the CLI to include a new command for user authentication in src/cli.js.
+- Added new constants for API endpoints in src/constants.js to support the authentication feature.
+
 ## [10.4] - 2026-03-07
 
 - Updated the main logic in src/index.js to improve performance with a new caching mechanism.

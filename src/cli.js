@@ -5,6 +5,8 @@ import {
   SYMBOLS,
   PACKAGE_NAME,
   PACKAGE_VERSION,
+  GITHUB_REPO,
+  GITHUB_BRANCH,
   AI_PROVIDERS,
 } from "./constants.js";
 
@@ -189,10 +191,19 @@ export async function interactiveMenu() {
 export async function checkForUpdates() {
   const currentVersion = getInstalledVersion();
   try {
-    const latestVersion = execSync(`npm view ${PACKAGE_NAME} version`, {
-      encoding: "utf-8",
-      stdio: "pipe",
-    }).trim();
+    const response = await fetch(
+      `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/package.json`,
+    );
+    if (!response.ok) {
+      return {
+        hasUpdate: false,
+        currentVersion,
+        latestVersion: currentVersion,
+        error: true,
+      };
+    }
+    const remotePkg = await response.json();
+    const latestVersion = remotePkg.version;
 
     if (latestVersion && latestVersion !== currentVersion) {
       const [latestMajor, latestMinor, latestPatch] = latestVersion
@@ -245,10 +256,11 @@ function detectInstallationType() {
 
 export async function performUpdate() {
   const installationType = detectInstallationType();
+  const githubSpec = `github:${GITHUB_REPO}#${GITHUB_BRANCH}`;
   const updateCommand =
     installationType === "global"
-      ? `npm install -g ${PACKAGE_NAME}@latest`
-      : `npm install --save-dev ${PACKAGE_NAME}@latest`;
+      ? `npm install -g ${githubSpec}`
+      : `npm install --save-dev ${githubSpec}`;
 
   try {
     execSync(updateCommand, { stdio: "pipe", cwd: process.cwd() });

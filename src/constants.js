@@ -1,5 +1,7 @@
 export const PACKAGE_VERSION = "8.0.0";
 export const PACKAGE_NAME = "nit";
+export const GITHUB_REPO = "bradley-t-t/nit";
+export const GITHUB_BRANCH = "main";
 
 export const COLORS = {
   reset: "\x1b[0m",
