@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [10.2] - 2026-03-07
+
+- Updated the API endpoint in src/api.js to handle new error codes for better error reporting.
+- Adjusted package.json to include new dependencies required for the updated API functionality.
+
 ## [10.1] - 2026-03-05
 
 - Simplified the README.md layout by removing centered formatting and extra sections, focusing on core tool description and usage.

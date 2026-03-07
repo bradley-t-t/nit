@@ -3,6 +3,32 @@ import { NitError, isNetworkError, parseApiError } from "./errors.js";
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 2000;
+const MAX_DIFF_LENGTH = 30000;
+const NOISE_FILE_PATTERNS = [
+  /^diff --git a\/package-lock\.json/,
+  /^diff --git a\/yarn\.lock/,
+  /^diff --git a\/pnpm-lock\.yaml/,
+  /^diff --git a\/\.next\//,
+  /^diff --git a\/build\//,
+  /^diff --git a\/dist\//,
+  /^diff --git a\/node_modules\//,
+];
+
+/** Strips lock files, build artifacts, and other noisy files from a unified diff. */
+function filterDiffNoise(diff) {
+  const sections = diff.split(/(?=^diff --git )/m);
+  const filtered = sections.filter(
+    (section) => !NOISE_FILE_PATTERNS.some((p) => p.test(section)),
+  );
+  return filtered.join("");
+}
+
+function truncateDiff(diff) {
+  const cleaned = filterDiffNoise(diff);
+  if (cleaned.length <= MAX_DIFF_LENGTH) return cleaned;
+  return cleaned.substring(0, MAX_DIFF_LENGTH) + "\n... (truncated)";
+}
+
 const SYSTEM_PROMPT =
   "You are a precise technical assistant that generates changelog entries and commit messages. You ONLY describe changes that are explicitly visible in the provided diff. Never invent or assume changes. Be specific and accurate.";
 
@@ -19,7 +45,7 @@ function buildOpenAiBody(model, prompt) {
       { role: "user", content: prompt },
     ],
     temperature: 0.3,
-    max_tokens: 1000,
+    max_tokens: 2000,
   });
 }
 
@@ -30,7 +56,7 @@ function buildAnthropicBody(model, prompt) {
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: prompt }],
     temperature: 0.3,
-    max_tokens: 1000,
+    max_tokens: 2000,
   });
 }
 
@@ -175,8 +201,7 @@ export async function generateChangelog(
     );
   }
 
-  const truncatedDiff =
-    diff.length > 8000 ? diff.substring(0, 8000) + "\n... (truncated)" : diff;
+  const truncatedDiff = truncateDiff(diff);
 
   const prompt = `Generate a changelog entry for ${projectName} version ${newVersion}.
 
@@ -246,8 +271,7 @@ export async function generateCommitMessage(
     );
   }
 
-  const truncatedDiff =
-    diff.length > 8000 ? diff.substring(0, 8000) + "\n... (truncated)" : diff;
+  const truncatedDiff = truncateDiff(diff);
 
   const prompt = `Generate a git commit message for ${projectName} version ${newVersion}.
 
