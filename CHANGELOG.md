@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [10.4] - 2026-03-07
+
+- Updated the main logic in src/index.js to improve performance with a new caching mechanism.
+- Adjusted error handling in src/index.js to provide more detailed error messages for debugging.
+
 ## [10.3] - 2026-03-07
 
 - Updated the cleanup logic in src/cleanup.js to handle edge cases with temporary files more effectively.

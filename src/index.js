@@ -30,7 +30,7 @@ import {
   writeNitConfig,
   updateChangelog,
 } from "./config.js";
-import { generateChangelog, generateCommitMessage } from "./api.js";
+import { generateCommitMessage } from "./api.js";
 import {
   parseArgs,
   interactiveMenu,
@@ -240,40 +240,6 @@ async function main() {
     process.exit(1);
   }
 
-  ui.printHeaderWithStatus("Generating changelog with AI...");
-  let changelogEntry;
-  const changelogDiff = getGitDiff(true);
-  const changelogStat = getGitDiffStat(true);
-  const changelogFiles = getChangedFiles(true);
-  const today = new Date().toISOString().split("T")[0];
-  const fallbackChangelog = `## [${newVersion}] - ${today}\n\n- ${projectName} Release v${newVersion}`;
-  try {
-    changelogEntry = await generateChangelog(
-      apiKey,
-      newVersion,
-      projectName,
-      changelogDiff,
-      changelogStat,
-      changelogFiles,
-      providerId,
-    );
-  } catch (err) {
-    ui.printHeaderWithStatus(
-      `AI changelog unavailable, using fallback: ${err.message}`,
-    );
-    changelogEntry = fallbackChangelog;
-  }
-
-  process.stdout.write(`\n${changelogEntry}\n`);
-
-  ui.printHeaderWithStatus("Updating CHANGELOG.md...");
-  try {
-    updateChangelog(changelogEntry);
-  } catch (err) {
-    ui.printHeaderWithStatus(`Changelog update failed: ${err.message}`);
-    exitWithRollback(1);
-  }
-
   ui.printHeaderWithStatus("Running production build...");
   if (!interactiveOptions.skipBuild) {
     const buildCommand = detectBuildCommand();
@@ -300,8 +266,9 @@ async function main() {
   const finalStat = getGitDiffStat(true);
   const finalChangedFiles = getChangedFiles(true);
 
-  ui.printHeaderWithStatus("Committing and pushing...");
+  ui.printHeaderWithStatus("Generating release notes with AI...");
 
+  const today = new Date().toISOString().split("T")[0];
   let commitMessage;
   try {
     commitMessage = await generateCommitMessage(
@@ -314,11 +281,36 @@ async function main() {
       providerId,
     );
   } catch (err) {
-    ui.printHeaderWithStatus(
-      `AI commit message unavailable, using fallback: ${err.message}`,
-    );
+    ui.printHeaderWithStatus(`AI unavailable, using fallback: ${err.message}`);
     commitMessage = `${projectName}: Release v${newVersion}`;
   }
+
+  // Derive changelog from commit message bullet points
+  const bulletLines = commitMessage
+    .split("\n")
+    .filter((line) => line.trimStart().startsWith("-"));
+  const changelogBody =
+    bulletLines.length > 0
+      ? bulletLines.join("\n")
+      : `- ${projectName} Release v${newVersion}`;
+  const changelogEntry = `## [${newVersion}] - ${today}\n\n${changelogBody}\n`;
+
+  process.stdout.write(`\n${changelogEntry}\n`);
+
+  ui.printHeaderWithStatus("Updating CHANGELOG.md...");
+  try {
+    updateChangelog(changelogEntry);
+  } catch (err) {
+    ui.printHeaderWithStatus(`Changelog update failed: ${err.message}`);
+    exitWithRollback(1);
+  }
+
+  // Re-stage after changelog update
+  try {
+    execCommand("git add -A", { silent: true });
+  } catch {}
+
+  ui.printHeaderWithStatus("Committing and pushing...");
 
   try {
     gitCommit(commitMessage);
