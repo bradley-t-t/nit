@@ -3,7 +3,7 @@ import {
   SYMBOLS,
   PACKAGE_VERSION,
   PACKAGE_AUTHOR,
-} from "./constants.js";
+} from "../utils/constants.js";
 
 const printStatusLine = (message) =>
   process.stdout.write(

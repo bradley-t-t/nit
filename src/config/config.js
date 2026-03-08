@@ -5,9 +5,9 @@ import {
   safeWriteFile,
   safeParseJson,
   fileExists,
-} from "./file-utils.js";
-import { ErrorCodes, AI_PROVIDERS } from "./constants.js";
-import { NitError } from "./errors.js";
+} from "../utils/file-utils.js";
+import { ErrorCodes, AI_PROVIDERS } from "../utils/constants.js";
+import { NitError } from "../utils/errors.js";
 
 const PROJECT_ROOT = process.cwd();
 

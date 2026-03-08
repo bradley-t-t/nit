@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { execSync, spawn } from "child_process";
-import { ErrorCodes } from "./constants.js";
-import { NitError } from "./errors.js";
+import { ErrorCodes } from "../utils/constants.js";
+import { NitError } from "../utils/errors.js";
 
 const PROJECT_ROOT = process.cwd();
 

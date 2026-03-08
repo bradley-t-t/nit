@@ -7,7 +7,7 @@ import {
   GITHUB_REPO,
   GITHUB_BRANCH,
   AI_PROVIDERS,
-} from "./constants.js";
+} from "../utils/constants.js";
 
 /** Parses CLI arguments into a structured options object. */
 export function parseArgs(args) {

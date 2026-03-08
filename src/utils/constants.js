@@ -1,7 +1,7 @@
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const pkg = require("../package.json");
+const pkg = require("../../package.json");
 
 export const PACKAGE_VERSION = pkg.version;
 export const PACKAGE_NAME = "nit";

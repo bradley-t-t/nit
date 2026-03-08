@@ -1,8 +1,12 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
-import { safeReadFile, safeParseJson, fileExists } from "./file-utils.js";
-import { AI_PROVIDERS } from "./constants.js";
+import {
+  safeReadFile,
+  safeParseJson,
+  fileExists,
+} from "../utils/file-utils.js";
+import { AI_PROVIDERS } from "../utils/constants.js";
 
 const PROJECT_ROOT = process.cwd();
 

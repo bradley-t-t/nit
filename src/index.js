@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { SYMBOLS } from "./constants.js";
-import { ui } from "./ui.js";
-import { run as runCleanup } from "./cleanup.js";
+import { SYMBOLS } from "./utils/constants.js";
+import { ui } from "./cli/ui.js";
+import { run as runCleanup } from "./cleanup/cleanup.js";
 import {
   checkGitInstalled,
   checkGitRepository,
@@ -15,22 +15,22 @@ import {
   gitPush,
   runBuild,
   execCommand,
-} from "./git.js";
+} from "./git/git.js";
 import {
   loadEnv,
   getApiKeyForProvider,
   checkNodeModules,
   detectBuildCommand,
   detectFormatCommand,
-} from "./env.js";
+} from "./config/env.js";
 import {
   validateApiKey,
   readNitConfig,
   incrementVersion,
   writeNitConfig,
   updateChangelog,
-} from "./config.js";
-import { generateCommitMessage } from "./api.js";
+} from "./config/config.js";
+import { generateCommitMessage } from "./api/api.js";
 import {
   parseArgs,
   interactiveMenu,
@@ -38,7 +38,7 @@ import {
   performUpdate,
   reExecuteAfterUpdate,
   providerSetup,
-} from "./cli.js";
+} from "./cli/cli.js";
 
 const args = process.argv.slice(2);
 let originalNitConfig = null;

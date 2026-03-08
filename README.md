@@ -1,36 +1,34 @@
 # nit
 
-**The pedantic release tool your codebase deserves.**
-
-One command. Clean code, AI-generated changelogs, semantic versioning, and a perfect commit — every time.
-
-[Install](#installation) · [Quick Start](#quick-start) · [How It Works](#how-it-works) · [Config](#configuration)
+Automated release management for Node.js projects. Handles version bumping, code cleanup, formatting, AI-generated changelogs, builds, and git operations in a single command.
 
 ---
 
-## Why nit?
+## Table of Contents
 
-Every release is the same tedious ritual: strip out debug logs, format the code, bump the version, write a changelog, craft a commit message, build, push. You do it dozens of times. You still forget a `console.log`.
-
-**nit** does all of it in a single command — and writes better commit messages than you do.
-
-- **Zero config to start** → auto-generates everything on first run
-- **AI-powered changelogs & commits** → describes _what actually changed_ in your code, not "version bump"
-- **Multiple AI providers** → choose between Grok (xAI), OpenAI, or Anthropic (Claude)
-- **Code cleanup built in** → strips `console.log()` calls and unused CSS classes before every release
-- **Automatic formatting** → runs Prettier (or your configured formatter) so diffs stay clean
-- **Fail-safe versioning** → automatic rollback if anything goes wrong mid-release
-- **Self-updating** → checks for new versions and updates itself before each run
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Release Pipeline](#release-pipeline)
+- [CLI Reference](#cli-reference)
+- [Versioning](#versioning)
+- [AI Changelog Generation](#ai-changelog-generation)
+- [Code Cleanup](#code-cleanup)
+- [Formatting](#formatting)
+- [Error Handling & Rollback](#error-handling--rollback)
+- [Self-Update](#self-update)
+- [License](#license)
 
 ---
 
 ## Installation
 
+Install as a dev dependency:
+
 ```bash
-npm install --save-dev nit
+npm install --save-dev github:bradley-t-t/nit#main
 ```
 
-Add a release script to your `package.json`:
+Add a release script to `package.json`:
 
 ```json
 {
@@ -43,113 +41,14 @@ Add a release script to your `package.json`:
 Or install globally:
 
 ```bash
-npm install -g nit
+npm install -g github:bradley-t-t/nit#main
 ```
 
----
+### Prerequisites
 
-## Quick Start
-
-**1. Run your first release**
-
-```bash
-npm run release
-```
-
-On first run, nit will prompt you to select your AI provider:
-
-```
-  AI Provider Setup
-  Choose which AI provider nit will use for changelogs and commit messages.
-
-  1) Grok (xAI)          (env: GROK_API_KEY)
-  2) OpenAI              (env: OPENAI_API_KEY)
-  3) Anthropic (Claude)  (env: ANTHROPIC_API_KEY)
-
-  Select provider (1-3):
-```
-
-Your choice is saved to `public/nit.json` — you only set it once.
-
-**2. Add your API key**
-
-Create a `.env` file in your project root:
-
-```env
-# Grok (xAI)
-GROK_API_KEY=xai-your-api-key-here
-
-# OpenAI
-OPENAI_API_KEY=sk-your-api-key-here
-
-# Anthropic (Claude)
-ANTHROPIC_API_KEY=sk-ant-your-api-key-here
-```
-
-You only need the key for the provider you selected. Add `.env` to your `.gitignore`.
-
-| Provider  | Get a key at                                                         |
-| --------- | -------------------------------------------------------------------- |
-| Grok      | [console.x.ai](https://console.x.ai)                                 |
-| OpenAI    | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
-| Anthropic | [console.anthropic.com](https://console.anthropic.com)               |
-
-**3. Release**
-
-```bash
-npm run release
-```
-
-That's it. nit auto-generates a `public/nit.json` config on first run and handles everything else.
-
----
-
-## How It Works
-
-When you run `nit`, it executes a complete release pipeline — automatically, in order, with full error handling at every step:
-
-| #   | Step                    | What happens                                                        |
-| --- | ----------------------- | ------------------------------------------------------------------- |
-| 1   | **Self-update**         | Checks npm for a newer version of nit and auto-updates if available |
-| 2   | **Pre-flight**          | Verifies git is installed, repo exists, remote is configured        |
-| 3   | **Load environment**    | Reads `.env`, validates your API key                                |
-| 4   | **Read config**         | Loads `public/nit.json` (or creates it with sensible defaults)      |
-| 5   | **Bump version**        | Increments version in `nit.json` and `package.json`                 |
-| 6   | **Clean code**          | Removes all `console.log()` calls from `src/`                       |
-| 7   | **Remove dead CSS**     | Strips unused CSS classes not referenced in any JS/TSX file         |
-| 8   | **Format**              | Runs Prettier or your configured formatter                          |
-| 9   | **Detect changes**      | If nothing changed, exits gracefully — no empty commits             |
-| 10  | **Generate changelog**  | AI analyzes your actual diff and writes human-quality release notes |
-| 11  | **Update CHANGELOG.md** | Prepends the new entry with proper formatting                       |
-| 12  | **Production build**    | Runs your build command (`npm run build`, Vite, CRA, etc.)          |
-| 13  | **Commit & push**       | Stages everything, generates an AI commit message, pushes to remote |
-
-If _anything_ fails after the version bump, nit **automatically rolls back** `nit.json` to the previous version. Your project is never left in a broken state.
-
----
-
-## CLI Options
-
-```
-nit [options]
-
-Options:
-  -b, --branch <name>    Push to a specific branch (overrides nit.json)
-  -i, --interactive      Prompt for options before running
-  -s, --skip-update      Skip the self-update check
-  -q, --quiet            Minimal output
-      --setup            Re-run AI provider selection
-  -h, --help             Show help
-```
-
-**Examples:**
-
-```bash
-nit                     # Full release to configured branch
-nit -b develop          # Release to the develop branch
-nit -i                  # Interactive mode — choose options
-nit --setup             # Re-select your AI provider
-```
+- Node.js >= 18.0.0
+- Git with at least one configured remote
+- An API key for one of the supported AI providers
 
 ---
 
@@ -157,7 +56,7 @@ nit --setup             # Re-select your AI provider
 
 ### `public/nit.json`
 
-Auto-generated on first run. You can also create or edit it manually:
+Created automatically on first run. Contains all project-level settings:
 
 ```json
 {
@@ -168,116 +67,232 @@ Auto-generated on first run. You can also create or edit it manually:
 }
 ```
 
-| Field         | Type     | Description                                | Default          |
-| ------------- | -------- | ------------------------------------------ | ---------------- |
-| `version`     | `string` | Current version (auto-incremented)         | `"1.0"`          |
-| `projectName` | `string` | Name used in commit messages & changelogs  | Your folder name |
-| `branch`      | `string` | Default branch to push to                  | `"main"`         |
-| `provider`    | `string` | AI provider: `grok`, `openai`, `anthropic` | Set on first run |
+| Field         | Type   | Default        | Description                                      |
+| ------------- | ------ | -------------- | ------------------------------------------------ |
+| `version`     | string | `"1.0"`        | Current release version (`MAJOR.MINOR` format)   |
+| `projectName` | string | Directory name | Used in commit messages and changelog headers    |
+| `branch`      | string | `"main"`       | Target branch for `git push`                     |
+| `provider`    | string | —              | AI provider ID: `grok`, `openai`, or `anthropic` |
 
-### Environment Variables
+On first run (or with `--setup`), nit prompts for provider selection and saves it here.
 
-Set in your project's `.env` file. Only the key for your selected provider is required:
+### API Keys
 
-| Variable            | Provider  | Description              |
-| ------------------- | --------- | ------------------------ |
-| `GROK_API_KEY`      | Grok      | xAI Grok API key         |
-| `OPENAI_API_KEY`    | OpenAI    | OpenAI API key           |
-| `ANTHROPIC_API_KEY` | Anthropic | Anthropic Claude API key |
+Store your API key in a `.env` file at the project root. Only the key matching your selected provider is required.
+
+| Provider   | Environment Variable | Signup                       |
+| ---------- | -------------------- | ---------------------------- |
+| Grok (xAI) | `GROK_API_KEY`       | console.x.ai                 |
+| OpenAI     | `OPENAI_API_KEY`     | platform.openai.com/api-keys |
+| Anthropic  | `ANTHROPIC_API_KEY`  | console.anthropic.com        |
+
+Grok also checks `REACT_APP_GROK_API_KEY` as a fallback.
+
+### Version Syncing
+
+When nit writes a version, it updates multiple files automatically:
+
+- `public/nit.json` — canonical version (`MAJOR.MINOR`)
+- `package.json` — converted to semver (`MAJOR.MINOR.0`)
+- `plugin/gradle.properties` — `pluginVersion` field (if file exists)
+- `plugin/src/main/resources/META-INF/plugin.xml` — `<version>` tag (if file exists)
 
 ---
 
-## AI-Generated Output
+## Release Pipeline
 
-### Commit Messages
+Running `nit` (or `npm run release`) executes the following steps in order:
 
-nit reads the actual diff of your changes and generates a meaningful, structured commit message:
+| #   | Phase              | Description                                                                                                                                                                      |
+| --- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Self-update        | Checks GitHub for a newer version of nit. Updates and re-executes if found.                                                                                                      |
+| 2   | Pre-flight checks  | Verifies git is installed, the directory is a git repo, and a remote exists.                                                                                                     |
+| 3   | Load environment   | Reads `.env`, loads `public/nit.json` (creates with defaults if missing).                                                                                                        |
+| 4   | Provider setup     | Prompts for AI provider selection if not yet configured.                                                                                                                         |
+| 5   | API key validation | Confirms the key exists and meets minimum length (20 chars).                                                                                                                     |
+| 6   | Version bump       | Increments the version and writes to all version files.                                                                                                                          |
+| 7   | Code cleanup       | Removes `console.log()` and/or unused CSS if `--clean-logs` / `--clean-css` flags are set.                                                                                       |
+| 8   | Format             | Runs Prettier or the project's configured `format` script.                                                                                                                       |
+| 9   | Change detection   | If no changes exist after all modifications, exits cleanly — no empty commits.                                                                                                   |
+| 10  | Stage              | Runs `git add -A` to stage all changes.                                                                                                                                          |
+| 11  | AI commit message  | Sends the diff (excluding lock files and build artifacts) to the configured AI provider. Generates a structured commit message with bullet-point descriptions of actual changes. |
+| 12  | Changelog          | Extracts bullet points from the commit message and prepends a dated entry to `CHANGELOG.md`.                                                                                     |
+| 13  | Re-stage           | Runs `git add -A` again to include the updated changelog.                                                                                                                        |
+| 14  | Build              | Runs the detected build command (`npm run build`, `npx vite build`, or `npx react-scripts build`).                                                                               |
+| 15  | Commit             | Creates a commit using a temp file (`git commit -F`) to handle multiline messages safely.                                                                                        |
+| 16  | Push               | Pushes to the configured branch via `git push origin <branch>`.                                                                                                                  |
+
+If any step after the version bump fails, nit rolls back `public/nit.json` and `package.json` to their previous versions before exiting.
+
+---
+
+## CLI Reference
 
 ```
-my-app: Release v2.3
-
-- Added dark mode toggle to settings page
-- Fixed overflow bug in mobile navigation drawer
-- Replaced hardcoded API URL with environment variable
+nit [options]
 ```
 
-No more "misc changes" or "update stuff". Every commit tells a story.
+| Flag              | Short | Description                                                     |
+| ----------------- | ----- | --------------------------------------------------------------- |
+| `--branch <name>` | `-b`  | Override the push branch (ignores `nit.json` setting)           |
+| `--interactive`   | `-i`  | Prompt for branch, build, and format preferences before running |
+| `--skip-update`   | `-s`  | Skip the automatic self-update check                            |
+| `--clean-logs`    | —     | Remove all `console.log()` statements from `src/`               |
+| `--clean-css`     | —     | Remove unused CSS classes from `src/`                           |
+| `--setup`         | —     | Re-run AI provider selection, save to config, then exit         |
+| `--update`        | —     | Check for and install the latest version of nit, then exit      |
+| `--help`          | `-h`  | Print usage information                                         |
 
-### Changelogs
+### Examples
 
-Changelog entries are appended to `CHANGELOG.md` in a clean, standard format — based on real code changes, never metadata:
+```bash
+nit                              # Standard release
+nit -b develop                   # Push to develop instead of configured branch
+nit -i                           # Interactive mode
+nit --clean-logs --clean-css     # Release with code cleanup
+nit --setup                      # Change AI provider
+nit --update                     # Update nit to latest
+nit -s                           # Release without checking for nit updates
+```
+
+---
+
+## Versioning
+
+Versions follow a `MAJOR.MINOR` format. Each release increments the minor version by 1. When minor exceeds 9, it rolls over to the next major version:
+
+```
+1.0 → 1.1 → 1.2 → ... → 1.9 → 2.0 → 2.1 → ... → 2.9 → 3.0
+```
+
+The version stored in `package.json` is converted to semver by appending `.0` (e.g., `2.3` becomes `2.3.0`).
+
+---
+
+## AI Changelog Generation
+
+nit generates commit messages and changelog entries by sending the actual code diff to your configured AI provider.
+
+### Supported Providers
+
+| Provider   | Model                      | Endpoint                             |
+| ---------- | -------------------------- | ------------------------------------ |
+| Grok (xAI) | `grok-3-latest`            | `api.x.ai/v1/chat/completions`       |
+| OpenAI     | `gpt-4o`                   | `api.openai.com/v1/chat/completions` |
+| Anthropic  | `claude-sonnet-4-20250514` | `api.anthropic.com/v1/messages`      |
+
+### How It Works
+
+1. nit collects the staged diff, diff stats, and changed file list.
+2. Lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) and build artifacts (`.next/`, `build/`, `dist/`, `node_modules/`) are stripped from the diff.
+3. The diff is truncated to 30,000 characters if needed to stay within token limits.
+4. The AI is instructed to describe only changes visible in the diff — no assumptions, no metadata descriptions, no version bump mentions.
+5. The response must follow a strict format:
+
+```
+project-name: Release vX.Y
+
+- Description of change 1
+- Description of change 2
+```
+
+6. If the response doesn't match the expected format, nit falls back to a generic commit message and continues the release.
+
+### Retry Logic
+
+API calls retry up to 3 times on rate limits (429) and server errors (5xx) with exponential backoff starting at 2 seconds. All other errors fail immediately.
+
+### Changelog Format
+
+Bullet points from the commit message are extracted and written to `CHANGELOG.md`:
 
 ```markdown
-## [2.3] - 2026-03-04
+## [2.3] - 2026-03-08
 
 - Added dark mode toggle to settings page
 - Fixed overflow bug in mobile navigation drawer
-- Replaced hardcoded API URL with environment variable
 ```
+
+New entries are inserted after the `# Changelog` header, preserving all previous entries.
 
 ---
 
-## Error Handling
+## Code Cleanup
 
-nit fails loudly and clearly — no silent corruption, no half-finished releases.
+Cleanup is opt-in via flags. Neither runs by default.
 
-| Category    | What's covered                                                     |
-| ----------- | ------------------------------------------------------------------ |
-| **Git**     | Not installed, not a repo, no remote, push rejected, auth failures |
-| **API**     | Missing/invalid key, network errors, rate limits, server errors    |
-| **Files**   | Permission denied, not found, no disk space, invalid JSON          |
-| **Build**   | Missing formatter, build command failures                          |
-| **Cleanup** | Directory access errors, file read/write errors                    |
+### `--clean-logs`
 
-**Strict by design:** nit will _never_ fall back to a generic "Version bump" commit. If AI generation fails, the release stops. Your git history stays clean.
+Scans all `.js`, `.jsx`, `.ts`, and `.tsx` files in `src/` and removes `console.log()` statements. Handles nested parentheses, optional semicolons, and trailing newlines. Consolidates resulting blank lines.
 
----
+### `--clean-css`
 
-## Supported Projects
+Scans `.css` files in `src/` and removes class definitions that are not referenced in any JavaScript/TypeScript file. Checks for references across string literals, `className` attributes, `styles` object access, `classList` API calls, and array bracket notation.
 
-| Framework               | Detected automatically? |
-| ----------------------- | ----------------------- |
-| Vite + React            | Yes                     |
-| Create React App        | Yes                     |
-| Any project with `src/` | Yes                     |
+### Ignored Directories
 
-nit auto-detects your build command, formatter, and project structure. No manual setup required.
+Both cleanup passes skip `node_modules`, `dist`, `build`, `.git`, `coverage`, `.next`, and `.cache`.
+
+Cleanup errors are logged but do not block the release.
 
 ---
 
-## Version Format
+## Formatting
 
-Versions use a simple `MAJOR.MINOR` pattern:
+nit auto-detects a formatter using the following priority:
 
+1. A `"format"` script in `package.json` → runs `npm run format`
+2. Prettier in dependencies → runs `npx prettier --write .`
+3. Prettier installed globally → runs `npx prettier --write .`
+
+If no formatter is found, the step is skipped. Formatter errors are logged but do not block the release.
+
+In interactive mode (`-i`), you can skip formatting when prompted.
+
+---
+
+## Error Handling & Rollback
+
+nit exits immediately on pre-flight failures (git not installed, not a repo, no remote, missing API key). For failures that occur after the version has been written — build errors, commit failures, push rejections — nit restores `nit.json` and `package.json` to their previous versions before exiting.
+
+Push failures include specific guidance:
+
+- **Rejected (non-fast-forward):** suggests pulling the branch first
+- **Authentication error:** suggests checking credentials or SSH keys
+- **Remote not found:** suggests verifying `git remote -v`
+
+Git changes (staged files, formatted code, cleanup modifications) are not reverted automatically. If a release fails mid-pipeline, you can inspect and revert those changes manually.
+
+---
+
+## Self-Update
+
+On every release (unless `--skip-update` is set), nit fetches `package.json` from GitHub and compares versions. If a newer version exists, it installs the update via npm and re-executes itself with the new version.
+
+To update manually without running a release:
+
+```bash
+nit --update
 ```
-1.0 → 1.1 → 1.2 → ... → 1.9 → 2.0 → 2.1 → ...
-```
-
-Both `nit.json` and `package.json` are kept in sync automatically.
 
 ---
 
 ## Project Structure
 
-Minimum required:
+Expected layout:
 
 ```
-my-project/
-  .env               ← API key for your chosen provider (required, gitignored)
+project/
+  .env                ← API key (gitignored)
   public/
-    nit.json          ← Auto-generated config
-  src/                ← Code cleanup targets this directory
+    nit.json          ← Release config (auto-generated)
+  src/                ← Cleanup target directory
   package.json
+  CHANGELOG.md        ← Created if missing
 ```
-
----
-
-## Contributing
-
-nit is free, open source, and MIT licensed. Contributions, issues, and feature requests are welcome.
 
 ---
 
 ## License
 
-[MIT](LICENSE.md) — free for personal and commercial use.
+MIT

@@ -1,5 +1,5 @@
-import { ErrorCodes, AI_PROVIDERS } from "./constants.js";
-import { NitError, isNetworkError, parseApiError } from "./errors.js";
+import { ErrorCodes, AI_PROVIDERS } from "../utils/constants.js";
+import { NitError, isNetworkError, parseApiError } from "../utils/errors.js";
 
 const MAX_RETRIES = 3; // Retry up to 3 times on 429/5xx
 const BASE_DELAY_MS = 2000; // Starting delay for exponential backoff

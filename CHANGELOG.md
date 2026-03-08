@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.0] - 2026-03-08
+
+- Restructured project directory by moving source files into categorized subdirectories like `api/`, `cleanup/`, `cli/`, `config/`, `git/`, and `utils/` for better organization.
+- Updated import paths in all affected source files to reflect the new directory structure.
+- Revised README.md with a new structure and detailed content, including an updated description, installation instructions, configuration details, and comprehensive documentation of the release pipeline and features.
+- Added a new `.claude/settings.local.json` file to define permissions for Bash commands.
+
 ## [10.9] - 2026-03-08
 
 - Updated the version increment logic in src/config.js to roll over to the next major version when the minor version exceeds 9 (e.g., from 1.9 to 2.0).
