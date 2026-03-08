@@ -1,6 +1,6 @@
 {
   "name": "nit",
-  "version": "11.4.0",
+  "version": "11.5.0",
   "description": "The pedantic release tool your codebase deserves. One command: clean code, AI changelogs, versioning, and a perfect commit.",
   "main": "./src/index.js",
   "type": "module",
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "echo 'no tests yet'",
-    "release": "node ./src/index.js"
+    "release": "node ./src/index.js --clean-all"
   },
   "keywords": [
     "release",

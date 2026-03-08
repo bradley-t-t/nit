@@ -67,12 +67,12 @@ Created automatically on first run. Contains all project-level settings:
 }
 ```
 
-| Field         | Type   | Default        | Description                                      |
-| ------------- | ------ | -------------- | ------------------------------------------------ |
-| `version`     | string | `"1.0"`        | Current release version (`MAJOR.MINOR` format)   |
-| `projectName` | string | Directory name | Used in commit messages and changelog headers    |
-| `branch`      | string | `"main"`       | Target branch for `git push`                     |
-| `provider`    | string | —              | AI provider ID: `grok`, `openai`, or `anthropic` |
+| Field         | Type   | Default        | Description                                                     |
+| ------------- | ------ | -------------- | --------------------------------------------------------------- |
+| `version`     | string | `"1.0"`        | Current release version (`MAJOR.MINOR` format)                  |
+| `projectName` | string | Directory name | Used in commit messages and changelog headers                   |
+| `branch`      | string | `"main"`       | Target branch for `git push`                                    |
+| `provider`    | string | —              | AI provider ID: `claude-code`, `grok`, `openai`, or `anthropic` |
 
 On first run (or with `--setup`), nit prompts for provider selection and saves it here.
 
@@ -111,7 +111,7 @@ Running `nit` (or `npm run release`) executes the following steps in order:
 | 4   | Provider setup     | Prompts for AI provider selection if not yet configured.                                                                                                                         |
 | 5   | API key validation | Confirms the key exists and meets minimum length (20 chars).                                                                                                                     |
 | 6   | Version bump       | Increments the version and writes to all version files.                                                                                                                          |
-| 7   | Code cleanup       | Prompts y/n to remove `console.log()` statements and/or unused CSS classes.                                                                                                      |
+| 7   | Code cleanup       | Prompts y/n to remove `console.log()` statements and/or unused CSS classes. Can be pre-answered with `--clean-*` flags.                                                          |
 | 8   | Format             | Runs Prettier or the project's configured `format` script.                                                                                                                       |
 | 9   | Change detection   | If no changes exist after all modifications, exits cleanly — no empty commits.                                                                                                   |
 | 10  | Stage              | Runs `git add -A` to stage all changes.                                                                                                                                          |
@@ -139,7 +139,15 @@ nit [options]
 | `--skip-update`   | `-s`  | Skip the automatic self-update check                            |
 | `--setup`         | —     | Re-run AI provider selection, save to config, then exit         |
 | `--update`        | —     | Check for and install the latest version of nit, then exit      |
+| `--clean-logs`    | —     | Auto-answer Yes to remove console.log statements                |
+| `--no-clean-logs` | —     | Auto-answer No to remove console.log statements                 |
+| `--clean-css`     | —     | Auto-answer Yes to remove unused CSS classes                    |
+| `--no-clean-css`  | —     | Auto-answer No to remove unused CSS classes                     |
+| `--clean-all`     | —     | Auto-answer Yes to both cleanup prompts                         |
+| `--no-clean`      | —     | Auto-answer No to both cleanup prompts                          |
 | `--help`          | `-h`  | Print usage information                                         |
+
+When both cleanup flags are provided (or `--clean-all` / `--no-clean` is used), the interactive cleanup prompt is skipped entirely. If only one flag is provided, nit prompts for the other.
 
 ### Examples
 
@@ -147,6 +155,9 @@ nit [options]
 nit                              # Standard release
 nit -b develop                   # Push to develop instead of configured branch
 nit -i                           # Interactive mode
+nit --clean-all                  # Release with all cleanup enabled (no prompts)
+nit --no-clean                   # Release skipping all cleanup prompts
+nit --clean-logs --no-clean-css  # Remove logs but skip CSS cleanup
 nit --setup                      # Change AI provider
 nit --update                     # Update nit to latest
 nit -s                           # Release without checking for nit updates
@@ -216,7 +227,7 @@ New entries are inserted after the `# Changelog` header, preserving all previous
 
 ## Code Cleanup
 
-During each release, nit prompts you with two y/n questions:
+During each release, nit prompts you with two y/n questions (unless pre-answered via `--clean-logs`, `--clean-css`, `--clean-all`, or `--no-clean` flags):
 
 1. **Remove console.log statements?** — Scans all `.js`, `.jsx`, `.ts`, and `.tsx` files in `src/` and removes `console.log()` statements. Handles nested parentheses, optional semicolons, and trailing newlines. Consolidates resulting blank lines.
 

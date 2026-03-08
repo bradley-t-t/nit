@@ -19,6 +19,8 @@ export function parseArgs(args) {
     quiet: false,
     setup: false,
     update: false,
+    cleanLogs: null,
+    cleanCss: null,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -40,6 +42,20 @@ export function parseArgs(args) {
       options.setup = true;
     } else if (arg === "--update") {
       options.update = true;
+    } else if (arg === "--clean-logs") {
+      options.cleanLogs = true;
+    } else if (arg === "--no-clean-logs") {
+      options.cleanLogs = false;
+    } else if (arg === "--clean-css") {
+      options.cleanCss = true;
+    } else if (arg === "--no-clean-css") {
+      options.cleanCss = false;
+    } else if (arg === "--clean-all") {
+      options.cleanLogs = true;
+      options.cleanCss = true;
+    } else if (arg === "--no-clean") {
+      options.cleanLogs = false;
+      options.cleanCss = false;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -78,11 +94,19 @@ export function printHelp() {
     ${COLORS.brightBlue}-q, --quiet${COLORS.reset}           Minimal output
     ${COLORS.brightBlue}    --setup${COLORS.reset}           Re-run AI provider setup
     ${COLORS.brightBlue}    --update${COLORS.reset}          Manually update nit to the latest version
+    ${COLORS.brightBlue}    --clean-logs${COLORS.reset}      Auto-answer Yes to remove console.log statements
+    ${COLORS.brightBlue}    --no-clean-logs${COLORS.reset}   Auto-answer No to remove console.log statements
+    ${COLORS.brightBlue}    --clean-css${COLORS.reset}       Auto-answer Yes to remove unused CSS classes
+    ${COLORS.brightBlue}    --no-clean-css${COLORS.reset}    Auto-answer No to remove unused CSS classes
+    ${COLORS.brightBlue}    --clean-all${COLORS.reset}       Auto-answer Yes to both cleanup prompts
+    ${COLORS.brightBlue}    --no-clean${COLORS.reset}        Auto-answer No to both cleanup prompts
     ${COLORS.brightBlue}-h, --help${COLORS.reset}            Show this help
 
   ${COLORS.bright}Examples:${COLORS.reset}
     ${COLORS.dim}nit${COLORS.reset}                        Run a full release
     ${COLORS.dim}nit -b develop${COLORS.reset}             Release to develop branch
+    ${COLORS.dim}nit --clean-all${COLORS.reset}            Release with all cleanup enabled
+    ${COLORS.dim}nit --no-clean${COLORS.reset}             Release skipping all cleanup prompts
     ${COLORS.dim}nit --setup${COLORS.reset}                Choose your AI provider
     ${COLORS.dim}nit --update${COLORS.reset}               Update nit to latest version
 

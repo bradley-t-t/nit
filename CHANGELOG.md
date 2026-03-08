@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.5] - 2026-03-08
+
+- Add CLI flags to pre-answer cleanup prompts: --clean-logs, --no-clean-logs, --clean-css, --no-clean-css, --clean-all, and --no-clean
+- Skip the interactive cleanup prompt entirely when both log and CSS cleanup choices are provided via flags
+- Add claude-code as a supported AI provider option
+- Update the release script to use --clean-all by default
+- Add CLAUDE.md with project overview and contribution conventions
+
 ## [11.4] - 2026-03-08
 
 - Unset the CLAUDECODE environment variable before spawning the Claude CLI to allow nested invocation

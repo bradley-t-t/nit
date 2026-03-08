@@ -185,7 +185,19 @@ async function main() {
     `Preparing release: v${nitConfig.version} ${SYMBOLS.arrow} v${newVersion}`,
   );
 
-  const { cleanLogs, cleanCss } = await promptCleanup();
+  const logsPreset = cliOptions.cleanLogs;
+  const cssPreset = cliOptions.cleanCss;
+  const bothPreset = logsPreset !== null && cssPreset !== null;
+
+  let cleanLogs, cleanCss;
+  if (bothPreset) {
+    cleanLogs = logsPreset;
+    cleanCss = cssPreset;
+  } else {
+    const prompted = await promptCleanup();
+    cleanLogs = logsPreset !== null ? logsPreset : prompted.cleanLogs;
+    cleanCss = cssPreset !== null ? cssPreset : prompted.cleanCss;
+  }
 
   if (cleanLogs || cleanCss) {
     ui.printHeaderWithStatus("Running code cleanup...");
