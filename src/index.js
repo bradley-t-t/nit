@@ -34,6 +34,7 @@ import { generateCommitMessage } from "./api/api.js";
 import {
   parseArgs,
   interactiveMenu,
+  promptCleanup,
   checkForUpdates,
   performUpdate,
   reExecuteAfterUpdate,
@@ -184,16 +185,18 @@ async function main() {
     `Preparing release: v${nitConfig.version} ${SYMBOLS.arrow} v${newVersion}`,
   );
 
-  if (cliOptions.cleanLogs || cliOptions.cleanCss) {
+  const { cleanLogs, cleanCss } = await promptCleanup();
+
+  if (cleanLogs || cleanCss) {
     ui.printHeaderWithStatus("Running code cleanup...");
     try {
       const cleanupResult = await runCleanup(process.cwd(), {
-        cleanLogs: cliOptions.cleanLogs,
-        cleanCss: cliOptions.cleanCss,
+        cleanLogs,
+        cleanCss,
       });
       if (cleanupResult.consoleLogsRemoved > 0) {
         ui.printHeaderWithStatus(
-          `Removed ${cleanupResult.consoleLogsRemoved} console.log(s)`,
+          `Removed ${cleanupResult.consoleLogsRemoved} `,
         );
       }
       if (cleanupResult.cssClassesRemoved > 0) {
@@ -203,9 +206,7 @@ async function main() {
       }
     } catch {}
   } else {
-    ui.printHeaderWithStatus(
-      "Skipping code cleanup (use --clean-logs and/or --clean-css to enable)",
-    );
+    ui.printHeaderWithStatus("Skipping code cleanup");
   }
 
   ui.printHeaderWithStatus("Running code formatter...");
@@ -327,11 +328,6 @@ async function main() {
   }
 
   ui.printHeaderWithStatus(`Release Complete! v${newVersion}`);
-  if (!cliOptions.cleanLogs && !cliOptions.cleanCss) {
-    ui.printHeaderWithStatus(
-      "Tip: Use --clean-logs / --clean-css to auto-clean code on release",
-    );
-  }
 }
 
 main().catch((err) => {

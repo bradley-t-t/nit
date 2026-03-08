@@ -18,8 +18,6 @@ export function parseArgs(args) {
     verbose: false,
     quiet: false,
     setup: false,
-    cleanLogs: false,
-    cleanCss: false,
     update: false,
   };
 
@@ -40,10 +38,6 @@ export function parseArgs(args) {
       options.quiet = true;
     } else if (arg === "--setup") {
       options.setup = true;
-    } else if (arg === "--clean-logs") {
-      options.cleanLogs = true;
-    } else if (arg === "--clean-css") {
-      options.cleanCss = true;
     } else if (arg === "--update") {
       options.update = true;
     } else if (arg === "--help" || arg === "-h") {
@@ -64,7 +58,7 @@ export function printHelp() {
 
   ${COLORS.bright}What it does (all automatic):${COLORS.reset}
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks for nit updates and auto-updates
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs code cleanup (opt-in via --clean-logs / --clean-css)
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Prompts for optional code cleanup (remove logs / unused CSS)
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Formats code with Prettier
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Increments version in nit.json + package.json
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Generates AI changelog and commit message
@@ -82,8 +76,6 @@ export function printHelp() {
     ${COLORS.brightBlue}-i, --interactive${COLORS.reset}     Interactive mode (prompts for options)
     ${COLORS.brightBlue}-q, --quiet${COLORS.reset}           Minimal output
     ${COLORS.brightBlue}    --setup${COLORS.reset}           Re-run AI provider setup
-    ${COLORS.brightBlue}    --clean-logs${COLORS.reset}      Remove console.log statements during release
-    ${COLORS.brightBlue}    --clean-css${COLORS.reset}       Remove unused CSS classes during release
     ${COLORS.brightBlue}    --update${COLORS.reset}          Manually update nit to the latest version
     ${COLORS.brightBlue}-h, --help${COLORS.reset}            Show this help
 
@@ -91,8 +83,6 @@ export function printHelp() {
     ${COLORS.dim}nit${COLORS.reset}                        Run a full release
     ${COLORS.dim}nit -b develop${COLORS.reset}             Release to develop branch
     ${COLORS.dim}nit --setup${COLORS.reset}                Choose your AI provider
-    ${COLORS.dim}nit --clean-logs${COLORS.reset}           Release with console.log removal
-    ${COLORS.dim}nit --clean-logs --clean-css${COLORS.reset}  Release with full code cleanup
     ${COLORS.dim}nit --update${COLORS.reset}               Update nit to latest version
 
 `);
@@ -178,6 +168,30 @@ export async function interactiveMenu() {
 
   rl.close();
   return options;
+}
+
+/** Prompts the user whether to run console.log removal and unused CSS cleanup. */
+export async function promptCleanup() {
+  const readline = await import("readline");
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  const question = (prompt) =>
+    new Promise((resolve) => rl.question(prompt, resolve));
+
+  const logsAnswer = await question(
+    `\n  ${COLORS.bright}Remove console.log statements?${COLORS.reset} (y/N): `,
+  );
+  const cleanLogs = logsAnswer.trim().toLowerCase() === "y";
+
+  const cssAnswer = await question(
+    `  ${COLORS.bright}Remove unused CSS classes?${COLORS.reset} (y/N): `,
+  );
+  const cleanCss = cssAnswer.trim().toLowerCase() === "y";
+
+  rl.close();
+  return { cleanLogs, cleanCss };
 }
 
 /** Compares the installed version against the latest on GitHub to detect available updates. */

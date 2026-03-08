@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.1] - 2026-03-08
+
+- Changed code cleanup from opt-in flags (--clean-logs and --clean-css) to interactive prompts during each release, asking users whether to remove console.log statements and unused CSS classes.
+- Removed the --clean-logs and --clean-css command-line options from the CLI parser and help output.
+- Added a new promptCleanup function in src/cli/cli.js to handle user input for code cleanup choices.
+- Updated the README.md to reflect the new prompt-based approach for code cleanup instead of flags, including revised documentation and examples.
+- Simplified UI messages in src/index.js related to code cleanup, removing references to the old flags and associated tips.
+
 ## [11.0] - 2026-03-08
 
 - Restructured project directory by moving source files into categorized subdirectories like `api/`, `cleanup/`, `cli/`, `config/`, `git/`, and `utils/` for better organization.

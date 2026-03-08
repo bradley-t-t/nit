@@ -111,7 +111,7 @@ Running `nit` (or `npm run release`) executes the following steps in order:
 | 4   | Provider setup     | Prompts for AI provider selection if not yet configured.                                                                                                                         |
 | 5   | API key validation | Confirms the key exists and meets minimum length (20 chars).                                                                                                                     |
 | 6   | Version bump       | Increments the version and writes to all version files.                                                                                                                          |
-| 7   | Code cleanup       | Removes `console.log()` and/or unused CSS if `--clean-logs` / `--clean-css` flags are set.                                                                                       |
+| 7   | Code cleanup       | Prompts y/n to remove `console.log()` statements and/or unused CSS classes.                                                                                                      |
 | 8   | Format             | Runs Prettier or the project's configured `format` script.                                                                                                                       |
 | 9   | Change detection   | If no changes exist after all modifications, exits cleanly — no empty commits.                                                                                                   |
 | 10  | Stage              | Runs `git add -A` to stage all changes.                                                                                                                                          |
@@ -137,8 +137,6 @@ nit [options]
 | `--branch <name>` | `-b`  | Override the push branch (ignores `nit.json` setting)           |
 | `--interactive`   | `-i`  | Prompt for branch, build, and format preferences before running |
 | `--skip-update`   | `-s`  | Skip the automatic self-update check                            |
-| `--clean-logs`    | —     | Remove all `console.log()` statements from `src/`               |
-| `--clean-css`     | —     | Remove unused CSS classes from `src/`                           |
 | `--setup`         | —     | Re-run AI provider selection, save to config, then exit         |
 | `--update`        | —     | Check for and install the latest version of nit, then exit      |
 | `--help`          | `-h`  | Print usage information                                         |
@@ -149,7 +147,6 @@ nit [options]
 nit                              # Standard release
 nit -b develop                   # Push to develop instead of configured branch
 nit -i                           # Interactive mode
-nit --clean-logs --clean-css     # Release with code cleanup
 nit --setup                      # Change AI provider
 nit --update                     # Update nit to latest
 nit -s                           # Release without checking for nit updates
@@ -219,15 +216,11 @@ New entries are inserted after the `# Changelog` header, preserving all previous
 
 ## Code Cleanup
 
-Cleanup is opt-in via flags. Neither runs by default.
+During each release, nit prompts you with two y/n questions:
 
-### `--clean-logs`
+1. **Remove console.log statements?** — Scans all `.js`, `.jsx`, `.ts`, and `.tsx` files in `src/` and removes `console.log()` statements. Handles nested parentheses, optional semicolons, and trailing newlines. Consolidates resulting blank lines.
 
-Scans all `.js`, `.jsx`, `.ts`, and `.tsx` files in `src/` and removes `console.log()` statements. Handles nested parentheses, optional semicolons, and trailing newlines. Consolidates resulting blank lines.
-
-### `--clean-css`
-
-Scans `.css` files in `src/` and removes class definitions that are not referenced in any JavaScript/TypeScript file. Checks for references across string literals, `className` attributes, `styles` object access, `classList` API calls, and array bracket notation.
+2. **Remove unused CSS classes?** — Scans `.css` files in `src/` and removes class definitions that are not referenced in any JavaScript/TypeScript file. Checks for references across string literals, `className` attributes, `styles` object access, `classList` API calls, and array bracket notation.
 
 ### Ignored Directories
 
