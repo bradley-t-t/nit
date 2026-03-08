@@ -70,11 +70,12 @@ export function readNitConfig() {
   };
 }
 
-/** Bumps the minor version by 1 (e.g. 1.9 -> 1.10, 2.3 -> 2.4). */
+/** Bumps the minor version by 1, rolling over to the next major at 10 (e.g. 1.9 -> 2.0, 2.3 -> 2.4). */
 export function incrementVersion(version) {
   const parts = version.split(".");
   const major = parseInt(parts[0], 10) || 1;
   const minor = (parseInt(parts[1], 10) || 0) + 1;
+  if (minor > 9) return `${major + 1}.0`;
   return `${major}.${minor}`;
 }
 

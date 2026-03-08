@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [10.9] - 2026-03-08
+
+- Updated the version increment logic in src/config.js to roll over to the next major version when the minor version exceeds 9 (e.g., from 1.9 to 2.0).
+- Revised the JSDoc comment for the incrementVersion function to reflect the new rollover behavior.
+
 ## [10.8] - 2026-03-08
 
 - Refactored version retrieval by moving the logic to read the package version directly from package.json into constants.js, replacing the hardcoded value.
