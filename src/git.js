@@ -97,10 +97,10 @@ export function hasChanges() {
 export function getGitDiff(excludeNitJson = false) {
   if (excludeNitJson) {
     const diff = execCommandSilent(
-      "git diff HEAD -- . ':(exclude)public/nit.json'",
+      'git diff HEAD -- . ":(exclude)public/nit.json"',
     );
     const stagedDiff = execCommandSilent(
-      "git diff --cached -- . ':(exclude)public/nit.json'",
+      'git diff --cached -- . ":(exclude)public/nit.json"',
     );
     return diff + stagedDiff;
   }
@@ -113,10 +113,10 @@ export function getGitDiff(excludeNitJson = false) {
 export function getGitDiffStat(excludeNitJson = false) {
   if (excludeNitJson) {
     const stat = execCommandSilent(
-      "git diff HEAD --stat -- . ':(exclude)public/nit.json'",
+      'git diff HEAD --stat -- . ":(exclude)public/nit.json"',
     );
     const stagedStat = execCommandSilent(
-      "git diff --cached --stat -- . ':(exclude)public/nit.json'",
+      'git diff --cached --stat -- . ":(exclude)public/nit.json"',
     );
     return stat + stagedStat;
   }
