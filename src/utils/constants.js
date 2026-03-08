@@ -27,6 +27,15 @@ export const SYMBOLS = {
 };
 
 export const AI_PROVIDERS = {
+  "claude-code": {
+    name: "Claude Code (CLI)",
+    envKeys: [],
+    endpoint: null,
+    model: null,
+    keyPrefixes: [],
+    signupUrl: "https://claude.ai",
+    isCli: true,
+  },
   grok: {
     name: "Grok (xAI)",
     envKeys: ["GROK_API_KEY", "REACT_APP_GROK_API_KEY"],

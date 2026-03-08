@@ -11,9 +11,11 @@ import { NitError } from "../utils/errors.js";
 
 const PROJECT_ROOT = process.cwd();
 
-/** Validates that the API key exists and meets minimum length for a provider. */
+/** Validates that the API key exists and meets minimum length for a provider. CLI providers skip validation. */
 export function validateApiKey(apiKey, providerId = "grok") {
   const provider = AI_PROVIDERS[providerId];
+  if (provider?.isCli) return true;
+
   const providerName = provider?.name ?? providerId;
   const signupUrl = provider?.signupUrl ?? "your AI provider dashboard";
   const envKeyHint = provider?.envKeys?.[0] ?? "API_KEY";

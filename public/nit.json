@@ -1,6 +1,6 @@
 {
-  "version": "11.2",
+  "version": "11.3",
   "projectName": "nit",
   "branch": "main",
-  "provider": "grok"
+  "provider": "claude-code"
 }

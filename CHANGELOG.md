@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.3] - 2026-03-08
+
+- nit Release v11.3
+
 ## [11.2] - 2026-03-08
 
 - Updated the CLI to improve error handling for invalid paths during command execution.

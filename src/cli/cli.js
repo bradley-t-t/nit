@@ -66,6 +66,7 @@ export function printHelp() {
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Commits and pushes to git
 
   ${COLORS.bright}Supported AI Providers:${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Claude Code (CLI)   ${COLORS.dim}Uses your Claude subscription${COLORS.reset}
     ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Grok (xAI)          ${COLORS.dim}GROK_API_KEY${COLORS.reset}
     ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} OpenAI (GPT-4o)     ${COLORS.dim}OPENAI_API_KEY${COLORS.reset}
     ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Anthropic (Claude)  ${COLORS.dim}ANTHROPIC_API_KEY${COLORS.reset}
@@ -110,8 +111,11 @@ export async function providerSetup() {
 `);
 
   providerEntries.forEach(([, provider], index) => {
+    const hint = provider.isCli
+      ? "uses your Claude subscription"
+      : `env: ${provider.envKeys[0]}`;
     process.stdout.write(
-      `  ${COLORS.brightBlue}${index + 1}${COLORS.reset}) ${provider.name}  ${COLORS.dim}(env: ${provider.envKeys[0]})${COLORS.reset}\n`,
+      `  ${COLORS.brightBlue}${index + 1}${COLORS.reset}) ${provider.name}  ${COLORS.dim}(${hint})${COLORS.reset}\n`,
     );
   });
 
@@ -132,12 +136,18 @@ export async function providerSetup() {
   process.stdout.write(
     `\n  ${COLORS.brightGreen}${SYMBOLS.check}${COLORS.reset} Selected: ${selectedProvider.name}\n`,
   );
-  process.stdout.write(
-    `  ${COLORS.dim}Make sure ${selectedProvider.envKeys[0]} is set in your .env file.${COLORS.reset}\n`,
-  );
-  process.stdout.write(
-    `  ${COLORS.dim}Get a key at: ${selectedProvider.signupUrl}${COLORS.reset}\n\n`,
-  );
+  if (selectedProvider.isCli) {
+    process.stdout.write(
+      `  ${COLORS.dim}Make sure the 'claude' CLI is installed and authenticated.${COLORS.reset}\n\n`,
+    );
+  } else {
+    process.stdout.write(
+      `  ${COLORS.dim}Make sure ${selectedProvider.envKeys[0]} is set in your .env file.${COLORS.reset}\n`,
+    );
+    process.stdout.write(
+      `  ${COLORS.dim}Get a key at: ${selectedProvider.signupUrl}${COLORS.reset}\n\n`,
+    );
+  }
   return selectedId;
 }
 

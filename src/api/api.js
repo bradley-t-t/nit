@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+import { execSync } from "child_process";
 import { ErrorCodes, AI_PROVIDERS } from "../utils/constants.js";
 import { NitError, isNetworkError, parseApiError } from "../utils/errors.js";
 
@@ -28,6 +31,38 @@ function truncateDiff(diff) {
   const cleaned = filterDiffNoise(diff);
   if (cleaned.length <= MAX_DIFF_LENGTH) return cleaned;
   return cleaned.substring(0, MAX_DIFF_LENGTH) + "\n... (truncated)";
+}
+
+const CONTEXT_FILE = ".nit-context";
+
+/** Reads the optional .nit-context file for additional release context (intent, summary, etc). */
+function readContextFile() {
+  const contextPath = path.join(process.cwd(), CONTEXT_FILE);
+  try {
+    if (fs.existsSync(contextPath))
+      return fs.readFileSync(contextPath, "utf-8").trim();
+  } catch {}
+  return "";
+}
+
+/** Calls the Claude Code CLI in print mode, piping the prompt via stdin. */
+function callClaudeCli(prompt) {
+  const tempFile = path.join(process.cwd(), ".nit-prompt-temp");
+  try {
+    fs.writeFileSync(tempFile, prompt, "utf-8");
+    const result = execSync(`claude -p < "${tempFile}"`, {
+      cwd: process.cwd(),
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 120_000,
+      shell: true,
+    });
+    return result.trim();
+  } finally {
+    try {
+      fs.unlinkSync(tempFile);
+    } catch {}
+  }
 }
 
 const SYSTEM_PROMPT =
@@ -175,35 +210,20 @@ export async function callAiApi(apiKey, prompt, providerId = "grok") {
   }
 }
 
-/**
- * Generates a commit message by sending the diff to the configured AI provider.
- * Returns a formatted message with the project name, version, and bullet points.
- */
-export async function generateCommitMessage(
-  apiKey,
-  newVersion,
+/** Builds the user prompt for commit message generation with optional context. */
+function buildCommitPrompt(
   projectName,
-  diff,
-  stat,
+  newVersion,
   changedFiles,
-  providerId = "grok",
+  stat,
+  truncatedDiff,
 ) {
-  const providerName = AI_PROVIDERS[providerId]?.name ?? providerId;
-  const firstLine = `${projectName}: Release v${newVersion}`;
+  const context = readContextFile();
+  const contextBlock = context
+    ? `\nDeveloper context (what was worked on and why):\n${context}\n`
+    : "";
 
-  if (!diff.trim()) {
-    throw new NitError(
-      "No diff available to generate commit message",
-      ErrorCodes.API_RESPONSE_INVALID,
-      {
-        suggestion: "Make sure there are actual code changes to commit",
-      },
-    );
-  }
-
-  const truncatedDiff = truncateDiff(diff);
-
-  const prompt = `Generate a git commit message for ${projectName} version ${newVersion}.
+  return `Generate a git commit message for ${projectName} version ${newVersion}.
 
 CRITICAL RULES:
 1. The FIRST line MUST be EXACTLY: "${projectName}: Release v${newVersion}"
@@ -216,9 +236,9 @@ CRITICAL RULES:
 8. Group related changes together
 9. Include ALL meaningful changes visible in the diff
 10. Do NOT use any emojis
-11. Do NOT mention version bumps, version file updates, or turl.json changes
+11. Do NOT mention version bumps, version file updates, or nit.json changes
 12. Focus on actual code changes, not metadata
-
+${contextBlock}
 Changed files: ${changedFiles.join(", ")}
 
 Diff statistics:
@@ -233,21 +253,21 @@ ${projectName}: Release v${newVersion}
 - First change (written naturally)
 - Second change
 - (as many as needed)`;
+}
 
-  const response = await callAiApi(apiKey, prompt, providerId);
+/** Validates and normalizes the AI response into the expected commit message format. */
+function parseCommitResponse(response, projectName, newVersion, providerName) {
+  const firstLine = `${projectName}: Release v${newVersion}`;
 
   if (!response) {
     throw new NitError(
       `${providerName} returned empty commit message`,
       ErrorCodes.API_RESPONSE_INVALID,
-      {
-        suggestion: "The AI did not generate a valid response",
-      },
+      { suggestion: "The AI did not generate a valid response" },
     );
   }
 
-  if (response.startsWith(`${projectName}: Release v${newVersion}`))
-    return response.trim();
+  if (response.startsWith(firstLine)) return response.trim();
   if (response.includes("-")) return `${firstLine}\n\n${response.trim()}`;
 
   throw new NitError(
@@ -258,4 +278,45 @@ ${projectName}: Release v${newVersion}
       suggestion: "The AI response did not match expected format",
     },
   );
+}
+
+/**
+ * Generates a commit message by sending the diff to the configured AI provider.
+ * Returns a formatted message with the project name, version, and bullet points.
+ * Supports both API-based providers and the Claude Code CLI.
+ */
+export async function generateCommitMessage(
+  apiKey,
+  newVersion,
+  projectName,
+  diff,
+  stat,
+  changedFiles,
+  providerId = "grok",
+) {
+  const provider = AI_PROVIDERS[providerId];
+  const providerName = provider?.name ?? providerId;
+
+  if (!diff.trim()) {
+    throw new NitError(
+      "No diff available to generate commit message",
+      ErrorCodes.API_RESPONSE_INVALID,
+      { suggestion: "Make sure there are actual code changes to commit" },
+    );
+  }
+
+  const truncatedDiff = truncateDiff(diff);
+  const prompt = buildCommitPrompt(
+    projectName,
+    newVersion,
+    changedFiles,
+    stat,
+    truncatedDiff,
+  );
+
+  const response = provider?.isCli
+    ? callClaudeCli(prompt)
+    : await callAiApi(apiKey, prompt, providerId);
+
+  return parseCommitResponse(response, projectName, newVersion, providerName);
 }
