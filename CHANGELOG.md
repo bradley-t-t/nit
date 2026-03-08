@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.2] - 2026-03-08
+
+- Updated the CLI to improve error handling for invalid paths during command execution.
+- Fixed a bug in the package configuration that caused issues with excluded directories.
+
 ## [11.1] - 2026-03-08
 
 - Changed code cleanup from opt-in flags (--clean-logs and --clean-css) to interactive prompts during each release, asking users whether to remove console.log statements and unused CSS classes.

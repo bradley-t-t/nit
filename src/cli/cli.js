@@ -180,16 +180,21 @@ export async function promptCleanup() {
   const question = (prompt) =>
     new Promise((resolve) => rl.question(prompt, resolve));
 
-  const logsAnswer = await question(
-    `\n  ${COLORS.bright}Remove console.log statements?${COLORS.reset} (y/N): `,
+  process.stdout.write(
+    `\n  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${COLORS.bright}Code Cleanup${COLORS.reset}\n`,
   );
-  const cleanLogs = logsAnswer.trim().toLowerCase() === "y";
+
+  const logsAnswer = await question(
+    `    Remove console.log statements? ${COLORS.dim}(Y/N)${COLORS.reset} `,
+  );
+  const cleanLogs = logsAnswer.trim().toUpperCase() === "Y";
 
   const cssAnswer = await question(
-    `  ${COLORS.bright}Remove unused CSS classes?${COLORS.reset} (y/N): `,
+    `    Remove unused CSS classes?      ${COLORS.dim}(Y/N)${COLORS.reset} `,
   );
-  const cleanCss = cssAnswer.trim().toLowerCase() === "y";
+  const cleanCss = cssAnswer.trim().toUpperCase() === "Y";
 
+  process.stdout.write("\n");
   rl.close();
   return { cleanLogs, cleanCss };
 }
