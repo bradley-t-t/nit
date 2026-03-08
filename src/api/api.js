@@ -45,9 +45,11 @@ function readContextFile() {
   return "";
 }
 
-/** Calls the Claude Code CLI in print mode, piping the prompt via stdin. */
+/** Calls the Claude Code CLI in print mode, piping the prompt via a temp file. Unsets CLAUDECODE to allow nested invocation. */
 function callClaudeCli(prompt) {
   const tempFile = path.join(process.cwd(), ".nit-prompt-temp");
+  const env = { ...process.env };
+  delete env.CLAUDECODE;
   try {
     fs.writeFileSync(tempFile, prompt, "utf-8");
     const result = execSync(`claude -p < "${tempFile}"`, {
@@ -56,6 +58,7 @@ function callClaudeCli(prompt) {
       stdio: ["pipe", "pipe", "pipe"],
       timeout: 120_000,
       shell: true,
+      env,
     });
     return result.trim();
   } finally {

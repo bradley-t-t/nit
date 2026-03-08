@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.4] - 2026-03-08
+
+- Unset the CLAUDECODE environment variable before spawning the Claude CLI to allow nested invocation
+- Pass a custom env object to execSync so the child process runs without the CLAUDECODE flag
+
 ## [11.3] - 2026-03-08
 
 - nit Release v11.3
