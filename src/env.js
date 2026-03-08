@@ -6,6 +6,7 @@ import { AI_PROVIDERS } from "./constants.js";
 
 const PROJECT_ROOT = process.cwd();
 
+/** Parses a .env file and loads its key=value pairs into process.env. */
 export function loadEnvFromPath(envPath) {
   if (!fileExists(envPath)) return false;
 
@@ -30,6 +31,7 @@ export function loadEnvFromPath(envPath) {
   return true;
 }
 
+/** Loads the project's .env file from the current working directory. */
 export function loadEnv() {
   const projectEnvPath = path.join(PROJECT_ROOT, ".env");
   loadEnvFromPath(projectEnvPath);
@@ -45,11 +47,7 @@ export function getApiKeyForProvider(providerId) {
   return null;
 }
 
-/** @deprecated Use getApiKeyForProvider instead. Kept for backward compatibility. */
-export function getApiKey() {
-  return process.env.GROK_API_KEY || process.env.REACT_APP_GROK_API_KEY || null;
-}
-
+/** Checks whether node_modules exists in the project root. */
 export function checkNodeModules() {
   const nodeModulesPath = path.join(PROJECT_ROOT, "node_modules");
   if (!fileExists(nodeModulesPath)) {
@@ -62,6 +60,7 @@ export function checkNodeModules() {
   return { exists: true };
 }
 
+/** Checks if Prettier is available locally or globally. */
 export function checkPrettierInstalled() {
   const prettierPath = path.join(PROJECT_ROOT, "node_modules", "prettier");
   const globalCheck = () => {
@@ -82,6 +81,7 @@ export function checkPrettierInstalled() {
   };
 }
 
+/** Detects the project's build command from package.json scripts or known frameworks. */
 export function detectBuildCommand() {
   const packageJsonPath = path.join(PROJECT_ROOT, "package.json");
   if (!fileExists(packageJsonPath)) return null;
@@ -99,6 +99,7 @@ export function detectBuildCommand() {
   return null;
 }
 
+/** Detects the project's format command from package.json scripts or Prettier availability. */
 export function detectFormatCommand() {
   const packageJsonPath = path.join(PROJECT_ROOT, "package.json");
   if (!fileExists(packageJsonPath))

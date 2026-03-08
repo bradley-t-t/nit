@@ -11,6 +11,7 @@ import { NitError } from "./errors.js";
 
 const PROJECT_ROOT = process.cwd();
 
+/** Validates that the API key exists and meets minimum length for a provider. */
 export function validateApiKey(apiKey, providerId = "grok") {
   const provider = AI_PROVIDERS[providerId];
   const providerName = provider?.name ?? providerId;
@@ -37,6 +38,7 @@ export function validateApiKey(apiKey, providerId = "grok") {
   return true;
 }
 
+/** Reads public/nit.json config, creating it with defaults if missing. */
 export function readNitConfig() {
   const nitConfigPath = path.join(PROJECT_ROOT, "public", "nit.json");
   const defaultConfig = {
@@ -68,25 +70,22 @@ export function readNitConfig() {
   };
 }
 
+/** Bumps the minor version by 1 (e.g. 1.9 -> 1.10, 2.3 -> 2.4). */
 export function incrementVersion(version) {
   const parts = version.split(".");
-  let major = parseInt(parts[0], 10) || 1;
-  let minor = parseInt(parts[1], 10) || 0;
-
-  minor++;
-  if (minor >= 10) {
-    major++;
-    minor = 0;
-  }
+  const major = parseInt(parts[0], 10) || 1;
+  const minor = (parseInt(parts[1], 10) || 0) + 1;
   return `${major}.${minor}`;
 }
 
+/** Converts a short version like "1.2" to semver "1.2.0" for package.json. */
 function toSemver(version) {
   return version.includes(".") && version.split(".").length === 2
     ? `${version}.0`
     : version;
 }
 
+/** Syncs the version in package.json to match the new release version. */
 export function updatePackageJsonVersion(newVersion) {
   const packageJsonPath = path.join(PROJECT_ROOT, "package.json");
   if (!fileExists(packageJsonPath))
@@ -117,6 +116,7 @@ export function updatePackageJsonVersion(newVersion) {
   }
 }
 
+/** Updates version in plugin files (gradle.properties, plugin.xml) if they exist. */
 function updatePluginVersion(newVersion) {
   const semverVersion = toSemver(newVersion);
 
@@ -159,6 +159,7 @@ function updatePluginVersion(newVersion) {
   }
 }
 
+/** Persists the nit config to public/nit.json and syncs version to package.json + plugin files. */
 export function writeNitConfig(config) {
   const nitConfigPath = path.join(PROJECT_ROOT, "public", "nit.json");
   const persistedConfig = {
@@ -176,6 +177,7 @@ export function writeNitConfig(config) {
   return updatePackageJsonVersion(config.version);
 }
 
+/** Inserts a new changelog entry into CHANGELOG.md, creating the file if needed. */
 export function updateChangelog(changelogEntry) {
   const changelogPath = path.join(PROJECT_ROOT, "CHANGELOG.md");
   let existingContent = "";

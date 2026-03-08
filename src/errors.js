@@ -1,5 +1,6 @@
 import { ErrorCodes, AI_PROVIDERS } from "./constants.js";
 
+/** Custom error class with a machine-readable code and optional details object. */
 export class NitError extends Error {
   constructor(message, code, details = {}) {
     super(message);
@@ -9,10 +10,12 @@ export class NitError extends Error {
   }
 }
 
+/** Shorthand factory for creating NitError instances. */
 export function createError(message, code, details = {}) {
   return new NitError(message, code, details);
 }
 
+/** Returns true if the error is a known network-level failure (DNS, timeout, refused). */
 export function isNetworkError(err) {
   return [
     "ENOTFOUND",
@@ -23,6 +26,7 @@ export function isNetworkError(err) {
   ].includes(err.code);
 }
 
+/** Parses an HTTP error response into a descriptive NitError with provider-specific context. */
 export function parseApiError(
   response,
   errorText,

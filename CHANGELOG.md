@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [10.6] - 2026-03-08
+
+- Unable to generate specific changes due to the provided diff being invalid or inaccessible. The diff content shows an error message indicating an invalid path, and no actual code changes are visible for review. If there are specific updates in the mentioned files (package.json, src/api.js, src/cli.js, src/config.js, src/env.js, src/errors.js, src/file-utils.js, src/git.js), they are not reflected in the provided diff data. Please provide a valid diff to detail the changes accurately.
+
 ## [10.5] - 2026-03-07
 
 - Updated the CLI to include a new command for user authentication in src/cli.js.

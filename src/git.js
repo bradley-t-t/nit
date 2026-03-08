@@ -6,6 +6,7 @@ import { NitError } from "./errors.js";
 
 const PROJECT_ROOT = process.cwd();
 
+/** Runs a shell command in the project root. Throws on failure unless ignoreError is set. */
 export function execCommand(command, options = {}) {
   try {
     return execSync(command, {
@@ -20,6 +21,7 @@ export function execCommand(command, options = {}) {
   }
 }
 
+/** Runs a shell command silently, returning stdout on failure instead of throwing. */
 export function execCommandSilent(command) {
   try {
     return execSync(command, {
@@ -32,6 +34,7 @@ export function execCommandSilent(command) {
   }
 }
 
+/** Verifies git is installed and accessible in PATH. */
 export function checkGitInstalled() {
   try {
     execSync("git --version", { stdio: "pipe" });
@@ -47,6 +50,7 @@ export function checkGitInstalled() {
   }
 }
 
+/** Verifies the current directory is inside a git repository. */
 export function checkGitRepository() {
   try {
     execSync("git rev-parse --git-dir", { cwd: PROJECT_ROOT, stdio: "pipe" });
@@ -59,6 +63,7 @@ export function checkGitRepository() {
   }
 }
 
+/** Verifies at least one git remote is configured. */
 export function checkGitRemote() {
   try {
     const remotes = execSync("git remote", {
@@ -82,11 +87,13 @@ export function checkGitRemote() {
   }
 }
 
+/** Returns true if the working tree has any uncommitted changes. */
 export function hasChanges() {
   const status = execCommandSilent("git status --porcelain");
   return status.trim().length > 0;
 }
 
+/** Returns the full unified diff (unstaged + staged), optionally excluding nit.json. */
 export function getGitDiff(excludeNitJson = false) {
   if (excludeNitJson) {
     const diff = execCommandSilent(
@@ -102,6 +109,7 @@ export function getGitDiff(excludeNitJson = false) {
   );
 }
 
+/** Returns the diff --stat summary, optionally excluding nit.json. */
 export function getGitDiffStat(excludeNitJson = false) {
   if (excludeNitJson) {
     const stat = execCommandSilent(
@@ -118,6 +126,7 @@ export function getGitDiffStat(excludeNitJson = false) {
   );
 }
 
+/** Returns a deduplicated list of changed file paths, optionally excluding nit.json. */
 export function getChangedFiles(excludeNitJson = false) {
   const files = execCommandSilent("git diff HEAD --name-only");
   const stagedFiles = execCommandSilent("git diff --cached --name-only");
@@ -132,6 +141,7 @@ export function getChangedFiles(excludeNitJson = false) {
   return fileList;
 }
 
+/** Creates a git commit using a temp file to safely pass multi-line messages. */
 export function gitCommit(commitMessage) {
   const tempFile = path.join(PROJECT_ROOT, ".commit-msg-temp");
   try {
@@ -161,6 +171,7 @@ export function gitCommit(commitMessage) {
   }
 }
 
+/** Pushes to origin, with descriptive errors for common failure modes. */
 export function gitPush(branch = "main") {
   try {
     execCommand(`git push origin ${branch}`, { silent: true });
@@ -213,6 +224,7 @@ export function gitPush(branch = "main") {
   }
 }
 
+/** Runs the build command as a child process, capturing stdout/stderr for error reporting. */
 export function runBuild(buildCommand) {
   return new Promise((resolve, reject) => {
     const [cmd, ...cmdArgs] = buildCommand.split(" ");

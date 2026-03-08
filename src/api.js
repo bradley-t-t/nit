@@ -1,9 +1,9 @@
 import { ErrorCodes, AI_PROVIDERS } from "./constants.js";
 import { NitError, isNetworkError, parseApiError } from "./errors.js";
 
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 2000;
-const MAX_DIFF_LENGTH = 30000;
+const MAX_RETRIES = 3; // Retry up to 3 times on 429/5xx
+const BASE_DELAY_MS = 2000; // Starting delay for exponential backoff
+const MAX_DIFF_LENGTH = 30000; // Truncate diffs beyond this to stay within token limits
 const NOISE_FILE_PATTERNS = [
   /^diff --git a\/package-lock\.json/,
   /^diff --git a\/yarn\.lock/,
@@ -23,6 +23,7 @@ function filterDiffNoise(diff) {
   return filtered.join("");
 }
 
+/** Filters noise from a diff and truncates it to fit within AI token limits. */
 function truncateDiff(diff) {
   const cleaned = filterDiffNoise(diff);
   if (cleaned.length <= MAX_DIFF_LENGTH) return cleaned;
@@ -174,81 +175,10 @@ export async function callAiApi(apiKey, prompt, providerId = "grok") {
   }
 }
 
-/** @deprecated Use callAiApi instead. Kept for backward compatibility. */
-export async function callGrokApi(apiKey, prompt) {
-  return callAiApi(apiKey, prompt, "grok");
-}
-
-export async function generateChangelog(
-  apiKey,
-  newVersion,
-  projectName,
-  diff,
-  stat,
-  changedFiles,
-  providerId = "grok",
-) {
-  const providerName = AI_PROVIDERS[providerId]?.name ?? providerId;
-  const today = new Date().toISOString().split("T")[0];
-
-  if (!diff.trim()) {
-    throw new NitError(
-      "No diff available to generate changelog",
-      ErrorCodes.API_RESPONSE_INVALID,
-      {
-        suggestion: "Make sure there are actual code changes to release",
-      },
-    );
-  }
-
-  const truncatedDiff = truncateDiff(diff);
-
-  const prompt = `Generate a changelog entry for ${projectName} version ${newVersion}.
-
-RULES:
-1. ONLY describe changes that are EXPLICITLY visible in the diff below
-2. Do NOT invent or assume any changes not shown in the diff
-3. Write in a natural, human-friendly tone - like a developer explaining what they did
-4. Be specific - mention actual features, fixes, or improvements by name
-5. Group related changes together logically
-6. Use bullet points starting with "-"
-7. Include ALL meaningful changes visible in the diff
-8. Keep it concise but complete
-9. Do NOT use any emojis
-10. Do NOT mention version bumps, version file updates, or turl.json changes
-11. Focus on what actually changed in the code, not metadata
-
-Changed files: ${changedFiles.join(", ")}
-
-Diff statistics:
-${stat}
-
-Actual diff:
-${truncatedDiff}
-
-Output format (EXACTLY):
-## [${newVersion}] - ${today}
-
-- First change (written naturally)
-- Second change
-- (as many as needed)`;
-
-  const response = await callAiApi(apiKey, prompt, providerId);
-
-  if (!response?.includes(`## [${newVersion}]`)) {
-    throw new NitError(
-      `${providerName} returned invalid changelog format`,
-      ErrorCodes.API_RESPONSE_INVALID,
-      {
-        response: response ? response.substring(0, 200) : "empty",
-        suggestion: "The AI response did not match expected format",
-      },
-    );
-  }
-
-  return response.trim() + "\n";
-}
-
+/**
+ * Generates a commit message by sending the diff to the configured AI provider.
+ * Returns a formatted message with the project name, version, and bullet points.
+ */
 export async function generateCommitMessage(
   apiKey,
   newVersion,

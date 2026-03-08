@@ -3,6 +3,7 @@ import path from "path";
 import { ErrorCodes } from "./constants.js";
 import { NitError } from "./errors.js";
 
+/** Reads a file with human-readable error messages for common failure modes. */
 export function safeReadFile(filePath, description = "file") {
   try {
     return fs.readFileSync(filePath, "utf-8");
@@ -29,6 +30,7 @@ export function safeReadFile(filePath, description = "file") {
   }
 }
 
+/** Writes a file, creating parent directories if needed, with descriptive error handling. */
 export function safeWriteFile(filePath, content, description = "file") {
   try {
     const dir = path.dirname(filePath);
@@ -66,6 +68,7 @@ export function safeWriteFile(filePath, content, description = "file") {
   }
 }
 
+/** Parses JSON content with a descriptive error if the content is malformed. */
 export function safeParseJson(content, filePath, description = "JSON file") {
   try {
     return JSON.parse(content);
@@ -78,6 +81,7 @@ export function safeParseJson(content, filePath, description = "JSON file") {
   }
 }
 
+/** Returns true if a file or directory exists at the given path. */
 export function fileExists(filePath) {
   return fs.existsSync(filePath);
 }

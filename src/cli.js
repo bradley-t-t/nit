@@ -10,6 +10,7 @@ import {
   AI_PROVIDERS,
 } from "./constants.js";
 
+/** Reads the installed nit version from package.json, falling back to the hardcoded constant. */
 function getInstalledVersion() {
   try {
     const require = createRequire(import.meta.url);
@@ -20,6 +21,7 @@ function getInstalledVersion() {
   }
 }
 
+/** Parses CLI arguments into a structured options object. */
 export function parseArgs(args) {
   const options = {
     branch: null,
@@ -65,6 +67,7 @@ export function parseArgs(args) {
   return options;
 }
 
+/** Prints the help text with all available options and examples. */
 export function printHelp() {
   process.stdout.write(`
   ${COLORS.bright}Nit${COLORS.reset} ${COLORS.dim}v${PACKAGE_VERSION}${COLORS.reset}
@@ -160,6 +163,7 @@ export async function providerSetup() {
   return selectedId;
 }
 
+/** Prompts the user for branch, build, and format preferences in interactive mode. */
 export async function interactiveMenu() {
   const readline = await import("readline");
   const rl = readline.createInterface({
@@ -188,6 +192,7 @@ export async function interactiveMenu() {
   return options;
 }
 
+/** Compares the installed version against the latest on GitHub to detect available updates. */
 export async function checkForUpdates() {
   const currentVersion = getInstalledVersion();
   try {
@@ -233,6 +238,7 @@ export async function checkForUpdates() {
   }
 }
 
+/** Detects whether nit is installed globally or locally in the project. */
 function detectInstallationType() {
   try {
     const globalList = execSync(`npm list -g ${PACKAGE_NAME} --depth=0`, {
@@ -254,6 +260,7 @@ function detectInstallationType() {
   return "global";
 }
 
+/** Installs the latest nit from GitHub, respecting whether it's a global or local install. */
 export async function performUpdate() {
   const installationType = detectInstallationType();
   const githubSpec = `github:${GITHUB_REPO}#${GITHUB_BRANCH}`;
@@ -270,6 +277,7 @@ export async function performUpdate() {
   }
 }
 
+/** Re-runs nit after a self-update so the new version handles the release. */
 export function reExecuteAfterUpdate() {
   const args = process.argv
     .slice(2)
