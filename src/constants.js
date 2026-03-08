@@ -1,5 +1,11 @@
-export const PACKAGE_VERSION = "8.0.0";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json");
+
+export const PACKAGE_VERSION = pkg.version;
 export const PACKAGE_NAME = "nit";
+export const PACKAGE_AUTHOR = "Trenton Taylor";
 export const GITHUB_REPO = "bradley-t-t/nit";
 export const GITHUB_BRANCH = "main";
 

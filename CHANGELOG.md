@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [10.8] - 2026-03-08
+
+- Refactored version retrieval by moving the logic to read the package version directly from package.json into constants.js, replacing the hardcoded value.
+- Removed the getInstalledVersion function from cli.js and updated the checkForUpdates function to use the PACKAGE_VERSION constant directly.
+- Added a new PACKAGE_AUTHOR constant in constants.js with the value "Trenton Taylor".
+- Updated the UI header in ui.js to display the version and author information together as "v<version> by <author>".
+
 ## [10.7] - 2026-03-08
 
 - Updated git diff commands in src/git.js to use double quotes instead of single quotes for the exclude path pattern in both getGitDiff and getGitDiffStat functions.

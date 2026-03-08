@@ -1,4 +1,9 @@
-import { COLORS, SYMBOLS, PACKAGE_VERSION } from "./constants.js";
+import {
+  COLORS,
+  SYMBOLS,
+  PACKAGE_VERSION,
+  PACKAGE_AUTHOR,
+} from "./constants.js";
 
 const printStatusLine = (message) =>
   process.stdout.write(
@@ -12,7 +17,7 @@ export const ui = {
   printHeader: () => {
     const SEP = `${COLORS.dim}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}`;
     const TITLE = `${COLORS.brightWhite}${COLORS.bright}Automated Release Management${COLORS.reset}`;
-    const VER = `${COLORS.dim}Version ${PACKAGE_VERSION}${COLORS.reset}`;
+    const VER = `${COLORS.dim}v${PACKAGE_VERSION} by ${PACKAGE_AUTHOR}${COLORS.reset}`;
     const GAP = "  ";
 
     process.stdout.write(

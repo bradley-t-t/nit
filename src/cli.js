@@ -1,5 +1,4 @@
 import { execSync } from "child_process";
-import { createRequire } from "module";
 import {
   COLORS,
   SYMBOLS,
@@ -9,17 +8,6 @@ import {
   GITHUB_BRANCH,
   AI_PROVIDERS,
 } from "./constants.js";
-
-/** Reads the installed nit version from package.json, falling back to the hardcoded constant. */
-function getInstalledVersion() {
-  try {
-    const require = createRequire(import.meta.url);
-    const pkg = require("../package.json");
-    return pkg.version;
-  } catch {
-    return PACKAGE_VERSION;
-  }
-}
 
 /** Parses CLI arguments into a structured options object. */
 export function parseArgs(args) {
@@ -194,7 +182,7 @@ export async function interactiveMenu() {
 
 /** Compares the installed version against the latest on GitHub to detect available updates. */
 export async function checkForUpdates() {
-  const currentVersion = getInstalledVersion();
+  const currentVersion = PACKAGE_VERSION;
   try {
     const response = await fetch(
       `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/package.json`,
