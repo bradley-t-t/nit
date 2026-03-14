@@ -22,6 +22,7 @@ import {
   checkNodeModules,
   detectBuildCommand,
   detectFormatCommand,
+  isNodeProject,
 } from "./config/env.js";
 import {
   validateApiKey,
@@ -136,7 +137,9 @@ async function main() {
     process.exit(1);
   }
 
-  checkNodeModules();
+  const nodeProject = isNodeProject();
+
+  if (nodeProject) checkNodeModules();
 
   ui.printHeaderWithStatus("Loading environment...");
   loadEnv();
@@ -184,42 +187,46 @@ async function main() {
     `Preparing release: v${nitConfig.version} ${SYMBOLS.arrow} v${newVersion}`,
   );
 
-  const logsPreset = cliOptions.cleanLogs;
-  const cssPreset = cliOptions.cleanCss;
+  if (nodeProject) {
+    const logsPreset = cliOptions.cleanLogs;
+    const cssPreset = cliOptions.cleanCss;
 
-  const cleanLogs = logsPreset !== null ? logsPreset : !!nitConfig.cleanLogs;
-  const cleanCss = cssPreset !== null ? cssPreset : !!nitConfig.cleanCss;
+    const cleanLogs = logsPreset !== null ? logsPreset : !!nitConfig.cleanLogs;
+    const cleanCss = cssPreset !== null ? cssPreset : !!nitConfig.cleanCss;
 
-  if (cleanLogs || cleanCss) {
-    ui.printHeaderWithStatus("Running code cleanup...");
-    try {
-      const cleanupResult = await runCleanup(process.cwd(), {
-        cleanLogs,
-        cleanCss,
-      });
-      if (cleanupResult.consoleLogsRemoved > 0) {
-        ui.printHeaderWithStatus(
-          `Removed ${cleanupResult.consoleLogsRemoved} `,
-        );
-      }
-      if (cleanupResult.cssClassesRemoved > 0) {
-        ui.printHeaderWithStatus(
-          `Removed ${cleanupResult.cssClassesRemoved} unused CSS class(es)`,
-        );
-      }
-    } catch {}
-  } else {
-    ui.printHeaderWithStatus("Skipping code cleanup");
-  }
-
-  ui.printHeaderWithStatus("Running code formatter...");
-  if (!interactiveOptions.skipFormat) {
-    const formatResult = detectFormatCommand();
-    if (formatResult.command) {
+    if (cleanLogs || cleanCss) {
+      ui.printHeaderWithStatus("Running code cleanup...");
       try {
-        execCommand(formatResult.command, { silent: true, ignoreError: false });
+        const cleanupResult = await runCleanup(process.cwd(), {
+          cleanLogs,
+          cleanCss,
+        });
+        if (cleanupResult.consoleLogsRemoved > 0) {
+          ui.printHeaderWithStatus(
+            `Removed ${cleanupResult.consoleLogsRemoved} `,
+          );
+        }
+        if (cleanupResult.cssClassesRemoved > 0) {
+          ui.printHeaderWithStatus(
+            `Removed ${cleanupResult.cssClassesRemoved} unused CSS class(es)`,
+          );
+        }
       } catch {}
+    } else {
+      ui.printHeaderWithStatus("Skipping code cleanup");
     }
+
+    ui.printHeaderWithStatus("Running code formatter...");
+    if (!interactiveOptions.skipFormat) {
+      const formatResult = detectFormatCommand();
+      if (formatResult.command) {
+        try {
+          execCommand(formatResult.command, { silent: true, ignoreError: false });
+        } catch {}
+      }
+    }
+  } else {
+    ui.printHeaderWithStatus("Non-Node project detected, skipping cleanup and format");
   }
 
   ui.printHeaderWithStatus("Checking for changes...");
@@ -244,16 +251,18 @@ async function main() {
     process.exit(1);
   }
 
-  ui.printHeaderWithStatus("Running production build...");
-  if (!interactiveOptions.skipBuild) {
-    const buildCommand = detectBuildCommand();
-    if (buildCommand) {
-      try {
-        await runBuild(buildCommand);
-      } catch (err) {
-        const errorOutput = err.details?.output || err.message;
-        ui.printHeaderWithError("Build failed", errorOutput);
-        exitWithRollback(1);
+  if (nodeProject) {
+    ui.printHeaderWithStatus("Running production build...");
+    if (!interactiveOptions.skipBuild) {
+      const buildCommand = detectBuildCommand();
+      if (buildCommand) {
+        try {
+          await runBuild(buildCommand);
+        } catch (err) {
+          const errorOutput = err.details?.output || err.message;
+          ui.printHeaderWithError("Build failed", errorOutput);
+          exitWithRollback(1);
+        }
       }
     }
   }

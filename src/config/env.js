@@ -10,6 +10,11 @@ import { AI_PROVIDERS } from "../utils/constants.js";
 
 const PROJECT_ROOT = process.cwd();
 
+/** Returns true if the current project has a package.json (i.e. is a Node project). */
+export function isNodeProject() {
+  return fileExists(path.join(PROJECT_ROOT, "package.json"));
+}
+
 /** Parses a .env file and loads its key=value pairs into process.env. */
 export function loadEnvFromPath(envPath) {
   if (!fileExists(envPath)) return false;

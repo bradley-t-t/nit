@@ -1,6 +1,6 @@
 # nit
 
-Automated release management for Node.js projects. Handles version bumping, code cleanup, formatting, AI-generated changelogs, builds, and git operations in a single command.
+Automated release management for any git project. Handles version bumping, code cleanup, formatting, AI-generated changelogs, builds, and git operations in a single command. For non-Node projects, nit automatically skips cleanup, formatting, and build steps while still providing versioning, AI changelogs, and git operations.
 
 ---
 
@@ -46,9 +46,15 @@ npm install -g github:bradley-t-t/nit#main
 
 ### Prerequisites
 
-- Node.js >= 18.0.0
+- Node.js >= 18.0.0 (to run nit itself)
 - Git with at least one configured remote
 - An API key for one of the supported AI providers
+
+### Non-Node Projects
+
+nit works with any git repository. For projects without a `package.json` (e.g., game mods, config repos, documentation), nit automatically skips code cleanup, formatting, and build steps. The release pipeline runs: version bump → stage → AI changelog → commit → push.
+
+To use nit in a non-Node project, install it globally and run `nit` from the project directory. nit will create `public/nit.json` on first run.
 
 ---
 
@@ -115,14 +121,14 @@ Running `nit` (or `npm run release`) executes the following steps in order:
 | 4   | Provider setup     | Prompts for AI provider selection if not yet configured.                                                                                                                         |
 | 5   | API key validation | Confirms the key exists and meets minimum length (20 chars).                                                                                                                     |
 | 6   | Version bump       | Increments the version and writes to all version files.                                                                                                                          |
-| 7   | Code cleanup       | Removes `console.log()` statements and/or unused CSS classes based on `cleanLogs` and `cleanCss` in `nit.json`. Can be overridden with `--clean-*` flags.                        |
-| 8   | Format             | Runs Prettier or the project's configured `format` script.                                                                                                                       |
+| 7   | Code cleanup       | *(Node only)* Removes `console.log()` statements and/or unused CSS classes based on `cleanLogs` and `cleanCss` in `nit.json`. Can be overridden with `--clean-*` flags.          |
+| 8   | Format             | *(Node only)* Runs Prettier or the project's configured `format` script.                                                                                                         |
 | 9   | Change detection   | If no changes exist after all modifications, exits cleanly — no empty commits.                                                                                                   |
 | 10  | Stage              | Runs `git add -A` to stage all changes.                                                                                                                                          |
 | 11  | AI commit message  | Sends the diff (excluding lock files and build artifacts) to the configured AI provider. Generates a structured commit message with bullet-point descriptions of actual changes. |
 | 12  | Changelog          | Extracts bullet points from the commit message and prepends a dated entry to `CHANGELOG.md`.                                                                                     |
 | 13  | Re-stage           | Runs `git add -A` again to include the updated changelog.                                                                                                                        |
-| 14  | Build              | Runs the detected build command (`npm run build`, `npx vite build`, or `npx react-scripts build`).                                                                               |
+| 14  | Build              | *(Node only)* Runs the detected build command (`npm run build`, `npx vite build`, or `npx react-scripts build`).                                                                 |
 | 15  | Commit             | Creates a commit using a temp file (`git commit -F`) to handle multiline messages safely.                                                                                        |
 | 16  | Push               | Pushes to the configured branch via `git push origin <branch>`.                                                                                                                  |
 
@@ -231,7 +237,7 @@ New entries are inserted after the `# Changelog` header, preserving all previous
 
 ## Code Cleanup
 
-During each release, nit runs cleanup based on the `cleanLogs` and `cleanCss` settings in `nit.json`. CLI flags (`--clean-logs`, `--clean-css`, `--clean-all`, `--no-clean`) override the config values:
+During each release (Node projects only), nit runs cleanup based on the `cleanLogs` and `cleanCss` settings in `nit.json`. CLI flags (`--clean-logs`, `--clean-css`, `--clean-all`, `--no-clean`) override the config values:
 
 1. **Remove console.log statements?** — Scans all `.js`, `.jsx`, `.ts`, and `.tsx` files in `src/` and removes `console.log()` statements. Handles nested parentheses, optional semicolons, and trailing newlines. Consolidates resulting blank lines.
 

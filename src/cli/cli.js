@@ -74,11 +74,11 @@ export function printHelp() {
 
   ${COLORS.bright}What it does (all automatic):${COLORS.reset}
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks for nit updates and auto-updates
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Prompts for optional code cleanup (remove logs / unused CSS)
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Formats code with Prettier
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Prompts for optional code cleanup (remove logs / unused CSS) ${COLORS.dim}[Node only]${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Formats code with Prettier ${COLORS.dim}[Node only]${COLORS.reset}
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Increments version in nit.json + package.json
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Generates AI changelog and commit message
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs production build
+    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs production build ${COLORS.dim}[Node only]${COLORS.reset}
     ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Commits and pushes to git
 
   ${COLORS.bright}Supported AI Providers:${COLORS.reset}
@@ -219,14 +219,14 @@ export async function promptCleanup() {
   );
 
   const logsAnswer = await question(
-    `    Remove console.log statements? ${COLORS.dim}(Y/N)${COLORS.reset} `,
+    `    Remove console.log statements? ${COLORS.dim}(Y/n)${COLORS.reset} `,
   );
-  const cleanLogs = logsAnswer.trim().toUpperCase() === "Y";
+  const cleanLogs = logsAnswer.trim().toUpperCase() !== "N";
 
   const cssAnswer = await question(
-    `    Remove unused CSS classes?      ${COLORS.dim}(Y/N)${COLORS.reset} `,
+    `    Remove unused CSS classes?      ${COLORS.dim}(Y/n)${COLORS.reset} `,
   );
-  const cleanCss = cssAnswer.trim().toUpperCase() === "Y";
+  const cleanCss = cssAnswer.trim().toUpperCase() !== "N";
 
   process.stdout.write("\n");
   rl.close();
