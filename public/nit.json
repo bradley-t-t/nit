@@ -1,5 +1,5 @@
 {
-  "version": "11.5",
+  "version": "11.6",
   "projectName": "nit",
   "branch": "main",
   "provider": "claude-code"

@@ -34,7 +34,6 @@ import { generateCommitMessage } from "./api/api.js";
 import {
   parseArgs,
   interactiveMenu,
-  promptCleanup,
   checkForUpdates,
   performUpdate,
   reExecuteAfterUpdate,
@@ -187,17 +186,9 @@ async function main() {
 
   const logsPreset = cliOptions.cleanLogs;
   const cssPreset = cliOptions.cleanCss;
-  const bothPreset = logsPreset !== null && cssPreset !== null;
 
-  let cleanLogs, cleanCss;
-  if (bothPreset) {
-    cleanLogs = logsPreset;
-    cleanCss = cssPreset;
-  } else {
-    const prompted = await promptCleanup();
-    cleanLogs = logsPreset !== null ? logsPreset : prompted.cleanLogs;
-    cleanCss = cssPreset !== null ? cssPreset : prompted.cleanCss;
-  }
+  const cleanLogs = logsPreset !== null ? logsPreset : !!nitConfig.cleanLogs;
+  const cleanCss = cssPreset !== null ? cssPreset : !!nitConfig.cleanCss;
 
   if (cleanLogs || cleanCss) {
     ui.printHeaderWithStatus("Running code cleanup...");

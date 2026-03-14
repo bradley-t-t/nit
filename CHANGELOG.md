@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.6] - 2026-03-14
+
+- Replace interactive cleanup prompts with config-driven defaults from nit.json (cleanLogs and cleanCss fields)
+- Add cleanLogs (default true) and cleanCss (default false) settings to nit.json config schema
+- Read and merge cleanLogs/cleanCss from parsed config in readNitConfig, falling back to defaults
+- Remove promptCleanup import and interactive prompt logic from the release pipeline
+- CLI flags still override config values when provided
+- Update README to document new config fields and non-interactive cleanup behavior
+
 ## [11.5] - 2026-03-08
 
 - Add CLI flags to pre-answer cleanup prompts: --clean-logs, --no-clean-logs, --clean-css, --no-clean-css, --clean-all, and --no-clean

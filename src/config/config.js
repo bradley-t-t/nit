@@ -48,6 +48,8 @@ export function readNitConfig() {
     projectName: path.basename(PROJECT_ROOT),
     branch: "main",
     provider: null,
+    cleanLogs: true,
+    cleanCss: false,
   };
 
   if (!fileExists(nitConfigPath)) {
@@ -69,6 +71,12 @@ export function readNitConfig() {
     projectName: parsed.projectName || defaultConfig.projectName,
     branch: parsed.branch || defaultConfig.branch,
     provider: parsed.provider || null,
+    cleanLogs:
+      parsed.cleanLogs !== undefined
+        ? parsed.cleanLogs
+        : defaultConfig.cleanLogs,
+    cleanCss:
+      parsed.cleanCss !== undefined ? parsed.cleanCss : defaultConfig.cleanCss,
   };
 }
 

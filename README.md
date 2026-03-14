@@ -63,16 +63,20 @@ Created automatically on first run. Contains all project-level settings:
   "version": "1.0",
   "projectName": "my-app",
   "branch": "main",
-  "provider": "grok"
+  "provider": "grok",
+  "cleanLogs": true,
+  "cleanCss": false
 }
 ```
 
-| Field         | Type   | Default        | Description                                                     |
-| ------------- | ------ | -------------- | --------------------------------------------------------------- |
-| `version`     | string | `"1.0"`        | Current release version (`MAJOR.MINOR` format)                  |
-| `projectName` | string | Directory name | Used in commit messages and changelog headers                   |
-| `branch`      | string | `"main"`       | Target branch for `git push`                                    |
-| `provider`    | string | —              | AI provider ID: `claude-code`, `grok`, `openai`, or `anthropic` |
+| Field         | Type    | Default        | Description                                                     |
+| ------------- | ------- | -------------- | --------------------------------------------------------------- |
+| `version`     | string  | `"1.0"`        | Current release version (`MAJOR.MINOR` format)                  |
+| `projectName` | string  | Directory name | Used in commit messages and changelog headers                   |
+| `branch`      | string  | `"main"`       | Target branch for `git push`                                    |
+| `provider`    | string  | —              | AI provider ID: `claude-code`, `grok`, `openai`, or `anthropic` |
+| `cleanLogs`   | boolean | `true`         | Remove `console.log()` statements during release                |
+| `cleanCss`    | boolean | `false`        | Remove unused CSS classes during release                        |
 
 On first run (or with `--setup`), nit prompts for provider selection and saves it here.
 
@@ -111,7 +115,7 @@ Running `nit` (or `npm run release`) executes the following steps in order:
 | 4   | Provider setup     | Prompts for AI provider selection if not yet configured.                                                                                                                         |
 | 5   | API key validation | Confirms the key exists and meets minimum length (20 chars).                                                                                                                     |
 | 6   | Version bump       | Increments the version and writes to all version files.                                                                                                                          |
-| 7   | Code cleanup       | Prompts y/n to remove `console.log()` statements and/or unused CSS classes. Can be pre-answered with `--clean-*` flags.                                                          |
+| 7   | Code cleanup       | Removes `console.log()` statements and/or unused CSS classes based on `cleanLogs` and `cleanCss` in `nit.json`. Can be overridden with `--clean-*` flags.                        |
 | 8   | Format             | Runs Prettier or the project's configured `format` script.                                                                                                                       |
 | 9   | Change detection   | If no changes exist after all modifications, exits cleanly — no empty commits.                                                                                                   |
 | 10  | Stage              | Runs `git add -A` to stage all changes.                                                                                                                                          |
@@ -147,7 +151,7 @@ nit [options]
 | `--no-clean`      | —     | Auto-answer No to both cleanup prompts                          |
 | `--help`          | `-h`  | Print usage information                                         |
 
-When both cleanup flags are provided (or `--clean-all` / `--no-clean` is used), the interactive cleanup prompt is skipped entirely. If only one flag is provided, nit prompts for the other.
+Cleanup behavior defaults to the `cleanLogs` and `cleanCss` values in `nit.json`. CLI flags override the config values when provided.
 
 ### Examples
 
@@ -227,7 +231,7 @@ New entries are inserted after the `# Changelog` header, preserving all previous
 
 ## Code Cleanup
 
-During each release, nit prompts you with two y/n questions (unless pre-answered via `--clean-logs`, `--clean-css`, `--clean-all`, or `--no-clean` flags):
+During each release, nit runs cleanup based on the `cleanLogs` and `cleanCss` settings in `nit.json`. CLI flags (`--clean-logs`, `--clean-css`, `--clean-all`, `--no-clean`) override the config values:
 
 1. **Remove console.log statements?** — Scans all `.js`, `.jsx`, `.ts`, and `.tsx` files in `src/` and removes `console.log()` statements. Handles nested parentheses, optional semicolons, and trailing newlines. Consolidates resulting blank lines.
 
