@@ -121,14 +121,14 @@ Running `nit` (or `npm run release`) executes the following steps in order:
 | 4   | Provider setup     | Prompts for AI provider selection if not yet configured.                                                                                                                         |
 | 5   | API key validation | Confirms the key exists and meets minimum length (20 chars).                                                                                                                     |
 | 6   | Version bump       | Increments the version and writes to all version files.                                                                                                                          |
-| 7   | Code cleanup       | *(Node only)* Removes `console.log()` statements and/or unused CSS classes based on `cleanLogs` and `cleanCss` in `nit.json`. Can be overridden with `--clean-*` flags.          |
-| 8   | Format             | *(Node only)* Runs Prettier or the project's configured `format` script.                                                                                                         |
+| 7   | Code cleanup       | _(Node only)_ Removes `console.log()` statements and/or unused CSS classes based on `cleanLogs` and `cleanCss` in `nit.json`. Can be overridden with `--clean-*` flags.          |
+| 8   | Format             | _(Node only)_ Runs Prettier or the project's configured `format` script.                                                                                                         |
 | 9   | Change detection   | If no changes exist after all modifications, exits cleanly — no empty commits.                                                                                                   |
 | 10  | Stage              | Runs `git add -A` to stage all changes.                                                                                                                                          |
 | 11  | AI commit message  | Sends the diff (excluding lock files and build artifacts) to the configured AI provider. Generates a structured commit message with bullet-point descriptions of actual changes. |
 | 12  | Changelog          | Extracts bullet points from the commit message and prepends a dated entry to `CHANGELOG.md`.                                                                                     |
 | 13  | Re-stage           | Runs `git add -A` again to include the updated changelog.                                                                                                                        |
-| 14  | Build              | *(Node only)* Runs the detected build command (`npm run build`, `npx vite build`, or `npx react-scripts build`).                                                                 |
+| 14  | Build              | _(Node only)_ Runs the detected build command (`npm run build`, `npx vite build`, or `npx react-scripts build`).                                                                 |
 | 15  | Commit             | Creates a commit using a temp file (`git commit -F`) to handle multiline messages safely.                                                                                        |
 | 16  | Push               | Pushes to the configured branch via `git push origin <branch>`.                                                                                                                  |
 

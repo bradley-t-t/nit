@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.7] - 2026-04-01
+
+- Reformatted long function calls in index.js to multi-line style for readability
+- Updated README pipeline table to use underscores instead of asterisks for italic formatting on "Node only" labels
+
 ## [11.6] - 2026-03-14
 
 - Replace interactive cleanup prompts with config-driven defaults from nit.json (cleanLogs and cleanCss fields)

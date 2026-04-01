@@ -221,12 +221,17 @@ async function main() {
       const formatResult = detectFormatCommand();
       if (formatResult.command) {
         try {
-          execCommand(formatResult.command, { silent: true, ignoreError: false });
+          execCommand(formatResult.command, {
+            silent: true,
+            ignoreError: false,
+          });
         } catch {}
       }
     }
   } else {
-    ui.printHeaderWithStatus("Non-Node project detected, skipping cleanup and format");
+    ui.printHeaderWithStatus(
+      "Non-Node project detected, skipping cleanup and format",
+    );
   }
 
   ui.printHeaderWithStatus("Checking for changes...");
