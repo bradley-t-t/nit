@@ -3,11 +3,11 @@
 <p align="center"><strong>Zero-dependency release automation in a single command.</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-11.7-blue?style=flat-square" alt="Version 11.7" />
-  <img src="https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js 18+" />
-  <img src="https://img.shields.io/badge/ES%20Modules-native-f7df1e?style=flat-square&logo=javascript&logoColor=black" alt="ES Modules" />
-  <img src="https://img.shields.io/badge/dependencies-zero-brightgreen?style=flat-square" alt="Zero dependencies" />
-  <img src="https://img.shields.io/badge/install-GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="Install from GitHub" />
+  <img src="https://img.shields.io/badge/v11.7-release-1e3a5f" alt="Version 11.7" />
+  <img src="https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white" alt="Node.js 18+" />
+  <img src="https://img.shields.io/badge/ES%20Modules-native-f7df1e?logo=javascript&logoColor=black" alt="ES Modules" />
+  <img src="https://img.shields.io/badge/dependencies-zero-brightgreen" alt="Zero dependencies" />
+  <img src="https://img.shields.io/badge/install-GitHub-181717?logo=github&logoColor=white" alt="Install from GitHub" />
 </p>
 
 ---
