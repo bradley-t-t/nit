@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import {
   COLORS,
   SYMBOLS,
@@ -324,13 +324,11 @@ export function reExecuteAfterUpdate() {
     .slice(2)
     .filter((a) => a !== "--skip-update" && a !== "-s");
   const binPath = process.argv[1];
-  try {
-    execSync(`node "${binPath}" --skip-update ${args.join(" ")}`, {
-      stdio: "inherit",
-      cwd: process.cwd(),
-    });
-    return true;
-  } catch {
-    return false;
-  }
+  // Use spawnSync with an explicit args array to avoid shell interpretation of
+  // user-supplied arguments (CWE-78 command injection prevention).
+  const result = spawnSync("node", [binPath, "--skip-update", ...args], {
+    stdio: "inherit",
+    cwd: process.cwd(),
+  });
+  return result.status === 0;
 }
