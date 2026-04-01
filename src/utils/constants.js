@@ -21,9 +21,9 @@ export const COLORS = {
 };
 
 export const SYMBOLS = {
-  check: "✓",
-  arrow: "→",
-  arrowRight: "▸",
+  check: "\u2713",
+  arrow: "\u2192",
+  arrowRight: "\u25b8",
 };
 
 export const AI_PROVIDERS = {
@@ -38,7 +38,7 @@ export const AI_PROVIDERS = {
   },
   grok: {
     name: "Grok (xAI)",
-    envKeys: ["GROK_API_KEY", "REACT_APP_GROK_API_KEY"],
+    envKeys: ["GROK_API_KEY"],
     endpoint: "https://api.x.ai/v1/chat/completions",
     model: "grok-3-latest",
     keyPrefixes: ["xai-"],
