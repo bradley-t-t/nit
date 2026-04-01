@@ -8,5 +8,6 @@ build/
 npm-debug.log*
 .DS_Store
 .commit-msg-temp
+.nit-prompt-temp
 coverage/
 .nyc_output/
