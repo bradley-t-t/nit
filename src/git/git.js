@@ -245,10 +245,10 @@ export function gitPush(branch = "main") {
 /** Runs the build command as a child process, capturing stdout/stderr for error reporting. */
 export function runBuild(buildCommand) {
   return new Promise((resolve, reject) => {
-    const child = spawn(buildCommand, [], {
+    const [cmd, ...cmdArgs] = buildCommand.split(" ");
+    const child = spawn(cmd, cmdArgs, {
       cwd: PROJECT_ROOT,
       stdio: "pipe",
-      shell: true,
     });
 
     let stderrOutput = "";

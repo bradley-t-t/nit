@@ -1,6 +1,6 @@
 {
   "name": "nit",
-  "version": "11.7.0",
+  "version": "12.1.0",
   "description": "The pedantic release tool your codebase deserves. One command: clean code, AI changelogs, versioning, and a perfect commit.",
   "main": "./src/index.js",
   "type": "module",
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "echo 'no tests yet'",
-    "release": "node ./src/index.js --clean-all"
+    "release": "node ./src/index.js release --clean-all"
   },
   "keywords": [
     "release",
@@ -23,7 +23,8 @@
     "vite",
     "cli",
     "semantic-versioning",
-    "automation"
+    "automation",
+    "conventional-commits"
   ],
   "author": "Trent",
   "license": "MIT",
@@ -32,8 +33,5 @@
   },
   "files": [
     "src"
-  ],
-  "dependencies": {
-    "nit": "github:bradley-t-t/nit#main"
-  }
+  ]
 }

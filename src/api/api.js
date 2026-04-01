@@ -61,7 +61,9 @@ function callClaudeCli(prompt) {
       env,
     });
     if (result.status !== 0) {
-      throw new Error(result.stderr || `claude exited with code ${result.status}`);
+      throw new Error(
+        result.stderr || `claude exited with code ${result.status}`,
+      );
     }
     return result.stdout.trim();
   } finally {

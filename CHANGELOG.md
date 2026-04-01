@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [12.1] - 2026-04-01
+
+- Split build command string into cmd + args before spawning, and removed `shell: true` from the spawn call in `runBuild`
+- Updated the `release` npm script to pass the explicit `release` subcommand: `node ./src/index.js release --clean-all`
+- Removed the self-referential `nit` GitHub dependency from `package.json`
+- Added `conventional-commits` to the package keywords
+- Reformatted all README tables to use aligned column padding for improved readability
+
 ## [11.7] - 2026-04-01
 
 - Reformatted long function calls in index.js to multi-line style for readability

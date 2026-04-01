@@ -60,12 +60,12 @@ Every `nit` invocation runs a deterministic sequence of steps. Each step either 
 
 `nit` supports four AI providers for commit message and changelog generation. The active provider is stored in `nit.json` and can be changed at any time with `--setup`.
 
-| Provider | Model | Authentication |
-|---|---|---|
+| Provider      | Model            | Authentication                                        |
+| ------------- | ---------------- | ----------------------------------------------------- |
 | `claude-code` | Claude (via CLI) | Spawns a `claude -p` subprocess — no API key required |
-| `grok` | grok-3-latest | `GROK_API_KEY` environment variable |
-| `openai` | gpt-4o | `OPENAI_API_KEY` environment variable |
-| `anthropic` | claude-sonnet-4 | `ANTHROPIC_API_KEY` environment variable |
+| `grok`        | grok-3-latest    | `GROK_API_KEY` environment variable                   |
+| `openai`      | gpt-4o           | `OPENAI_API_KEY` environment variable                 |
+| `anthropic`   | claude-sonnet-4  | `ANTHROPIC_API_KEY` environment variable              |
 
 All providers share the same retry logic: up to 3 attempts on `429` or `5xx` responses, with exponential backoff at 2s, 4s, and 8s intervals. `Retry-After` response headers are respected when present.
 
@@ -81,17 +81,17 @@ Projects can place a `.nit-context` file in their root directory. The contents o
 
 `nit` exposes a hand-rolled argument parser with no third-party dependency. The full flag surface:
 
-| Flag | Description |
-|---|---|
-| `--branch` / `-b` | Override the git branch that changes are pushed to |
-| `--interactive` / `-i` | Prompt for preferences at runtime rather than using saved config |
-| `--skip-update` / `-s` | Bypass the self-update check |
-| `--setup` | Re-run provider selection regardless of saved config |
-| `--update` | Force-install the latest version from GitHub |
-| `--clean-logs` / `--no-clean-logs` | Toggle console.log removal |
-| `--clean-css` / `--no-clean-css` | Toggle unused CSS class removal |
-| `--clean-all` / `--no-clean` | Enable or disable all cleanup passes at once |
-| `--help` / `-h` | Print usage and exit |
+| Flag                               | Description                                                      |
+| ---------------------------------- | ---------------------------------------------------------------- |
+| `--branch` / `-b`                  | Override the git branch that changes are pushed to               |
+| `--interactive` / `-i`             | Prompt for preferences at runtime rather than using saved config |
+| `--skip-update` / `-s`             | Bypass the self-update check                                     |
+| `--setup`                          | Re-run provider selection regardless of saved config             |
+| `--update`                         | Force-install the latest version from GitHub                     |
+| `--clean-logs` / `--no-clean-logs` | Toggle console.log removal                                       |
+| `--clean-css` / `--no-clean-css`   | Toggle unused CSS class removal                                  |
+| `--clean-all` / `--no-clean`       | Enable or disable all cleanup passes at once                     |
+| `--help` / `-h`                    | Print usage and exit                                             |
 
 ---
 
@@ -105,14 +105,14 @@ Branch names provided via `--branch` are validated against a strict regex before
 
 `nit` is organized into six modules, each with a single clear responsibility:
 
-| Module | Responsibility |
-|---|---|
-| `api/` | AI provider clients, retry logic, prompt construction |
-| `cleanup/` | console.log removal, unused CSS class detection and removal |
-| `cli/` | Argument parsing, help output, interactive menu, self-update, ASCII banner |
-| `config/` | nit.json read/write, version bumping, version file updates, changelog management |
-| `git/` | Pre-flight checks, diff retrieval, commit authoring, push, rollback |
-| `utils/` | Shared constants, typed error classes, file system helpers |
+| Module     | Responsibility                                                                   |
+| ---------- | -------------------------------------------------------------------------------- |
+| `api/`     | AI provider clients, retry logic, prompt construction                            |
+| `cleanup/` | console.log removal, unused CSS class detection and removal                      |
+| `cli/`     | Argument parsing, help output, interactive menu, self-update, ASCII banner       |
+| `config/`  | nit.json read/write, version bumping, version file updates, changelog management |
+| `git/`     | Pre-flight checks, diff retrieval, commit authoring, push, rollback              |
+| `utils/`   | Shared constants, typed error classes, file system helpers                       |
 
 ```
 nit invoked
@@ -135,15 +135,15 @@ nit invoked
 
 ## Project Stats
 
-| Metric | Value |
-|---|---|
-| Pipeline steps | 16 |
-| AI providers | 4 |
-| Runtime dependencies | 0 |
-| Source modules | 6 |
-| Diff character limit | 30,000 |
-| Retry attempts per provider call | 3 |
-| Version rollover threshold | .9 → next major |
+| Metric                           | Value           |
+| -------------------------------- | --------------- |
+| Pipeline steps                   | 16              |
+| AI providers                     | 4               |
+| Runtime dependencies             | 0               |
+| Source modules                   | 6               |
+| Diff character limit             | 30,000          |
+| Retry attempts per provider call | 3               |
+| Version rollover threshold       | .9 → next major |
 
 ---
 
