@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { execSync, spawn } from "child_process";
+import { execSync, spawn, spawnSync } from "child_process";
 import { ErrorCodes } from "../utils/constants.js";
 import { NitError } from "../utils/errors.js";
 
@@ -146,23 +146,33 @@ export function gitCommit(commitMessage) {
   const tempFile = path.join(PROJECT_ROOT, ".commit-msg-temp");
   try {
     fs.writeFileSync(tempFile, commitMessage, "utf-8");
-    execCommand(`git commit -F "${tempFile}"`, { silent: true });
+    const result = spawnSync("git", ["commit", "-F", tempFile], {
+      encoding: "utf8",
+      cwd: PROJECT_ROOT,
+    });
     try {
       fs.unlinkSync(tempFile);
     } catch {}
+    if (result.status !== 0) {
+      const errorMessage = result.stderr || result.stdout || "";
+      if (errorMessage.includes("nothing to commit")) {
+        throw new NitError(
+          "Nothing to commit - all changes may have been reverted",
+          ErrorCodes.GIT_COMMIT_FAILED,
+          { suggestion: "Make sure there are actual changes to commit" },
+        );
+      }
+      throw new NitError(
+        `Git commit failed: ${errorMessage}`,
+        ErrorCodes.GIT_COMMIT_FAILED,
+        { originalError: errorMessage },
+      );
+    }
   } catch (err) {
     try {
       fs.unlinkSync(tempFile);
     } catch {}
-    if (err.message?.includes("nothing to commit")) {
-      throw new NitError(
-        "Nothing to commit - all changes may have been reverted",
-        ErrorCodes.GIT_COMMIT_FAILED,
-        {
-          suggestion: "Make sure there are actual changes to commit",
-        },
-      );
-    }
+    if (err instanceof NitError) throw err;
     throw new NitError(
       `Git commit failed: ${err.message}`,
       ErrorCodes.GIT_COMMIT_FAILED,

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
 import { ErrorCodes, AI_PROVIDERS } from "../utils/constants.js";
 import { NitError, isNetworkError, parseApiError } from "../utils/errors.js";
 
@@ -52,15 +52,18 @@ function callClaudeCli(prompt) {
   delete env.CLAUDECODE;
   try {
     fs.writeFileSync(tempFile, prompt, "utf-8");
-    const result = execSync(`claude -p < "${tempFile}"`, {
-      cwd: process.cwd(),
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
+    const fileContent = fs.readFileSync(tempFile);
+    const result = spawnSync("claude", ["-p"], {
+      input: fileContent,
+      encoding: "utf8",
+      maxBuffer: 100 * 1024 * 1024,
       timeout: 120_000,
-      shell: true,
       env,
     });
-    return result.trim();
+    if (result.status !== 0) {
+      throw new Error(result.stderr || `claude exited with code ${result.status}`);
+    }
+    return result.stdout.trim();
   } finally {
     try {
       fs.unlinkSync(tempFile);
@@ -173,7 +176,7 @@ export async function callAiApi(apiKey, prompt, providerId = "grok") {
     if (!response.ok && isRetryable && attempt < MAX_RETRIES) {
       const retryAfterHeader = response.headers.get("retry-after");
       const waitMs = retryAfterHeader
-        ? parseInt(retryAfterHeader, 10) * 1000
+        ? Math.min(parseInt(retryAfterHeader, 10) * 1000 || 5000, 60_000)
         : BASE_DELAY_MS * 2 ** attempt;
       await delay(waitMs);
       continue;
