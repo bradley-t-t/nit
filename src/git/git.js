@@ -173,6 +173,14 @@ export function gitCommit(commitMessage) {
 
 /** Pushes to origin, with descriptive errors for common failure modes. */
 export function gitPush(branch = "main") {
+  // Validate before interpolating into the shell command to prevent CWE-78 injection
+  // via a maliciously crafted branch name (e.g. "main; rm -rf /").
+  if (!/^[a-zA-Z0-9._/-]+$/.test(branch)) {
+    throw new NitError(
+      `Invalid branch name: ${branch}`,
+      ErrorCodes.GIT_PUSH_FAILED,
+    );
+  }
   try {
     execCommand(`git push origin ${branch}`, { silent: true });
   } catch (err) {
