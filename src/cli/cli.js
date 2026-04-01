@@ -7,12 +7,34 @@ import {
   GITHUB_REPO,
   GITHUB_BRANCH,
   AI_PROVIDERS,
+  SUBCOMMANDS,
+  DEFAULT_SUBCOMMAND,
+  BUMP_TYPES,
+  DEFAULT_BUMP,
+  COMMIT_TYPES,
+  ErrorCodes,
 } from "../utils/constants.js";
+import { NitError } from "../utils/errors.js";
 
-/** Parses CLI arguments into a structured options object. */
+/**
+ * Parses CLI arguments into a structured options object.
+ * Supports subcommand detection, bump type flags, commit type, message, branch creation,
+ * staging modes, CI mode, dry-run, and all legacy flags.
+ * @param {string[]} args - Raw process.argv.slice(2) arguments.
+ * @returns {object} Parsed CLI options.
+ */
 export function parseArgs(args) {
   const options = {
+    command: null,
+    bump: DEFAULT_BUMP,
     branch: null,
+    branchCreate: null,
+    message: null,
+    commitType: null,
+    stageAll: false,
+    stageTracked: false,
+    dryRun: false,
+    ci: false,
     skipUpdate: false,
     interactive: false,
     verbose: false,
@@ -25,73 +47,198 @@ export function parseArgs(args) {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "--branch" || arg === "-b") {
-      options.branch = args[i + 1];
-      i++;
-    } else if (arg.startsWith("--branch=")) {
-      options.branch = arg.split("=")[1];
-    } else if (arg === "--skip-update" || arg === "-s") {
-      options.skipUpdate = true;
-    } else if (arg === "--interactive" || arg === "-i") {
-      options.interactive = true;
-    } else if (arg === "--verbose" || arg === "-v") {
-      options.verbose = true;
-    } else if (arg === "--quiet" || arg === "-q") {
+
+    // Subcommand detection (first non-flag arg matching SUBCOMMANDS)
+    if (!arg.startsWith("-") && !options.command && SUBCOMMANDS.includes(arg)) {
+      options.command = arg;
+      continue;
+    }
+
+    // Branch create
+    if (arg === "--branch-create") {
+      options.branchCreate = args[++i];
+      continue;
+    }
+    if (arg.startsWith("--branch-create=")) {
+      options.branchCreate = arg.split("=")[1];
+      continue;
+    }
+
+    // Message
+    if (arg === "--message" || arg === "-m") {
+      options.message = args[++i];
+      continue;
+    }
+    if (arg.startsWith("--message=")) {
+      options.message = arg.split("=").slice(1).join("=");
+      continue;
+    }
+
+    // Commit type
+    if (arg === "--type" || arg === "-t") {
+      const typeValue = args[++i];
+      if (!COMMIT_TYPES.includes(typeValue)) {
+        throw new NitError(
+          `Invalid commit type: "${typeValue}". Valid types: ${COMMIT_TYPES.join(", ")}`,
+          ErrorCodes.INVALID_ARGUMENT,
+        );
+      }
+      options.commitType = typeValue;
+      continue;
+    }
+    if (arg.startsWith("--type=")) {
+      const typeValue = arg.split("=")[1];
+      if (!COMMIT_TYPES.includes(typeValue)) {
+        throw new NitError(
+          `Invalid commit type: "${typeValue}". Valid types: ${COMMIT_TYPES.join(", ")}`,
+          ErrorCodes.INVALID_ARGUMENT,
+        );
+      }
+      options.commitType = typeValue;
+      continue;
+    }
+
+    // Bump type flags
+    if (arg === "--patch") {
+      options.bump = "patch";
+      continue;
+    }
+    if (arg === "--minor") {
+      options.bump = "minor";
+      continue;
+    }
+    if (arg === "--major") {
+      options.bump = "major";
+      continue;
+    }
+
+    // Staging modes
+    if (arg === "--stage-all") {
+      options.stageAll = true;
+      continue;
+    }
+    if (arg === "--stage-tracked") {
+      options.stageTracked = true;
+      continue;
+    }
+
+    // CI mode
+    if (arg === "--ci") {
+      options.ci = true;
       options.quiet = true;
-    } else if (arg === "--setup") {
+      options.skipUpdate = true;
+      continue;
+    }
+
+    // Dry run
+    if (arg === "--dry-run") {
+      options.dryRun = true;
+      continue;
+    }
+
+    // Legacy flags
+    if (arg === "--branch" || arg === "-b") {
+      options.branch = args[++i];
+      continue;
+    }
+    if (arg.startsWith("--branch=")) {
+      options.branch = arg.split("=")[1];
+      continue;
+    }
+    if (arg === "--skip-update" || arg === "-s") {
+      options.skipUpdate = true;
+      continue;
+    }
+    if (arg === "--interactive" || arg === "-i") {
+      options.interactive = true;
+      continue;
+    }
+    if (arg === "--verbose" || arg === "-v") {
+      options.verbose = true;
+      continue;
+    }
+    if (arg === "--quiet" || arg === "-q") {
+      options.quiet = true;
+      continue;
+    }
+    if (arg === "--setup") {
       options.setup = true;
-    } else if (arg === "--update") {
+      continue;
+    }
+    if (arg === "--update") {
       options.update = true;
-    } else if (arg === "--clean-logs") {
+      continue;
+    }
+    if (arg === "--clean-logs") {
       options.cleanLogs = true;
-    } else if (arg === "--no-clean-logs") {
+      continue;
+    }
+    if (arg === "--no-clean-logs") {
       options.cleanLogs = false;
-    } else if (arg === "--clean-css") {
+      continue;
+    }
+    if (arg === "--clean-css") {
       options.cleanCss = true;
-    } else if (arg === "--no-clean-css") {
+      continue;
+    }
+    if (arg === "--no-clean-css") {
       options.cleanCss = false;
-    } else if (arg === "--clean-all") {
+      continue;
+    }
+    if (arg === "--clean-all") {
       options.cleanLogs = true;
       options.cleanCss = true;
-    } else if (arg === "--no-clean") {
+      continue;
+    }
+    if (arg === "--no-clean") {
       options.cleanLogs = false;
       options.cleanCss = false;
-    } else if (arg === "--help" || arg === "-h") {
+      continue;
+    }
+    if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
     }
   }
 
+  if (!options.command) options.command = DEFAULT_SUBCOMMAND;
+
   return options;
 }
 
-/** Prints the help text with all available options and examples. */
+/** Prints the help text with all available commands, options, and examples. */
 export function printHelp() {
   process.stdout.write(`
   ${COLORS.bright}Nit${COLORS.reset} ${COLORS.dim}v${PACKAGE_VERSION}${COLORS.reset}
 
-  ${COLORS.bright}Usage:${COLORS.reset} nit [options]
+  ${COLORS.bright}Usage:${COLORS.reset} nit [command] [options]
 
-  ${COLORS.bright}What it does (all automatic):${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Checks for nit updates and auto-updates
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Prompts for optional code cleanup (remove logs / unused CSS) ${COLORS.dim}[Node only]${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Formats code with Prettier ${COLORS.dim}[Node only]${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Increments version in nit.json + package.json
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Generates AI changelog and commit message
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Runs production build ${COLORS.dim}[Node only]${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.check}${COLORS.reset} Commits and pushes to git
+  ${COLORS.bright}Commands:${COLORS.reset}
+    ${COLORS.brightBlue}release${COLORS.reset}              Full release pipeline ${COLORS.dim}(default)${COLORS.reset}
+    ${COLORS.brightBlue}commit${COLORS.reset}               Commit changes with conventional commit message
+    ${COLORS.brightBlue}clean${COLORS.reset}                Run code cleanup only (no git)
+    ${COLORS.brightBlue}status${COLORS.reset}               Print project info
 
-  ${COLORS.bright}Supported AI Providers:${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Claude Code (CLI)   ${COLORS.dim}Uses your Claude subscription${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Grok (xAI)          ${COLORS.dim}GROK_API_KEY${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} OpenAI (GPT-4o)     ${COLORS.dim}OPENAI_API_KEY${COLORS.reset}
-    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Anthropic (Claude)  ${COLORS.dim}ANTHROPIC_API_KEY${COLORS.reset}
+  ${COLORS.bright}Release Options:${COLORS.reset}
+    ${COLORS.brightBlue}    --patch${COLORS.reset}           Bump patch version ${COLORS.dim}(default)${COLORS.reset}
+    ${COLORS.brightBlue}    --minor${COLORS.reset}           Bump minor version
+    ${COLORS.brightBlue}    --major${COLORS.reset}           Bump major version
+    ${COLORS.brightBlue}    --dry-run${COLORS.reset}         Preview release without making changes
 
-  ${COLORS.bright}Options:${COLORS.reset}
+  ${COLORS.bright}Commit Options:${COLORS.reset}
+    ${COLORS.brightBlue}-t, --type <type>${COLORS.reset}     Commit type (${COMMIT_TYPES.join(", ")})
+    ${COLORS.brightBlue}-m, --message <msg>${COLORS.reset}   Custom commit message (skips AI)
+    ${COLORS.brightBlue}    --branch-create <name>${COLORS.reset}  Create and switch to a new branch first
+    ${COLORS.brightBlue}    --stage-all${COLORS.reset}       Stage all files (git add -A)
+    ${COLORS.brightBlue}    --stage-tracked${COLORS.reset}   Stage tracked files only (git add -u)
+
+  ${COLORS.bright}General Options:${COLORS.reset}
     ${COLORS.brightBlue}-b, --branch <name>${COLORS.reset}   Override branch to push to
     ${COLORS.brightBlue}-s, --skip-update${COLORS.reset}     Skip nit update check
     ${COLORS.brightBlue}-i, --interactive${COLORS.reset}     Interactive mode (prompts for options)
+    ${COLORS.brightBlue}-v, --verbose${COLORS.reset}         Verbose output
     ${COLORS.brightBlue}-q, --quiet${COLORS.reset}           Minimal output
+    ${COLORS.brightBlue}    --ci${COLORS.reset}              CI mode (quiet + skip update)
     ${COLORS.brightBlue}    --setup${COLORS.reset}           Re-run AI provider setup
     ${COLORS.brightBlue}    --update${COLORS.reset}          Manually update nit to the latest version
     ${COLORS.brightBlue}    --clean-logs${COLORS.reset}      Auto-answer Yes to remove console.log statements
@@ -102,20 +249,33 @@ export function printHelp() {
     ${COLORS.brightBlue}    --no-clean${COLORS.reset}        Auto-answer No to both cleanup prompts
     ${COLORS.brightBlue}-h, --help${COLORS.reset}            Show this help
 
+  ${COLORS.bright}Supported AI Providers:${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Claude Code (CLI)   ${COLORS.dim}Uses your Claude subscription${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Grok (xAI)          ${COLORS.dim}GROK_API_KEY${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} OpenAI (GPT-4o)     ${COLORS.dim}OPENAI_API_KEY${COLORS.reset}
+    ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} Anthropic (Claude)  ${COLORS.dim}ANTHROPIC_API_KEY${COLORS.reset}
+
   ${COLORS.bright}Examples:${COLORS.reset}
-    ${COLORS.dim}nit${COLORS.reset}                        Run a full release
-    ${COLORS.dim}nit -b develop${COLORS.reset}             Release to develop branch
-    ${COLORS.dim}nit --clean-all${COLORS.reset}            Release with all cleanup enabled
-    ${COLORS.dim}nit --no-clean${COLORS.reset}             Release skipping all cleanup prompts
-    ${COLORS.dim}nit --setup${COLORS.reset}                Choose your AI provider
-    ${COLORS.dim}nit --update${COLORS.reset}               Update nit to latest version
+    ${COLORS.dim}nit${COLORS.reset}                            Run a full release (patch bump)
+    ${COLORS.dim}nit release --minor${COLORS.reset}            Release with minor version bump
+    ${COLORS.dim}nit release --major --dry-run${COLORS.reset}  Preview a major release
+    ${COLORS.dim}nit commit -t feat${COLORS.reset}             Commit with "feat" type
+    ${COLORS.dim}nit commit -m "fix typo"${COLORS.reset}       Commit with a manual message
+    ${COLORS.dim}nit commit --branch-create feature/login${COLORS.reset}
+    ${COLORS.dim}nit clean${COLORS.reset}                      Run cleanup only
+    ${COLORS.dim}nit status${COLORS.reset}                     Show project info
+    ${COLORS.dim}nit -b develop${COLORS.reset}                 Release to develop branch
+    ${COLORS.dim}nit --clean-all${COLORS.reset}                Release with all cleanup enabled
+    ${COLORS.dim}nit --ci${COLORS.reset}                       Quiet mode for CI pipelines
+    ${COLORS.dim}nit --setup${COLORS.reset}                    Choose your AI provider
+    ${COLORS.dim}nit --update${COLORS.reset}                   Update nit to latest version
 
 `);
 }
 
 /**
  * Interactive prompt for selecting an AI provider.
- * @returns The selected provider ID string.
+ * @returns {Promise<string>} The selected provider ID string.
  */
 export async function providerSetup() {
   const readline = await import("readline");

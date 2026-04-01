@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [13.0.0] - 2026-04-01
+
+- Added subcommand architecture: `release`, `commit`, `clean`, and `status` commands replace the single-command interface
+- Added `nit commit` command with conventional commit support via `--type`/`-t` flag (feat, fix, chore, etc.)
+- Added `--branch-create <name>` to create and switch to a new branch before committing
+- Added `--message`/`-m` flag to supply a manual commit message and skip AI generation
+- Added `--stage-all` and `--stage-tracked` flags for explicit staging control
+- Added `--patch`, `--minor`, and `--major` flags to control version bump type on release
+- Added `--dry-run` flag to preview a release without making any changes
+- Added `--ci` flag for CI pipeline mode (enables quiet output and skips update check)
+- Rebuilt `incrementVersion` to support full semver patch/minor/major bumps, replacing the old minor-only rollover logic
+- Migrated version format from two-segment (e.g. `1.9`) to proper three-segment semver (`1.9.0`) across all config reads and writes
+- Added `validateConfig` to catch invalid `projectName`, malformed versions, and unknown hook names at load time
+- Added `migrateVersion` to automatically upgrade legacy two-segment versions on first read
+- Added `hooks` field to nit.json schema with `HOOK_NAMES` validation
+- Added new `hooks.js` module for hook execution support
+- Added output level system to `ui` (`setOutputLevel`, `getOutputLevel`) with quiet-mode suppression for header and status lines
+- Added `ui.verbose()` for verbose-only diagnostic output and `ui.dryRun()` for dry-run notices
+- Introduced `generateConventionalCommitMessage` in the API layer with its own prompt builder and response parser
+- Renamed `generateCommitMessage` to `generateReleaseCommitMessage`; kept `generateCommitMessage` as a backward-compatible alias
+- Updated `writeNitConfig` to persist `cleanLogs`, `cleanCss`, and `hooks` fields
+- Rewrote `parseArgs` from if/else chains to early-return guard clauses for readability
+- Expanded `printHelp` with commands section, grouped option categories, and new usage examples
+
 ## [12.1] - 2026-04-01
 
 - Split build command string into cmd + args before spawning, and removed `shell: true` from the spawn call in `runBuild`

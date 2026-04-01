@@ -6,10 +6,62 @@ import {
   safeParseJson,
   fileExists,
 } from "../utils/file-utils.js";
-import { ErrorCodes, AI_PROVIDERS } from "../utils/constants.js";
+import { ErrorCodes, AI_PROVIDERS, HOOK_NAMES } from "../utils/constants.js";
 import { NitError } from "../utils/errors.js";
 
 const PROJECT_ROOT = process.cwd();
+
+/**
+ * Converts a two-segment version like "11.7" to proper semver "11.7.0".
+ * Already-valid three-segment versions pass through unchanged.
+ * @param {string} version
+ * @returns {string} A three-segment semver string.
+ */
+function migrateVersion(version) {
+  const parts = String(version).split(".");
+  if (parts.length === 2) return `${parts[0]}.${parts[1]}.0`;
+  return String(version);
+}
+
+/**
+ * Validates the nit.json config object against expected schema constraints.
+ * Throws CONFIG_INVALID on any violation.
+ * @param {object} config
+ */
+function validateConfig(config) {
+  if (!config.projectName || typeof config.projectName !== "string") {
+    throw new NitError(
+      "nit.json: projectName must be a non-empty string",
+      ErrorCodes.CONFIG_INVALID,
+    );
+  }
+
+  const versionPattern = /^\d+\.\d+\.\d+$/;
+  if (!versionPattern.test(config.version)) {
+    throw new NitError(
+      `nit.json: version "${config.version}" is not valid semver (expected X.Y.Z)`,
+      ErrorCodes.CONFIG_INVALID,
+    );
+  }
+
+  if (config.hooks) {
+    const hookKeys = Object.keys(config.hooks);
+    for (const key of hookKeys) {
+      if (!HOOK_NAMES.includes(key)) {
+        throw new NitError(
+          `nit.json: unknown hook "${key}". Valid hooks: ${HOOK_NAMES.join(", ")}`,
+          ErrorCodes.CONFIG_INVALID,
+        );
+      }
+      if (typeof config.hooks[key] !== "string") {
+        throw new NitError(
+          `nit.json: hook "${key}" must be a string command`,
+          ErrorCodes.CONFIG_INVALID,
+        );
+      }
+    }
+  }
+}
 
 /** Validates that the API key exists and meets minimum length for a provider. CLI providers skip validation. */
 export function validateApiKey(apiKey, providerId = "grok") {
@@ -40,16 +92,20 @@ export function validateApiKey(apiKey, providerId = "grok") {
   return true;
 }
 
-/** Reads public/nit.json config, creating it with defaults if missing. */
+/**
+ * Reads public/nit.json config, creating it with defaults if missing.
+ * Migrates two-segment versions to semver and validates the result.
+ */
 export function readNitConfig() {
   const nitConfigPath = path.join(PROJECT_ROOT, "public", "nit.json");
   const defaultConfig = {
-    version: "1.0",
+    version: "1.0.0",
     projectName: path.basename(PROJECT_ROOT),
     branch: "main",
     provider: null,
     cleanLogs: true,
     cleanCss: false,
+    hooks: {},
   };
 
   if (!fileExists(nitConfigPath)) {
@@ -66,8 +122,8 @@ export function readNitConfig() {
   const content = safeReadFile(nitConfigPath, "nit.json");
   const parsed = safeParseJson(content, nitConfigPath, "nit.json");
 
-  return {
-    version: String(parsed.version || defaultConfig.version),
+  const config = {
+    version: migrateVersion(parsed.version || defaultConfig.version),
     projectName: parsed.projectName || defaultConfig.projectName,
     branch: parsed.branch || defaultConfig.branch,
     provider: parsed.provider || null,
@@ -77,23 +133,34 @@ export function readNitConfig() {
         : defaultConfig.cleanLogs,
     cleanCss:
       parsed.cleanCss !== undefined ? parsed.cleanCss : defaultConfig.cleanCss,
+    hooks: parsed.hooks || {},
   };
+
+  validateConfig(config);
+  return config;
 }
 
-/** Bumps the minor version by 1, rolling over to the next major at 10 (e.g. 1.9 -> 2.0, 2.3 -> 2.4). */
-export function incrementVersion(version) {
+/**
+ * Bumps the version according to the specified bump type.
+ * @param {string} version - Current semver version (e.g. "1.2.3").
+ * @param {"patch" | "minor" | "major"} bumpType - Which segment to increment.
+ * @returns {string} The incremented version string.
+ */
+export function incrementVersion(version, bumpType = "patch") {
   const parts = version.split(".");
-  const major = parseInt(parts[0], 10) || 1;
-  const minor = (parseInt(parts[1], 10) || 0) + 1;
-  if (minor > 9) return `${major + 1}.0`;
-  return `${major}.${minor}`;
-}
+  const major = parseInt(parts[0], 10) || 0;
+  const minor = parseInt(parts[1], 10) || 0;
+  const patch = parseInt(parts[2], 10) || 0;
 
-/** Converts a short version like "1.2" to semver "1.2.0" for package.json. */
-function toSemver(version) {
-  return version.includes(".") && version.split(".").length === 2
-    ? `${version}.0`
-    : version;
+  switch (bumpType) {
+    case "major":
+      return `${major + 1}.0.0`;
+    case "minor":
+      return `${major}.${minor + 1}.0`;
+    case "patch":
+    default:
+      return `${major}.${minor}.${patch + 1}`;
+  }
 }
 
 /** Syncs the version in package.json to match the new release version. */
@@ -105,12 +172,11 @@ export function updatePackageJsonVersion(newVersion) {
   try {
     const content = safeReadFile(packageJsonPath, "package.json");
     const packageJson = safeParseJson(content, packageJsonPath, "package.json");
-    const semverVersion = toSemver(newVersion);
 
-    if (packageJson.version === semverVersion)
+    if (packageJson.version === newVersion)
       return { updated: false, reason: "version already matches" };
 
-    packageJson.version = semverVersion;
+    packageJson.version = newVersion;
     safeWriteFile(
       packageJsonPath,
       JSON.stringify(packageJson, null, 2) + "\n",
@@ -120,7 +186,7 @@ export function updatePackageJsonVersion(newVersion) {
     return {
       updated: true,
       oldVersion: content.match(/"version":\s*"([^"]+)"/)?.[1],
-      newVersion: semverVersion,
+      newVersion,
     };
   } catch (err) {
     return { updated: false, reason: err.message };
@@ -129,8 +195,6 @@ export function updatePackageJsonVersion(newVersion) {
 
 /** Updates version in plugin files (gradle.properties, plugin.xml) if they exist. */
 function updatePluginVersion(newVersion) {
-  const semverVersion = toSemver(newVersion);
-
   const gradlePropsPath = path.join(
     PROJECT_ROOT,
     "plugin",
@@ -141,7 +205,7 @@ function updatePluginVersion(newVersion) {
       const content = safeReadFile(gradlePropsPath, "gradle.properties");
       const updated = content.replace(
         /^pluginVersion\s*=\s*.+$/m,
-        `pluginVersion = ${semverVersion}`,
+        `pluginVersion = ${newVersion}`,
       );
       if (updated !== content)
         safeWriteFile(gradlePropsPath, updated, "gradle.properties");
@@ -162,7 +226,7 @@ function updatePluginVersion(newVersion) {
       const content = safeReadFile(pluginXmlPath, "plugin.xml");
       const updated = content.replace(
         /<version>[^<]*<\/version>/,
-        `<version>${semverVersion}</version>`,
+        `<version>${newVersion}</version>`,
       );
       if (updated !== content)
         safeWriteFile(pluginXmlPath, updated, "plugin.xml");
@@ -178,6 +242,9 @@ export function writeNitConfig(config) {
     projectName: config.projectName,
     branch: config.branch,
     provider: config.provider || null,
+    cleanLogs: config.cleanLogs !== undefined ? config.cleanLogs : true,
+    cleanCss: config.cleanCss !== undefined ? config.cleanCss : false,
+    hooks: config.hooks || {},
   };
   safeWriteFile(
     nitConfigPath,

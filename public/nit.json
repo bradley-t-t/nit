@@ -1,6 +1,9 @@
 {
-  "version": "12.1",
+  "version": "13.0.0",
   "projectName": "nit",
   "branch": "main",
-  "provider": "claude-code"
+  "provider": "claude-code",
+  "cleanLogs": true,
+  "cleanCss": false,
+  "hooks": {}
 }

@@ -9,6 +9,31 @@ export const PACKAGE_AUTHOR = "Trenton Taylor";
 export const GITHUB_REPO = "bradley-t-t/nit";
 export const GITHUB_BRANCH = "main";
 
+export const SUBCOMMANDS = ["release", "commit", "clean", "status"];
+export const DEFAULT_SUBCOMMAND = "release";
+export const BUMP_TYPES = ["patch", "minor", "major"];
+export const DEFAULT_BUMP = "patch";
+export const COMMIT_TYPES = [
+  "feat",
+  "fix",
+  "refactor",
+  "chore",
+  "docs",
+  "security",
+  "perf",
+  "test",
+  "style",
+  "ci",
+];
+export const HOOK_NAMES = [
+  "preRelease",
+  "postRelease",
+  "preCommit",
+  "postCommit",
+  "prePush",
+  "postPush",
+];
+
 export const COLORS = {
   reset: "\x1b[0m",
   bright: "\x1b[1m",
@@ -68,6 +93,10 @@ export const ErrorCodes = {
   GIT_NO_REMOTE: "GIT_NO_REMOTE",
   GIT_COMMIT_FAILED: "GIT_COMMIT_FAILED",
   GIT_PUSH_FAILED: "GIT_PUSH_FAILED",
+  GIT_BRANCH_FAILED: "GIT_BRANCH_FAILED",
+  CONFIG_INVALID: "CONFIG_INVALID",
+  HOOK_FAILED: "HOOK_FAILED",
+  INVALID_ARGUMENT: "INVALID_ARGUMENT",
   API_KEY_MISSING: "API_KEY_MISSING",
   API_KEY_INVALID: "API_KEY_INVALID",
   API_NETWORK_ERROR: "API_NETWORK_ERROR",

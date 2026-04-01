@@ -6,6 +6,8 @@ import { NitError } from "../utils/errors.js";
 
 const PROJECT_ROOT = process.cwd();
 
+const BRANCH_NAME_PATTERN = /^[a-zA-Z0-9._/-]+$/;
+
 /** Runs a shell command in the project root. Throws on failure unless ignoreError is set. */
 export function execCommand(command, options = {}) {
   try {
@@ -31,6 +33,25 @@ export function execCommandSilent(command) {
     });
   } catch (err) {
     return err.stdout || err.stderr || "";
+  }
+}
+
+/**
+ * Validates a branch name against a safe character pattern.
+ * Prevents CWE-78 command injection via malicious branch names.
+ * @param {string} branchName
+ * @throws {NitError} If the branch name contains invalid characters.
+ */
+function validateBranchName(branchName) {
+  if (!BRANCH_NAME_PATTERN.test(branchName)) {
+    throw new NitError(
+      `Invalid branch name: ${branchName}`,
+      ErrorCodes.GIT_BRANCH_FAILED,
+      {
+        suggestion:
+          "Branch names may only contain letters, digits, dots, underscores, hyphens, and slashes",
+      },
+    );
   }
 }
 
@@ -183,14 +204,7 @@ export function gitCommit(commitMessage) {
 
 /** Pushes to origin, with descriptive errors for common failure modes. */
 export function gitPush(branch = "main") {
-  // Validate before interpolating into the shell command to prevent CWE-78 injection
-  // via a maliciously crafted branch name (e.g. "main; rm -rf /").
-  if (!/^[a-zA-Z0-9._/-]+$/.test(branch)) {
-    throw new NitError(
-      `Invalid branch name: ${branch}`,
-      ErrorCodes.GIT_PUSH_FAILED,
-    );
-  }
+  validateBranchName(branch);
   try {
     execCommand(`git push origin ${branch}`, { silent: true });
   } catch (err) {
@@ -238,6 +252,90 @@ export function gitPush(branch = "main") {
       `Git push failed: ${errorMsg}`,
       ErrorCodes.GIT_PUSH_FAILED,
       { branch, originalError: errorMsg },
+    );
+  }
+}
+
+/**
+ * Stages changes according to the specified mode.
+ * @param {"all" | "tracked"} mode - "all" stages everything, "tracked" stages only tracked files.
+ */
+export function stageChanges(mode = "all") {
+  const command = mode === "tracked" ? "git add -u" : "git add -A";
+  try {
+    execCommand(command, { silent: true });
+  } catch (err) {
+    throw new NitError(
+      `Staging failed: ${err.message}`,
+      ErrorCodes.GIT_COMMIT_FAILED,
+      { originalError: err.message },
+    );
+  }
+}
+
+/**
+ * Creates and checks out a new branch.
+ * @param {string} branchName - The name for the new branch.
+ */
+export function createBranch(branchName) {
+  validateBranchName(branchName);
+  try {
+    const result = spawnSync("git", ["checkout", "-b", branchName], {
+      encoding: "utf8",
+      cwd: PROJECT_ROOT,
+    });
+    if (result.status !== 0) {
+      throw new Error(result.stderr || result.stdout || "Unknown error");
+    }
+  } catch (err) {
+    throw new NitError(
+      `Failed to create branch "${branchName}": ${err.message}`,
+      ErrorCodes.GIT_BRANCH_FAILED,
+      { branch: branchName, originalError: err.message },
+    );
+  }
+}
+
+/**
+ * Returns the name of the currently checked-out branch.
+ * @returns {string} The current branch name.
+ */
+export function getCurrentBranch() {
+  try {
+    return execSync("git rev-parse --abbrev-ref HEAD", {
+      cwd: PROJECT_ROOT,
+      encoding: "utf-8",
+      stdio: "pipe",
+    }).trim();
+  } catch (err) {
+    throw new NitError(
+      `Failed to get current branch: ${err.message}`,
+      ErrorCodes.GIT_BRANCH_FAILED,
+      { originalError: err.message },
+    );
+  }
+}
+
+/**
+ * Pushes a new branch to origin with upstream tracking.
+ * @param {string} branch - The branch name to push.
+ */
+export function gitPushNewBranch(branch) {
+  validateBranchName(branch);
+  try {
+    const result = spawnSync("git", ["push", "-u", "origin", branch], {
+      encoding: "utf8",
+      cwd: PROJECT_ROOT,
+    });
+    if (result.status !== 0) {
+      throw new Error(result.stderr || result.stdout || "Unknown error");
+    }
+  } catch (err) {
+    if (err instanceof NitError) throw err;
+    throw new NitError(
+      `Failed to push new branch "${branch}": ${err.message}`,
+      ErrorCodes.GIT_PUSH_FAILED,
+      { branch, originalError: err.message },
     );
   }
 }

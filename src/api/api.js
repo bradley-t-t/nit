@@ -4,9 +4,9 @@ import { spawnSync } from "child_process";
 import { ErrorCodes, AI_PROVIDERS } from "../utils/constants.js";
 import { NitError, isNetworkError, parseApiError } from "../utils/errors.js";
 
-const MAX_RETRIES = 3; // Retry up to 3 times on 429/5xx
-const BASE_DELAY_MS = 2000; // Starting delay for exponential backoff
-const MAX_DIFF_LENGTH = 30000; // Truncate diffs beyond this to stay within token limits
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 2000;
+const MAX_DIFF_LENGTH = 30000;
 const NOISE_FILE_PATTERNS = [
   /^diff --git a\/package-lock\.json/,
   /^diff --git a\/yarn\.lock/,
@@ -218,8 +218,8 @@ export async function callAiApi(apiKey, prompt, providerId = "grok") {
   }
 }
 
-/** Builds the user prompt for commit message generation with optional context. */
-function buildCommitPrompt(
+/** Builds the user prompt for release commit message generation with optional context. */
+function buildReleaseCommitPrompt(
   projectName,
   newVersion,
   changedFiles,
@@ -263,8 +263,56 @@ ${projectName}: Release v${newVersion}
 - (as many as needed)`;
 }
 
-/** Validates and normalizes the AI response into the expected commit message format. */
-function parseCommitResponse(response, projectName, newVersion, providerName) {
+/** Builds the user prompt for conventional commit message generation. */
+function buildConventionalCommitPrompt(
+  projectName,
+  commitType,
+  changedFiles,
+  stat,
+  truncatedDiff,
+) {
+  const context = readContextFile();
+  const contextBlock = context
+    ? `\nDeveloper context (what was worked on and why):\n${context}\n`
+    : "";
+
+  return `Generate a git commit message for ${projectName} using the conventional commit format.
+
+CRITICAL RULES:
+1. The FIRST line MUST follow: "${commitType}(scope): short description"
+2. The scope should be derived from the primary area of change
+3. The short description must be lowercase, imperative mood, no period
+4. The SECOND line MUST be blank
+5. Then bullet points of changes starting with "-"
+6. ONLY describe changes that are EXPLICITLY visible in the diff below
+7. Do NOT invent or assume any changes not shown in the diff
+8. Write in a natural, human-friendly tone
+9. Do NOT use any emojis
+10. Focus on actual code changes, not metadata
+${contextBlock}
+Changed files: ${changedFiles.join(", ")}
+
+Diff statistics:
+${stat}
+
+Actual diff:
+${truncatedDiff}
+
+Output format (EXACTLY):
+${commitType}(scope): short description
+
+- First change (written naturally)
+- Second change
+- (as many as needed)`;
+}
+
+/** Validates and normalizes the AI response into the expected release commit message format. */
+function parseReleaseCommitResponse(
+  response,
+  projectName,
+  newVersion,
+  providerName,
+) {
   const firstLine = `${projectName}: Release v${newVersion}`;
 
   if (!response) {
@@ -288,12 +336,45 @@ function parseCommitResponse(response, projectName, newVersion, providerName) {
   );
 }
 
+/** Validates and normalizes the AI response into conventional commit format. */
+function parseConventionalCommitResponse(response, commitType, providerName) {
+  if (!response) {
+    throw new NitError(
+      `${providerName} returned empty commit message`,
+      ErrorCodes.API_RESPONSE_INVALID,
+      { suggestion: "The AI did not generate a valid response" },
+    );
+  }
+
+  const conventionalPattern = new RegExp(`^${commitType}\\(.+\\):`);
+  if (conventionalPattern.test(response)) return response.trim();
+  if (response.includes("-"))
+    return `${commitType}(general): update\n\n${response.trim()}`;
+
+  throw new NitError(
+    `${providerName} returned invalid commit message format`,
+    ErrorCodes.API_RESPONSE_INVALID,
+    {
+      response: response.substring(0, 200),
+      suggestion:
+        "The AI response did not match expected conventional commit format",
+    },
+  );
+}
+
 /**
- * Generates a commit message by sending the diff to the configured AI provider.
+ * Generates a release commit message by sending the diff to the configured AI provider.
  * Returns a formatted message with the project name, version, and bullet points.
- * Supports both API-based providers and the Claude Code CLI.
+ * @param {string} apiKey
+ * @param {string} newVersion
+ * @param {string} projectName
+ * @param {string} diff
+ * @param {string} stat
+ * @param {string[]} changedFiles
+ * @param {string} providerId
+ * @returns {Promise<string>}
  */
-export async function generateCommitMessage(
+export async function generateReleaseCommitMessage(
   apiKey,
   newVersion,
   projectName,
@@ -314,7 +395,7 @@ export async function generateCommitMessage(
   }
 
   const truncatedDiff = truncateDiff(diff);
-  const prompt = buildCommitPrompt(
+  const prompt = buildReleaseCommitPrompt(
     projectName,
     newVersion,
     changedFiles,
@@ -326,5 +407,61 @@ export async function generateCommitMessage(
     ? callClaudeCli(prompt)
     : await callAiApi(apiKey, prompt, providerId);
 
-  return parseCommitResponse(response, projectName, newVersion, providerName);
+  return parseReleaseCommitResponse(
+    response,
+    projectName,
+    newVersion,
+    providerName,
+  );
 }
+
+/**
+ * Generates a conventional commit message by sending the diff to the configured AI provider.
+ * Returns a formatted message using "type(scope): description" format.
+ * @param {string} apiKey
+ * @param {string} projectName
+ * @param {string} commitType - Conventional commit type (feat, fix, chore, etc.).
+ * @param {string} diff
+ * @param {string} stat
+ * @param {string[]} changedFiles
+ * @param {string} providerId
+ * @returns {Promise<string>}
+ */
+export async function generateConventionalCommitMessage(
+  apiKey,
+  projectName,
+  commitType,
+  diff,
+  stat,
+  changedFiles,
+  providerId = "grok",
+) {
+  const provider = AI_PROVIDERS[providerId];
+  const providerName = provider?.name ?? providerId;
+
+  if (!diff.trim()) {
+    throw new NitError(
+      "No diff available to generate commit message",
+      ErrorCodes.API_RESPONSE_INVALID,
+      { suggestion: "Make sure there are actual code changes to commit" },
+    );
+  }
+
+  const truncatedDiff = truncateDiff(diff);
+  const prompt = buildConventionalCommitPrompt(
+    projectName,
+    commitType,
+    changedFiles,
+    stat,
+    truncatedDiff,
+  );
+
+  const response = provider?.isCli
+    ? callClaudeCli(prompt)
+    : await callAiApi(apiKey, prompt, providerId);
+
+  return parseConventionalCommitResponse(response, commitType, providerName);
+}
+
+/** Backward-compatible alias for generateReleaseCommitMessage. */
+export const generateCommitMessage = generateReleaseCommitMessage;
