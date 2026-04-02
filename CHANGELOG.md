@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [13.0.2] - 2026-04-02
 
+- nit Release v13.0.2
+
+## [13.0.2] - 2026-04-02
+
 - Updated the README version badge from v11.7 to v13.0.1
 
 ## [13.0.1] - 2026-04-02
