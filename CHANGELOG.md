@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [13.0.2] - 2026-04-02
+
+- Updated the README version badge from v11.7 to v13.0.1
+
 ## [13.0.1] - 2026-04-02
 
 - Fixed double-counted git diffs by removing redundant `git diff --cached` calls — `git diff HEAD` already includes staged changes, so `getGitDiff`, `getGitDiffStat`, and `getChangedFiles` no longer concatenate unstaged and staged output separately
