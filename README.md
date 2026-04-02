@@ -135,15 +135,15 @@ nit invoked
 
 ## Project Stats
 
-| Metric                           | Value           |
-| -------------------------------- | --------------- |
-| Pipeline steps                   | 16              |
-| AI providers                     | 4               |
-| Runtime dependencies             | 0               |
-| Source modules                   | 6               |
-| Diff character limit             | 30,000          |
-| Retry attempts per provider call | 3               |
-| Version rollover threshold       | .9 → next major |
+| Metric                           | Value  |
+| -------------------------------- | ------ |
+| Pipeline steps                   | 16     |
+| AI providers                     | 4      |
+| Runtime dependencies             | 0      |
+| Source modules                   | 6      |
+| Diff character limit             | 30,000 |
+| Retry attempts per provider call | 3      |
+| Default bump type                | patch  |
 
 ---
 
