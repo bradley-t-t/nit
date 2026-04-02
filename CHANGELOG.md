@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [13.0.1] - 2026-04-02
+
+- Fixed double-counted git diffs by removing redundant `git diff --cached` calls — `git diff HEAD` already includes staged changes, so `getGitDiff`, `getGitDiffStat`, and `getChangedFiles` no longer concatenate unstaged and staged output separately
+- Added missing newline at end of LICENSE.md
+
 ## [13.0.0] - 2026-04-01
 
 - Added subcommand architecture: `release`, `commit`, `clean`, and `status` commands replace the single-command interface

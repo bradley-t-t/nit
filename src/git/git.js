@@ -117,43 +117,25 @@ export function hasChanges() {
 /** Returns the full unified diff (unstaged + staged), optionally excluding nit.json. */
 export function getGitDiff(excludeNitJson = false) {
   if (excludeNitJson) {
-    const diff = execCommandSilent(
-      'git diff HEAD -- . ":(exclude)public/nit.json"',
-    );
-    const stagedDiff = execCommandSilent(
-      'git diff --cached -- . ":(exclude)public/nit.json"',
-    );
-    return diff + stagedDiff;
+    return execCommandSilent('git diff HEAD -- . ":(exclude)public/nit.json"');
   }
-  return (
-    execCommandSilent("git diff HEAD") + execCommandSilent("git diff --cached")
-  );
+  return execCommandSilent("git diff HEAD");
 }
 
 /** Returns the diff --stat summary, optionally excluding nit.json. */
 export function getGitDiffStat(excludeNitJson = false) {
   if (excludeNitJson) {
-    const stat = execCommandSilent(
+    return execCommandSilent(
       'git diff HEAD --stat -- . ":(exclude)public/nit.json"',
     );
-    const stagedStat = execCommandSilent(
-      'git diff --cached --stat -- . ":(exclude)public/nit.json"',
-    );
-    return stat + stagedStat;
   }
-  return (
-    execCommandSilent("git diff HEAD --stat") +
-    execCommandSilent("git diff --cached --stat")
-  );
+  return execCommandSilent("git diff HEAD --stat");
 }
 
 /** Returns a deduplicated list of changed file paths, optionally excluding nit.json. */
 export function getChangedFiles(excludeNitJson = false) {
   const files = execCommandSilent("git diff HEAD --name-only");
-  const stagedFiles = execCommandSilent("git diff --cached --name-only");
-  let fileList = [
-    ...new Set((files + stagedFiles).split("\n").filter(Boolean)),
-  ];
+  let fileList = [...new Set(files.split("\n").filter(Boolean))];
   if (excludeNitJson) {
     fileList = fileList.filter(
       (f) => f !== "public/nit.json" && f !== "nit.json",
