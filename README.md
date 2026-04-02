@@ -143,7 +143,7 @@ nit invoked
 | Source modules                   | 6               |
 | Diff character limit             | 30,000          |
 | Retry attempts per provider call | 3               |
-| Version rollover threshold       | .9 → next major |
+| Default bump type                | patch            |
 
 ---
 
