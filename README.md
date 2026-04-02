@@ -34,7 +34,7 @@ Every `nit` invocation runs a deterministic sequence of steps. Each step either 
 
 **Step 6 — API key validation.** Validates that the configured provider's API key is at least 20 characters. This check is skipped entirely for the `claude-code` provider, which uses the local Claude Code CLI subprocess rather than a direct API key.
 
-**Step 7 — Version bump.** Increments the MINOR version by one. When the minor component reaches `.9`, the next bump rolls over to the next MAJOR version and resets minor to `.0` (e.g. `2.9` → `3.0`).
+**Step 7 — Version bump.** Increments the version using standard semver rules. The default bump is PATCH; use `--minor` or `--major` to bump a different segment.
 
 **Step 8 — Code cleanup (Node only).** Scans `.js`, `.jsx`, `.ts`, and `.tsx` files under `src/` and removes `console.log()` statements. Separately, unused CSS classes are removed from `.css` files. Both cleanup passes are individually toggleable via CLI flags.
 
