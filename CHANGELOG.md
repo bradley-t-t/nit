@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [13.0.3] - 2026-04-03
+
+- nit Release v13.0.3
+
 ## [13.0.2] - 2026-04-02
 
 - nit Release v13.0.2
