@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { COLORS, SYMBOLS } from "./utils/constants.js";
+import { SYMBOLS } from "./utils/constants.js";
 import { ui } from "./cli/ui.js";
 import { run as runCleanup } from "./cleanup/cleanup.js";
 import { executeHook } from "./hooks/hooks.js";
@@ -48,6 +48,7 @@ import {
   reExecuteAfterUpdate,
   providerSetup,
 } from "./cli/cli.js";
+import { startApp, stopApp, renderStatusView } from "./ink/render.js";
 
 const args = process.argv.slice(2);
 let originalNitConfig = null;
@@ -72,43 +73,40 @@ function exitWithRollback(code = 1) {
 /** Checks for nit updates and auto-updates if available. Returns true if process should exit. */
 async function handleUpdateCheck(cliOptions) {
   if (cliOptions.update) {
-    ui.printHeaderWithStatus("Checking for updates...");
+    ui.step("Checking for updates...");
     const updateInfo = await checkForUpdates();
     if (updateInfo.hasUpdate) {
-      ui.printHeaderWithStatus(
+      ui.done(
         `Update available: v${updateInfo.currentVersion} ${SYMBOLS.arrow} v${updateInfo.latestVersion}`,
       );
+      ui.step("Updating nit...");
       const updated = await performUpdate();
-      ui.printHeaderWithStatus(
-        updated ? `Updated to v${updateInfo.latestVersion}` : "Update failed",
-      );
+      if (updated) {
+        ui.done(`Updated to v${updateInfo.latestVersion}`);
+      } else {
+        ui.warn("Update failed");
+      }
     } else {
-      ui.printHeaderWithStatus(
-        `Already on latest version (v${updateInfo.currentVersion})`,
-      );
+      ui.done(`Already on latest version (v${updateInfo.currentVersion})`);
     }
     return true;
   }
 
   if (!cliOptions.skipUpdate) {
-    ui.printHeaderWithStatus("Checking for updates...");
+    ui.step("Checking for updates...");
     const updateInfo = await checkForUpdates();
     if (updateInfo.hasUpdate) {
-      ui.printHeaderWithStatus(
+      ui.done(
         `Update available: v${updateInfo.currentVersion} ${SYMBOLS.arrow} v${updateInfo.latestVersion}`,
       );
-      ui.printHeaderWithStatus("Auto-updating nit...");
+      ui.step("Auto-updating nit...");
       const updated = await performUpdate();
       if (updated) {
-        ui.printHeaderWithStatus(
-          `Updated to v${updateInfo.latestVersion} - Restarting...`,
-        );
+        ui.done(`Updated to v${updateInfo.latestVersion} - Restarting...`);
         const restarted = reExecuteAfterUpdate();
         process.exit(restarted ? 0 : 1);
       }
-      ui.printHeaderWithStatus(
-        `Update failed, continuing with v${updateInfo.currentVersion}`,
-      );
+      ui.warn(`Update failed, continuing with v${updateInfo.currentVersion}`);
     }
   }
 
@@ -117,13 +115,13 @@ async function handleUpdateCheck(cliOptions) {
 
 /** Runs git pre-flight checks: installed, repository, remote. */
 function runPreflightChecks() {
-  ui.printHeaderWithStatus("Running pre-flight checks...");
   try {
     checkGitInstalled();
     checkGitRepository();
     checkGitRemote();
+    ui.done("Pre-flight checks passed");
   } catch (err) {
-    ui.printHeaderWithStatus(`Pre-flight failed: ${err.message}`);
+    ui.warn(`Pre-flight failed: ${err.message}`);
     process.exit(1);
   }
 }
@@ -136,18 +134,18 @@ async function loadConfigAndEnv(cliOptions) {
   const nodeProject = isNodeProject();
   if (nodeProject) checkNodeModules();
 
-  ui.printHeaderWithStatus("Loading environment...");
   loadEnv();
 
-  ui.printHeaderWithStatus("Reading project config...");
   let nitConfig;
   try {
     nitConfig = readNitConfig();
     originalNitConfig = { ...nitConfig };
   } catch (err) {
-    ui.printHeaderWithStatus(`Config error: ${err.message}`);
+    ui.warn(`Config error: ${err.message}`);
     process.exit(1);
   }
+
+  ui.done("Environment loaded");
 
   let providerId = nitConfig.provider;
   if (cliOptions.setup || !providerId) {
@@ -158,7 +156,7 @@ async function loadConfigAndEnv(cliOptions) {
       originalNitConfig = { ...nitConfig };
     } catch {}
     if (cliOptions.setup) {
-      ui.printHeaderWithStatus("Provider setup complete");
+      ui.done("Provider setup complete");
       process.exit(0);
     }
   }
@@ -167,7 +165,7 @@ async function loadConfigAndEnv(cliOptions) {
   try {
     validateApiKey(apiKey, providerId);
   } catch (err) {
-    ui.printHeaderWithStatus(`Environment error: ${err.message}`);
+    ui.warn(`Environment error: ${err.message}`);
     process.exit(1);
   }
 
@@ -192,9 +190,7 @@ async function runCodeCleanup(
   interactiveOptions = {},
 ) {
   if (!nodeProject) {
-    ui.printHeaderWithStatus(
-      "Non-Node project detected, skipping cleanup and format",
-    );
+    ui.done("Non-Node project detected, skipping cleanup and format");
     return;
   }
 
@@ -204,29 +200,29 @@ async function runCodeCleanup(
   const cleanCss = cssPreset !== null ? cssPreset : !!nitConfig.cleanCss;
 
   if (cleanLogs || cleanCss) {
-    ui.printHeaderWithStatus("Running code cleanup...");
+    ui.step("Running code cleanup...");
     try {
       const cleanupResult = await runCleanup(process.cwd(), {
         cleanLogs,
         cleanCss,
       });
       if (cleanupResult.consoleLogsRemoved > 0) {
-        ui.printHeaderWithStatus(
+        ui.done(
           `Removed ${cleanupResult.consoleLogsRemoved} console.log statement(s)`,
         );
       }
       if (cleanupResult.cssClassesRemoved > 0) {
-        ui.printHeaderWithStatus(
+        ui.done(
           `Removed ${cleanupResult.cssClassesRemoved} unused CSS class(es)`,
         );
       }
     } catch {}
   } else {
-    ui.printHeaderWithStatus("Skipping code cleanup");
+    ui.done("Skipping code cleanup");
   }
 
-  ui.printHeaderWithStatus("Running code formatter...");
   if (!interactiveOptions.skipFormat) {
+    ui.step("Running code formatter...");
     const formatResult = detectFormatCommand();
     if (formatResult.command) {
       try {
@@ -241,7 +237,7 @@ async function runCodeFormatter(nodeProject, interactiveOptions = {}) {
   if (!nodeProject) return;
   if (interactiveOptions.skipFormat) return;
 
-  ui.printHeaderWithStatus("Running code formatter...");
+  ui.step("Running code formatter...");
   const formatResult = detectFormatCommand();
   if (formatResult.command) {
     try {
@@ -283,7 +279,7 @@ async function runRelease(cliOptions) {
     interactiveOptions.branch || cliOptions.branch || nitConfig.branch;
   const newVersion = incrementVersion(nitConfig.version, cliOptions.bump);
 
-  ui.printHeaderWithStatus(
+  ui.done(
     `Preparing release: v${nitConfig.version} ${SYMBOLS.arrow} v${newVersion}`,
   );
 
@@ -295,11 +291,10 @@ async function runRelease(cliOptions) {
   // Cleanup + format
   await runCodeCleanup(cliOptions, nitConfig, nodeProject, interactiveOptions);
 
-  ui.printHeaderWithStatus("Checking for changes...");
   const diff = getGitDiff();
 
   if (!hasChanges() && !diff.trim()) {
-    ui.printHeaderWithStatus("No changes detected - Release skipped");
+    ui.done("No changes detected - Release skipped");
     process.exit(0);
   }
 
@@ -307,12 +302,12 @@ async function runRelease(cliOptions) {
     ui.dryRun(`Would bump version to v${newVersion}`);
     ui.dryRun(`Would commit and push to ${branch}`);
     executeHook("postRelease", hooks, hookOptions);
-    ui.printHeaderWithStatus(`Dry run complete for v${newVersion}`);
+    ui.done(`Dry run complete for v${newVersion}`);
     return;
   }
 
   // Update version files
-  ui.printHeaderWithStatus("Updating version files...");
+  ui.step("Updating version files...");
   try {
     const updatedConfig = {
       version: newVersion,
@@ -325,13 +320,13 @@ async function runRelease(cliOptions) {
     };
     writeNitConfig(updatedConfig);
   } catch (err) {
-    ui.printHeaderWithStatus(`Version update failed: ${err.message}`);
+    ui.warn(`Version update failed: ${err.message}`);
     process.exit(1);
   }
 
   // Build
   if (nodeProject && !interactiveOptions.skipBuild) {
-    ui.printHeaderWithStatus("Running production build...");
+    ui.step("Running production build...");
     const buildCommand = detectBuildCommand();
     if (buildCommand) {
       try {
@@ -345,7 +340,7 @@ async function runRelease(cliOptions) {
   }
 
   // Stage
-  ui.printHeaderWithStatus("Staging all changes...");
+  ui.step("Staging all changes...");
   stageChanges(resolveStagingMode(cliOptions, "all"));
 
   const finalDiff = getGitDiff(true);
@@ -353,7 +348,7 @@ async function runRelease(cliOptions) {
   const finalChangedFiles = getChangedFiles(true);
 
   // AI release message
-  ui.printHeaderWithStatus("Generating release notes with AI...");
+  ui.step("Generating release notes with AI...");
   const today = new Date().toISOString().split("T")[0];
   let commitMessage;
   try {
@@ -367,7 +362,7 @@ async function runRelease(cliOptions) {
       providerId,
     );
   } catch (err) {
-    ui.printHeaderWithStatus(`AI unavailable, using fallback: ${err.message}`);
+    ui.warn(`AI unavailable, using fallback: ${err.message}`);
     commitMessage = `${projectName}: Release v${newVersion}`;
   }
 
@@ -383,11 +378,11 @@ async function runRelease(cliOptions) {
 
   process.stdout.write(`\n${changelogEntry}\n`);
 
-  ui.printHeaderWithStatus("Updating CHANGELOG.md...");
+  ui.step("Updating CHANGELOG.md...");
   try {
     updateChangelog(changelogEntry);
   } catch (err) {
-    ui.printHeaderWithStatus(`Changelog update failed: ${err.message}`);
+    ui.warn(`Changelog update failed: ${err.message}`);
     exitWithRollback(1);
   }
 
@@ -397,11 +392,11 @@ async function runRelease(cliOptions) {
   // Commit + push
   executeHook("preCommit", hooks, hookOptions);
 
-  ui.printHeaderWithStatus("Committing and pushing...");
+  ui.step("Committing and pushing...");
   try {
     gitCommit(commitMessage);
   } catch (err) {
-    ui.printHeaderWithStatus(`Commit failed: ${err.message}`);
+    ui.warn(`Commit failed: ${err.message}`);
     exitWithRollback(1);
   }
 
@@ -411,14 +406,14 @@ async function runRelease(cliOptions) {
   try {
     gitPush(branch);
   } catch (err) {
-    ui.printHeaderWithStatus(`Push failed: ${err.message}`);
+    ui.warn(`Push failed: ${err.message}`);
     exitWithRollback(1);
   }
 
   executeHook("postPush", hooks, hookOptions);
   executeHook("postRelease", hooks, hookOptions);
 
-  ui.printHeaderWithStatus(`Release Complete! v${newVersion}`);
+  ui.done(`Release Complete! v${newVersion}`);
 }
 
 /** Lighter commit pipeline: stage, optional cleanup, conventional commit, push. */
@@ -435,9 +430,9 @@ async function runCommitCommand(cliOptions) {
 
   // Branch creation
   if (cliOptions.branchCreate) {
-    ui.printHeaderWithStatus(`Creating branch: ${cliOptions.branchCreate}`);
     if (!cliOptions.dryRun) {
       createBranch(cliOptions.branchCreate);
+      ui.done(`Created branch: ${cliOptions.branchCreate}`);
     } else {
       ui.dryRun(`Would create branch "${cliOptions.branchCreate}"`);
     }
@@ -453,8 +448,8 @@ async function runCommitCommand(cliOptions) {
 
   // Stage
   const stagingMode = resolveStagingMode(cliOptions, "tracked");
-  ui.printHeaderWithStatus(`Staging changes (${stagingMode})...`);
   if (!cliOptions.dryRun) {
+    ui.step(`Staging changes (${stagingMode})...`);
     stageChanges(stagingMode);
   } else {
     ui.dryRun(`Would stage changes with mode "${stagingMode}"`);
@@ -462,7 +457,7 @@ async function runCommitCommand(cliOptions) {
 
   // Check for changes
   if (!cliOptions.dryRun && !hasChanges()) {
-    ui.printHeaderWithStatus("No changes to commit");
+    ui.done("No changes to commit");
     process.exit(0);
   }
 
@@ -475,7 +470,7 @@ async function runCommitCommand(cliOptions) {
     const stat = getGitDiffStat(true);
     const changedFiles = getChangedFiles(true);
 
-    ui.printHeaderWithStatus("Generating commit message with AI...");
+    ui.step("Generating commit message with AI...");
     try {
       commitMessage = await generateConventionalCommitMessage(
         apiKey,
@@ -487,27 +482,25 @@ async function runCommitCommand(cliOptions) {
         providerId,
       );
     } catch (err) {
-      ui.printHeaderWithStatus(
-        `AI unavailable, using fallback: ${err.message}`,
-      );
+      ui.warn(`AI unavailable, using fallback: ${err.message}`);
       commitMessage = `${commitType}(general): update`;
     }
   }
 
   if (cliOptions.dryRun) {
     ui.dryRun(`Would commit with message: ${commitMessage.split("\n")[0]}`);
-    ui.printHeaderWithStatus("Dry run complete");
+    ui.done("Dry run complete");
     return;
   }
 
   // Commit
   executeHook("preCommit", hooks, hookOptions);
 
-  ui.printHeaderWithStatus("Committing...");
+  ui.step("Committing...");
   try {
     gitCommit(commitMessage);
   } catch (err) {
-    ui.printHeaderWithStatus(`Commit failed: ${err.message}`);
+    ui.warn(`Commit failed: ${err.message}`);
     process.exit(1);
   }
 
@@ -518,7 +511,7 @@ async function runCommitCommand(cliOptions) {
 
   const branch =
     cliOptions.branch || cliOptions.branchCreate || getCurrentBranch();
-  ui.printHeaderWithStatus(`Pushing to ${branch}...`);
+  ui.step(`Pushing to ${branch}...`);
   try {
     if (cliOptions.branchCreate) {
       gitPushNewBranch(branch);
@@ -526,20 +519,20 @@ async function runCommitCommand(cliOptions) {
       gitPush(branch);
     }
   } catch (err) {
-    ui.printHeaderWithStatus(`Push failed: ${err.message}`);
+    ui.warn(`Push failed: ${err.message}`);
     process.exit(1);
   }
 
   executeHook("postPush", hooks, hookOptions);
 
-  ui.printHeaderWithStatus("Commit complete!");
+  ui.done("Commit complete!");
 }
 
 /** Runs code cleanup only, no git operations. */
 async function runCleanCommand(cliOptions) {
   const nodeProject = isNodeProject();
   if (!nodeProject) {
-    ui.printHeaderWithStatus("Non-Node project detected, nothing to clean");
+    ui.done("Non-Node project detected, nothing to clean");
     return;
   }
 
@@ -549,7 +542,7 @@ async function runCleanCommand(cliOptions) {
   try {
     nitConfig = readNitConfig();
   } catch (err) {
-    ui.printHeaderWithStatus(`Config error: ${err.message}`);
+    ui.warn(`Config error: ${err.message}`);
     process.exit(1);
   }
 
@@ -562,44 +555,40 @@ async function runCleanCommand(cliOptions) {
     cliOptions.cleanCss !== null ? cliOptions.cleanCss : !!nitConfig.cleanCss;
 
   if (!cleanLogs && !cleanCss) {
-    ui.printHeaderWithStatus("No cleanup tasks enabled");
+    ui.done("No cleanup tasks enabled");
     return;
   }
 
   if (cliOptions.dryRun) {
     if (cleanLogs) ui.dryRun("Would remove console.log statements");
     if (cleanCss) ui.dryRun("Would remove unused CSS classes");
-    ui.printHeaderWithStatus("Dry run complete");
+    ui.done("Dry run complete");
     return;
   }
 
-  ui.printHeaderWithStatus("Running code cleanup...");
+  ui.step("Running code cleanup...");
   try {
     const result = await runCleanup(process.cwd(), { cleanLogs, cleanCss });
     if (result.consoleLogsRemoved > 0) {
-      ui.printHeaderWithStatus(
-        `Removed ${result.consoleLogsRemoved} console.log statement(s)`,
-      );
+      ui.done(`Removed ${result.consoleLogsRemoved} console.log statement(s)`);
     }
     if (result.cssClassesRemoved > 0) {
-      ui.printHeaderWithStatus(
-        `Removed ${result.cssClassesRemoved} unused CSS class(es)`,
-      );
+      ui.done(`Removed ${result.cssClassesRemoved} unused CSS class(es)`);
     }
   } catch (err) {
-    ui.printHeaderWithStatus(`Cleanup failed: ${err.message}`);
+    ui.warn(`Cleanup failed: ${err.message}`);
   }
 
-  ui.printHeaderWithStatus("Cleanup complete");
+  ui.done("Cleanup complete");
 }
 
-/** Prints project info: name, version, branch, provider. */
+/** Renders project info via Ink StatusView component. */
 async function runStatusCommand() {
   let nitConfig;
   try {
     nitConfig = readNitConfig();
   } catch (err) {
-    ui.printHeaderWithStatus(`Config error: ${err.message}`);
+    ui.warn(`Config error: ${err.message}`);
     process.exit(1);
   }
 
@@ -609,19 +598,7 @@ async function runStatusCommand() {
     currentBranch = getCurrentBranch();
   } catch {}
 
-  process.stdout.write(`
-  ${COLORS.bright}Project Status${COLORS.reset}
-  ${COLORS.dim}${"─".repeat(35)}${COLORS.reset}
-  ${COLORS.brightBlue}Project${COLORS.reset}     ${nitConfig.projectName}
-  ${COLORS.brightBlue}Version${COLORS.reset}     v${nitConfig.version}
-  ${COLORS.brightBlue}Branch${COLORS.reset}      ${currentBranch} ${COLORS.dim}(config: ${nitConfig.branch})${COLORS.reset}
-  ${COLORS.brightBlue}Provider${COLORS.reset}    ${nitConfig.provider || "not configured"}
-  ${COLORS.brightBlue}Node${COLORS.reset}        ${nodeProject ? "yes" : "no"}
-  ${COLORS.brightBlue}Clean Logs${COLORS.reset}  ${nitConfig.cleanLogs ? "enabled" : "disabled"}
-  ${COLORS.brightBlue}Clean CSS${COLORS.reset}   ${nitConfig.cleanCss ? "enabled" : "disabled"}
-  ${COLORS.brightBlue}Hooks${COLORS.reset}       ${Object.keys(nitConfig.hooks || {}).length > 0 ? Object.keys(nitConfig.hooks).join(", ") : "none"}
-  ${COLORS.dim}${"─".repeat(35)}${COLORS.reset}
-`);
+  renderStatusView({ config: nitConfig, currentBranch, nodeProject });
 }
 
 // ---------------------------------------------------------------------------
@@ -638,13 +615,15 @@ async function main() {
     ui.setOutputLevel("verbose");
   }
 
+  startApp();
   ui.printHeader();
 
   // Handle --update early exit
   const shouldExit = await handleUpdateCheck(cliOptions);
-  if (shouldExit) process.exit(0);
-
-  ui.printHeaderWithStatus("Initializing...");
+  if (shouldExit) {
+    await stopApp();
+    process.exit(0);
+  }
 
   switch (cliOptions.command) {
     case "release":
@@ -662,16 +641,19 @@ async function main() {
     default:
       await runRelease(cliOptions);
   }
+
+  await stopApp();
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   ui.showCursor();
   const errorOutput = err.details?.output;
   if (errorOutput) {
     ui.printHeaderWithError(`Failed: ${err.message}`, errorOutput);
   } else {
-    ui.printHeaderWithStatus(`Failed: ${err.message}`);
+    ui.warn(`Failed: ${err.message}`);
   }
+  await stopApp();
   rollbackVersion();
   process.exit(1);
 });

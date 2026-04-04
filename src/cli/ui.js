@@ -1,86 +1,39 @@
-import {
-  COLORS,
-  SYMBOLS,
-  PACKAGE_VERSION,
-  PACKAGE_AUTHOR,
-} from "../utils/constants.js";
+import { store } from "../ink/store.js";
 
-let outputLevel = "normal";
-
-const printStatusLine = (message) =>
-  process.stdout.write(
-    `  ${COLORS.brightBlue}${SYMBOLS.arrowRight}${COLORS.reset} ${message}\n`,
-  );
-
+/**
+ * UI facade that delegates to the Ink pipeline store.
+ * Pipeline output is rendered live by the Ink App component
+ * with animated spinners for active steps.
+ */
 export const ui = {
-  /**
-   * Sets the output verbosity level.
-   * @param {"quiet" | "normal" | "verbose"} level
-   */
-  setOutputLevel: (level) => {
-    outputLevel = level;
-  },
+  /** @param {"quiet" | "normal" | "verbose"} level */
+  setOutputLevel: (level) => store.setOutputLevel(level),
 
-  /** Returns the current output level. */
-  getOutputLevel: () => outputLevel,
+  getOutputLevel: () => store.getOutputLevel(),
 
-  /** Prints a message only in verbose mode. */
-  verbose: (msg) => {
-    if (outputLevel === "verbose") {
-      process.stdout.write(
-        `  ${COLORS.dim}${SYMBOLS.arrowRight} ${msg}${COLORS.reset}\n`,
-      );
-    }
-  },
+  verbose: (message) => store.startStep(message),
 
-  /** Restores the terminal cursor after a spinner or hidden-cursor operation. */
   showCursor: () => process.stdout.write("\x1b[?25h"),
 
-  /** Prints the ASCII logo + title block exactly once at startup. Suppressed in quiet mode. */
-  printHeader: () => {
-    if (outputLevel === "quiet") return;
+  printHeader: () => store.showHeader(),
 
-    const SEP = `${COLORS.dim}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}`;
-    const TITLE = `${COLORS.brightWhite}${COLORS.bright}Automated Release Management${COLORS.reset}`;
-    const VER = `${COLORS.dim}v${PACKAGE_VERSION} by ${PACKAGE_AUTHOR}${COLORS.reset}`;
-    const GAP = "  ";
+  /** Starts an active step with a spinner. Use before async work. */
+  step: (statusMessage) => store.startStep(statusMessage),
 
-    process.stdout.write(
-      [
-        ``,
-        `  ${COLORS.brightRed}${COLORS.bright}███╗   ██╗${COLORS.brightWhite}██║${COLORS.brightBlue}████████╗${COLORS.reset}`,
-        `  ${COLORS.brightRed}${COLORS.bright}████╗  ██║${COLORS.brightWhite}██║${COLORS.brightBlue}╚══██╔══╝${COLORS.reset}${GAP}${SEP}`,
-        `  ${COLORS.brightRed}${COLORS.bright}██╔██╗ ██║${COLORS.brightWhite}██║${COLORS.brightBlue}   ██║   ${COLORS.reset}${GAP}${TITLE}`,
-        `  ${COLORS.brightRed}${COLORS.bright}██║╚██╗██║${COLORS.brightWhite}██║${COLORS.brightBlue}   ██║   ${COLORS.reset}${GAP}${VER}`,
-        `  ${COLORS.brightRed}${COLORS.bright}██║ ╚████║${COLORS.brightWhite}██║${COLORS.brightBlue}   ██║   ${COLORS.reset}${GAP}${SEP}`,
-        `  ${COLORS.brightRed}${COLORS.bright}╚═╝  ╚═══╝${COLORS.brightWhite}╚═╝${COLORS.brightBlue}   ╚═╝   ${COLORS.reset}`,
-        ``,
-      ].join("\n"),
-    );
-  },
+  /** Instantly marks a step as done with a checkmark. Use for sync results. */
+  done: (statusMessage) => store.completeStep(statusMessage),
 
-  /** Prints a status line. Suppressed in quiet mode. */
-  printHeaderWithStatus: (statusMessage) => {
-    if (outputLevel === "quiet") return;
-    printStatusLine(statusMessage);
-  },
+  /** Shows a yellow warning indicator. */
+  warn: (statusMessage) => store.warnStep(statusMessage),
 
-  /** Prints an error status line with optional detail. Always shows regardless of output level. */
-  printHeaderWithError: (statusMessage, errorDetail) => {
-    printStatusLine(statusMessage);
-    if (errorDetail) {
-      const lines = errorDetail.split("\n").filter(Boolean);
-      for (const line of lines) {
-        process.stdout.write(`  ${COLORS.brightRed}${line}${COLORS.reset}\n`);
-      }
-    }
-  },
+  /**
+   * @deprecated Use `step()` for async work or `done()` for instant results.
+   * Kept for backward compat — delegates to startStep (spinner).
+   */
+  printHeaderWithStatus: (statusMessage) => store.startStep(statusMessage),
 
-  /** Prints a dry-run notice with a yellow prefix. Suppressed in quiet mode. */
-  dryRun: (msg) => {
-    if (outputLevel === "quiet") return;
-    process.stdout.write(
-      `  ${COLORS.brightYellow}[DRY RUN]${COLORS.reset} ${msg}\n`,
-    );
-  },
+  printHeaderWithError: (statusMessage, errorDetail) =>
+    store.setError(statusMessage, errorDetail),
+
+  dryRun: (message) => store.setDryRun(message),
 };
